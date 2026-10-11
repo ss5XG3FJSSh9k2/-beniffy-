@@ -8457,6 +8457,7 @@ export default function App() {
         </div>
 
         {/* Collapsible B2B Retention Calculator (De-emphasized for the pilot stockist/wholesaler audience) */}
+        {calcConfig && (
         <div className="glass-card" style={{ background: 'var(--bg-surface)', padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '1rem' }}>
           <div 
             onClick={() => setCalculatorCollapsed(!calculatorCollapsed)} 
@@ -8572,6 +8573,7 @@ export default function App() {
             </div>
           )}
         </div>
+        )}
 
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '1rem', padding: '2rem', textAlign: 'center' }}>
           <h2 style={{ marginBottom: '1rem' }}>Are you a cable/internet operator?</h2>
