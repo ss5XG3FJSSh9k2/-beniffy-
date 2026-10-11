@@ -13207,12 +13207,12 @@ export default function App() {
                       <tr>
                         <th>Name</th>
                         <th>Phone</th>
-                        <th style={{ minWidth: '95px' }}>Region</th>
+                        <th>Region</th>
                         <th>Points Balance</th>
                         <th>Total Orders</th>
                         <th>Joined Date</th>
-                        <th style={{ whiteSpace: 'nowrap', minWidth: '75px' }}>Status</th>
-                        <th style={{ whiteSpace: 'nowrap', minWidth: '340px', position: 'static' }}>Actions</th>
+                        <th>Status</th>
+                        <th style={{ whiteSpace: 'nowrap', minWidth: '340px' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -13224,16 +13224,16 @@ export default function App() {
                           <tr key={c.id} style={c.is_active === false ? { opacity: 0.6, background: 'rgba(255,255,255,0.02)' } : {}}>
                             <td style={{ fontWeight: 'bold' }}>{c.name}</td>
                             <td>{c.phone}</td>
-                            <td style={{ overflowWrap: 'normal', wordBreak: 'normal', minWidth: '95px' }}>{regions.find(r => r.id === c.region_id)?.name || c.region_id}</td>
+                            <td>{regions.find(r => r.id === c.region_id)?.name || c.region_id}</td>
                             <td style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{formatPoints(c.points_balance || 0)}</td>
                             <td>{c.total_orders || 0}</td>
                             <td>{c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A'}</td>
-                            <td style={{ whiteSpace: 'nowrap', minWidth: '75px' }}>
-                              <span className={`badge ${c.is_active !== false ? 'badge-success' : 'badge-secondary'}`} style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>
+                            <td>
+                              <span className={`badge ${c.is_active !== false ? 'badge-success' : 'badge-secondary'}`}>
                                 {c.is_active !== false ? 'Active' : 'Inactive'}
                               </span>
                             </td>
-                            <td style={{ whiteSpace: 'nowrap', position: 'static' }}>
+                            <td style={{ whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'nowrap' }}>
                                 <button className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem', fontSize: '0.65rem' }} onClick={async () => {
                                   const res = await fetch(`${API_BASE}/admin/customers/${c.id}`);
