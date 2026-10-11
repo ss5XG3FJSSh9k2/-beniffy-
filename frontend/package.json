@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "test": "node -e \"const fs=require('fs');const c=fs.readFileSync('src/App.jsx','utf8');const s1=(c.match(/<select/g)||[]).length;const s2=(c.match(/<select className=\\\"text-input\\\"/g)||[]).length;if(s1!==s2){console.error('REGRESSION: Found ' + s1 + ' <select> tags but only ' + s2 + ' have className=\\\"text-input\\\"');process.exit(1)}console.log('All select tags have text-input');process.exit(0)\"",
+    "test": "node scripts/check-hook-deps.js && node -e \"const fs=require('fs');const c=fs.readFileSync('src/App.jsx','utf8');const s1=(c.match(/<select/g)||[]).length;const s2=(c.match(/<select className=\\\"text-input\\\"/g)||[]).length;if(s1!==s2){console.error('REGRESSION: Found ' + s1 + ' <select> tags but only ' + s2 + ' have className=\\\"text-input\\\"');process.exit(1)}console.log('All select tags have text-input');process.exit(0)\"",
     "preview": "vite preview"
   },
   "dependencies": {

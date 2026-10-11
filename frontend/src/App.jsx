@@ -895,23 +895,6 @@ export default function App() {
     localStorage.setItem('fastnet_carts', JSON.stringify({ userId: currentUser?.id, carts: customerCarts }));
   }, [customerCarts, currentUser?.id]);
 
-  useEffect(() => {
-    if (trackingOrder && customerAppTab === "track") {
-      const isTrackingInOrders = (customerOrders || []).some(o => o.id === trackingOrder.id);
-      if (!isTrackingInOrders) {
-        const activeOrderList = [...(customerOrders || [])]
-          .filter(o => !['DELIVERED', 'CANCELLED', 'NO_SHOW'].includes(o.status))
-          .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-        if (activeOrderList.length > 0) {
-          setTrackingOrder(activeOrderList[0]);
-        } else {
-          setCustomerAppTab('store');
-          setTrackingOrder(null);
-        }
-      }
-    }
-  }, [customerOrders, trackingOrder, customerAppTab]);
-
   const currentCart = selectedStockist ? (customerCarts[selectedStockist.id]?.items || []) : [];
   const [showCartsSheet, setShowCartsSheet] = useState(false);
   const [swipeStartY, setSwipeStartY] = useState(0);
@@ -942,6 +925,23 @@ export default function App() {
   const [customerOrders, setCustomerOrdersRaw] = useState([]);
   const setCustomerOrders = (v) => setCustomerOrdersRaw(prev => toUiOrders(typeof v === 'function' ? v(prev) : v));
   const [customerAppTab, setCustomerAppTab] = useState('store'); // store, ledger, orders
+
+  useEffect(() => {
+    if (trackingOrder && customerAppTab === "track") {
+      const isTrackingInOrders = (customerOrders || []).some(o => o.id === trackingOrder.id);
+      if (!isTrackingInOrders) {
+        const activeOrderList = [...(customerOrders || [])]
+          .filter(o => !['DELIVERED', 'CANCELLED', 'NO_SHOW'].includes(o.status))
+          .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+        if (activeOrderList.length > 0) {
+          setTrackingOrder(activeOrderList[0]);
+        } else {
+          setCustomerAppTab('store');
+          setTrackingOrder(null);
+        }
+      }
+    }
+  }, [customerOrders, trackingOrder, customerAppTab]);
   const [redeemAmount, setRedeemAmount] = useState('');
   const [checkoutResult, setCheckoutResultRaw] = useState(null);
   const setCheckoutResult = (v) => setCheckoutResultRaw(prev => {
