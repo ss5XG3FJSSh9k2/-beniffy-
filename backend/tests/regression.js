@@ -6106,6 +6106,33 @@ async function main() {
   assert(payoutPaidRes.status === 200 && payoutPaidRes.body.success === true && payoutPaidRes.body.count === 1,
     'Marking a partner payout as paid still works');
 
+  // 40. BF-COD-RAZORPAY-IDS
+  console.log('\n--- 40. BF-COD-RAZORPAY-IDS ---');
+  loginAs('u-cust1', 'CUSTOMER');
+  const codOrderCheck = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    fulfillmentType: 'PICKUP',
+    pickupSlot: 'Morning (8AM–12PM)',
+    paymentMethod: 'COD',
+    items: [{ productId: 'p1', quantity: 1 }]
+  });
+  assert(codOrderCheck.status === 200, 'COD order created for razorpay IDs check');
+  assert(codOrderCheck.body.order.razorpay_order_id === null, 'COD order has null razorpay_order_id');
+  assert(codOrderCheck.body.order.razorpay_payment_id === null, 'COD order has null razorpay_payment_id');
+
+  const prepaidOrderCheck = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    fulfillmentType: 'PICKUP',
+    pickupSlot: 'Morning (8AM–12PM)',
+    paymentMethod: 'UPI',
+    items: [{ productId: 'p1', quantity: 1 }]
+  });
+  assert(prepaidOrderCheck.status === 200, 'Prepaid order created for razorpay IDs check');
+  assert(typeof prepaidOrderCheck.body.order.razorpay_order_id === 'string' && prepaidOrderCheck.body.order.razorpay_order_id.startsWith('rzp_order_'), 'Prepaid order has valid razorpay_order_id');
+  assert(typeof prepaidOrderCheck.body.order.razorpay_payment_id === 'string' && prepaidOrderCheck.body.order.razorpay_payment_id.startsWith('rzp_pay_'), 'Prepaid order has valid razorpay_payment_id');
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 
