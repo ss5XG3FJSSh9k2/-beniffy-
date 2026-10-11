@@ -11,3 +11,8 @@ frontend/dist/
 backend/.env
 backend/uploads/
 backend/data/dev-db.json
+scratch/
+frontend/scratch/
+frontend/scratch_fix_app.cjs
+scratch-patch*.js
+diff.txt
