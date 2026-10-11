@@ -90,12 +90,18 @@ async function runStockistTableSqueezeTests() {
         // 3. Status header visibility and elementFromPoint
         const statusTh = table.querySelector('thead th:nth-child(7)');
         let statusElementFromPointTag = null;
+        let statusElementFromPointText = null;
+        let statusElementFromPointValid = false;
         if (statusTh) {
           const sRect = statusTh.getBoundingClientRect();
           const cx = Math.round(sRect.left + sRect.width / 2);
           const cy = Math.round(sRect.top + sRect.height / 2);
           const topEl = document.elementFromPoint(cx, cy);
-          statusElementFromPointTag = topEl ? topEl.tagName : null;
+          if (topEl) {
+            statusElementFromPointTag = topEl.tagName;
+            statusElementFromPointText = topEl.innerText.trim();
+            statusElementFromPointValid = topEl.tagName === 'TH' && statusElementFromPointText === 'Status';
+          }
         }
 
         // 4. Status badges: ACTIVE on one line
@@ -108,15 +114,31 @@ async function runStockistTableSqueezeTests() {
           return rect.height < 30 && computed.whiteSpace === 'nowrap';
         });
 
-        // 5. Region text: no mid-word breaks
+        // 5. Region cells rendered check: scrollWidth <= clientWidth and no text is clipped
         const regionTds = Array.from(table.querySelectorAll('tbody tr td:nth-child(2)'));
-        const allRegionsNoMidWordBreak = regionTds.every(td => {
-          const text = td.innerText;
-          const words = text.split(/\s+/).filter(w => w.length > 0);
-          const computed = getComputedStyle(td);
-          // With overflowWrap: normal & wordBreak: normal, words wrap only at spaces
-          return computed.overflowWrap !== 'anywhere' && computed.wordBreak !== 'break-all';
+        const regionRenderedDetails = regionTds.map(td => {
+          const text = td.innerText.trim();
+          const fitsH = td.scrollWidth <= td.clientWidth;
+          const fitsV = td.scrollHeight <= td.clientHeight;
+          const range = document.createRange();
+          range.selectNodeContents(td);
+          const textRect = range.getBoundingClientRect();
+          const tdRect = td.getBoundingClientRect();
+          const notClippedH = textRect.width <= td.clientWidth + 1;
+          const notClippedV = textRect.bottom <= tdRect.bottom + 1;
+          const noClippedText = notClippedH && notClippedV && fitsH && fitsV;
+          return {
+            text,
+            scrollWidth: td.scrollWidth,
+            clientWidth: td.clientWidth,
+            scrollHeight: td.scrollHeight,
+            clientHeight: td.clientHeight,
+            fitsH,
+            fitsV,
+            noClippedText
+          };
         });
+        const allRegionsRenderedCleanly = regionRenderedDetails.length > 0 && regionRenderedDetails.every(r => r.noClippedText);
 
         // 6. Actions row: all 6 buttons on one line
         const actionButtonContainers = Array.from(table.querySelectorAll('tbody tr td:last-child > div'));
@@ -135,9 +157,12 @@ async function runStockistTableSqueezeTests() {
           headerOverlap,
           overlapDetails,
           statusElementFromPointTag,
+          statusElementFromPointText,
+          statusElementFromPointValid,
           activeBadgesCount: activeBadges.length,
           allActiveOnOneLine,
-          allRegionsNoMidWordBreak,
+          regionRenderedDetails,
+          allRegionsRenderedCleanly,
           actionContainersCount: actionButtonContainers.length,
           allActionsOnOneLine,
           scrollWidth: scrollDiv.scrollWidth,
@@ -157,7 +182,14 @@ async function runStockistTableSqueezeTests() {
         console.log(`[PASS] No header covered by another header (all headers visible) at ${vp.width}px`);
       }
 
-      console.log(`[CHECK] Status header elementFromPoint: <${assertions.statusElementFromPointTag}>`);
+      console.log(`[CHECK] Status header elementFromPoint: <${assertions.statusElementFromPointTag}> with text "${assertions.statusElementFromPointText}"`);
+      if (!assertions.statusElementFromPointValid) {
+        console.error(`[FAIL] document.elementFromPoint at Status header centre did not return a TH with text "Status" (got <${assertions.statusElementFromPointTag}> with text "${assertions.statusElementFromPointText}") at ${vp.width}px`);
+        process.exit(1);
+      } else {
+        console.log(`[PASS] document.elementFromPoint at Status header centre returns TH with text "Status" at ${vp.width}px`);
+      }
+
       if (!assertions.allActiveOnOneLine) {
         console.error(`[FAIL] "ACTIVE" badge is wrapped onto multiple lines at ${vp.width}px`);
         process.exit(1);
@@ -165,11 +197,11 @@ async function runStockistTableSqueezeTests() {
         console.log(`[PASS] "ACTIVE" status badge on one line (white-space: nowrap) at ${vp.width}px`);
       }
 
-      if (!assertions.allRegionsNoMidWordBreak) {
-        console.error(`[FAIL] Region has mid-word breaks at ${vp.width}px`);
+      if (!assertions.allRegionsRenderedCleanly) {
+        console.error(`[FAIL] Region has clipped text or scrollWidth > clientWidth at ${vp.width}px:`, JSON.stringify(assertions.regionRenderedDetails));
         process.exit(1);
       } else {
-        console.log(`[PASS] Region wraps only at spaces, no mid-word breaks at ${vp.width}px`);
+        console.log(`[PASS] Region cells rendered check: scrollWidth <= clientWidth and no text clipped across all cells at ${vp.width}px`);
       }
 
       if (!assertions.allActionsOnOneLine) {

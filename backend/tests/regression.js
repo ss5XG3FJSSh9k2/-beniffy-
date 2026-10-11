@@ -5984,8 +5984,7 @@ async function main() {
   assert(pReject.status === 403, 'Partner session cannot read notices');
 
   assert(true, 'BF-PAYOUT-CHANGE-NOTICE backend tests passed');
-  console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
-  console.log('\\n--- 39. BF-REGION-COUNTS ---');
+  console.log('\n--- 39. BF-REGION-COUNTS ---');
   
   // 1. Create a region
   const regId = 'r-test-' + Date.now();
@@ -6107,6 +6106,7 @@ async function main() {
   assert(payoutPaidRes.status === 200 && payoutPaidRes.body.success === true && payoutPaidRes.body.count === 1,
     'Marking a partner payout as paid still works');
 
+  console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 
 }
