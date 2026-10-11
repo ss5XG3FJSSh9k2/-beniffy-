@@ -472,11 +472,14 @@ select option:disabled {
 .badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 0.25rem 0.5rem;
   border-radius: 9999px;
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
+  white-space: nowrap;
+  min-width: 52px;
 }
 
 .badge-primary { background: rgba(99, 102, 241, 0.15); color: #818CF8; }
@@ -1316,3 +1319,4 @@ input[type="number"] { -moz-appearance: textfield; }
 .admin-table th:first-child, .admin-table td:first-child { min-width: 140px; }
 .admin-table td { overflow-wrap: anywhere; }
 .admin-table th:last-child, .admin-table td:last-child { position: sticky; right: 0; background-color: var(--bg-surface); z-index: 1; }
+.admin-table.stockist-table th, .admin-table.stockist-table td { padding: 0.75rem 0.5rem; }

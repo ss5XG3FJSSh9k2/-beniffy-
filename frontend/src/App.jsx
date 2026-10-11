@@ -1607,21 +1607,21 @@ export default function App() {
   const renderKycStatusBadge = (status, isActive) => {
     const st = String(status || '').toUpperCase();
     if (st === 'APPROVED' && isActive !== false) {
-      return <span className="badge badge-success">ACTIVE</span>;
+      return <span className="badge badge-success" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>ACTIVE</span>;
     }
     if (st === 'DEACTIVATED' || isActive === false) {
-      return <span className="badge badge-secondary">INACTIVE</span>;
+      return <span className="badge badge-secondary" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>INACTIVE</span>;
     }
     if (st === 'PENDING') {
-      return <span className="badge badge-warning">PENDING</span>;
+      return <span className="badge badge-warning" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>PENDING</span>;
     }
     if (st === 'REJECTED') {
-      return <span className="badge badge-danger">REJECTED</span>;
+      return <span className="badge badge-danger" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>REJECTED</span>;
     }
     if (st === 'BLACKLISTED') {
-      return <span className="badge badge-danger">BLACKLISTED</span>;
+      return <span className="badge badge-danger" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>BLACKLISTED</span>;
     }
-    return <span className="badge badge-secondary">{st || 'INACTIVE'}</span>;
+    return <span className="badge badge-secondary" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>{st || 'INACTIVE'}</span>;
   };
 
   // Multi-lingual & Simulation States
@@ -13207,12 +13207,12 @@ export default function App() {
                       <tr>
                         <th>Name</th>
                         <th>Phone</th>
-                        <th>Region</th>
+                        <th style={{ minWidth: '95px' }}>Region</th>
                         <th>Points Balance</th>
                         <th>Total Orders</th>
                         <th>Joined Date</th>
-                        <th>Status</th>
-                        <th style={{ whiteSpace: 'nowrap', minWidth: '340px' }}>Actions</th>
+                        <th style={{ whiteSpace: 'nowrap', minWidth: '75px' }}>Status</th>
+                        <th style={{ whiteSpace: 'nowrap', minWidth: '340px', position: 'static' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -13224,16 +13224,16 @@ export default function App() {
                           <tr key={c.id} style={c.is_active === false ? { opacity: 0.6, background: 'rgba(255,255,255,0.02)' } : {}}>
                             <td style={{ fontWeight: 'bold' }}>{c.name}</td>
                             <td>{c.phone}</td>
-                            <td>{regions.find(r => r.id === c.region_id)?.name || c.region_id}</td>
+                            <td style={{ overflowWrap: 'normal', wordBreak: 'normal', minWidth: '95px' }}>{regions.find(r => r.id === c.region_id)?.name || c.region_id}</td>
                             <td style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{formatPoints(c.points_balance || 0)}</td>
                             <td>{c.total_orders || 0}</td>
                             <td>{c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A'}</td>
-                            <td>
-                              <span className={`badge ${c.is_active !== false ? 'badge-success' : 'badge-secondary'}`}>
+                            <td style={{ whiteSpace: 'nowrap', minWidth: '75px' }}>
+                              <span className={`badge ${c.is_active !== false ? 'badge-success' : 'badge-secondary'}`} style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>
                                 {c.is_active !== false ? 'Active' : 'Inactive'}
                               </span>
                             </td>
-                            <td style={{ whiteSpace: 'nowrap' }}>
+                            <td style={{ whiteSpace: 'nowrap', position: 'static' }}>
                               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'nowrap' }}>
                                 <button className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem', fontSize: '0.65rem' }} onClick={async () => {
                                   const res = await fetch(`${API_BASE}/admin/customers/${c.id}`);
@@ -13365,17 +13365,17 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="table-scroll">
-<table className="admin-table">
+<table className="admin-table stockist-table" style={{ minWidth: '920px' }}>
                       <thead>
                         <tr>
                           <th>Name / Shop</th>
-                          <th>Region</th>
+                          <th style={{ minWidth: '95px' }}>Region</th>
                           <th>Vendor</th>
                           <th>Commission Rate</th>
                           <th>30d Earnings (GMV)</th>
                           <th>Pending Orders</th>
-                          <th>Status</th>
-                          <th style={{ whiteSpace: 'nowrap', minWidth: '380px' }}>Actions</th>
+                          <th style={{ whiteSpace: 'nowrap', minWidth: '75px' }}>Status</th>
+                          <th style={{ whiteSpace: 'nowrap', minWidth: '340px', position: 'static' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -13456,15 +13456,15 @@ export default function App() {
                                     {s.user_phone ? ` (${s.user_phone})` : (s.phone ? ` (${s.phone})` : '')}
                                   </div>
                                 </td>
-                                <td>{regions.find(r => r.id === s.region_id)?.name || s.region_id}</td>
+                                <td style={{ overflowWrap: 'normal', wordBreak: 'normal', minWidth: '95px' }}>{regions.find(r => r.id === s.region_id)?.name || s.region_id}</td>
                                 <td>{vName}</td>
                                 <td style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{s.commission_rate}%</td>
                                 <td style={{ color: 'var(--accent)', fontWeight: 'bold' }}>₹{(s.gmv_30d || 0).toFixed(2)}</td>
                                 <td>{s.pending_orders_count || 0}</td>
-                                <td>
+                                <td style={{ whiteSpace: 'nowrap', minWidth: '75px' }}>
                                   {renderKycStatusBadge(s.kyc_status, s.is_active)}
                                 </td>
-                                <td style={{ whiteSpace: 'nowrap' }}>
+                                <td style={{ whiteSpace: 'nowrap', position: 'static' }}>
                                   <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'nowrap' }}>
                                     <button className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem', fontSize: '0.65rem' }} onClick={async () => {
                                       const res = await fetch(`${API_BASE}/admin/stockists/${s.id}`);
