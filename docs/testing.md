@@ -25,3 +25,7 @@ Only `npm run dev:seed` and the regression suite run in test mode. Test mode is 
 ```bash
 node backend/tests/regression.js
 ```
+
+> [!NOTE]
+> On Windows PowerShell, do not create files with `>`; use an editor or `Set-Content -Encoding utf8`. Redirection operators (`>`, `>>`) in Windows PowerShell output UTF-16, which causes migration and encoding issues.
+

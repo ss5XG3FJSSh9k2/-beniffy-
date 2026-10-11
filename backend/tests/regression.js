@@ -6034,7 +6034,79 @@ async function main() {
   const countDelRes = await del(`http://localhost:3001/api/admin/regions/${regId}`, { headers: { Authorization: `Bearer ${adminToken}` } });
   assert(countDelRes.status === 409, 'Delete guard blocks region with attached inactive/pending records');
   assert(testReg.counts_total !== undefined, 'counts_total is returned for the delete guard reference');
-  
+
+  // --- 40. BF-MIGRATION-023-ENCODING ---
+  const migDir = path.join(__dirname, '../lib/migrations');
+  const migFiles = fs.readdirSync(migDir).filter(f => f.endsWith('.sql') || f.endsWith('.js')).sort();
+  let allMigUtf8Valid = true;
+  for (const f of migFiles) {
+    const buf = fs.readFileSync(path.join(migDir, f));
+    const hasBom = (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) ||
+                   (buf[0] === 0xfe && buf[1] === 0xff) ||
+                   (buf[0] === 0xff && buf[1] === 0xfe);
+    const hasNul = buf.includes(0);
+    let decodesUtf8 = true;
+    try {
+      new TextDecoder('utf-8', { fatal: true }).decode(buf);
+    } catch {
+      decodesUtf8 = false;
+    }
+    if (hasBom || hasNul || !decodesUtf8) {
+      allMigUtf8Valid = false;
+      break;
+    }
+  }
+  assert(allMigUtf8Valid, 'every migration file is valid UTF-8 with no BOM and no NUL byte');
+
+  const { newDb: createMemDb } = require('pg-mem');
+  const freshMem = createMemDb();
+  const freshPg = freshMem.adapters.createPg();
+  const freshPool = new freshPg.Pool();
+  const freshDb = {
+    query: (t, p) => freshPool.query(t, p),
+    getTable: async () => [],
+    insertRow: async () => {},
+    updateRow: async () => {},
+    deleteRow: async () => {}
+  };
+  const loggedWarnings = [];
+  const origWarn = console.warn;
+  console.warn = (...args) => {
+    loggedWarnings.push(args.join(' '));
+  };
+  try {
+    const migModule = require('../lib/migrations.js');
+    await migModule.runMigrations(freshDb);
+  } finally {
+    console.warn = origWarn;
+  }
+  const unexpectedWarnings = loggedWarnings.filter(w => w.includes('[Migration warning]'));
+  assert(unexpectedWarnings.length === 0, 'a fresh in-memory start prints zero [Migration warning] lines, except the named allow-list from item 4');
+
+  const colRes = await dbModule.query("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'redemption_approvals'");
+  const colNames = colRes.rows.map(r => r.column_name);
+  assert(colNames.includes('partner_paid') && colNames.includes('partner_payout_ref') && colNames.includes('partner_payout_at'),
+    'information_schema.columns shows partner_paid, partner_payout_ref and partner_payout_at on redemption_approvals');
+
+  const mockPartnerId = 'p-test-payout-' + Date.now();
+  const mockRedemptionId = 'r-test-payout-' + Date.now();
+  await insert('partners', { id: mockPartnerId, onboarded_at: '2026-01-01T00:00:00Z', is_active: true });
+  await insert('redemption_approvals', {
+    id: mockRedemptionId,
+    customer_user_id: 'u-cust',
+    partner_id: mockPartnerId,
+    status: 'FULFILLED',
+    face_value_rupees: 100,
+    rupees_value: 100,
+    partner_paid: false,
+    created_at: new Date().toISOString()
+  });
+  const payoutPaidRes = await post(`http://localhost:3001/api/admin/partner-payouts/${mockPartnerId}/mark-paid`, {
+    payment_reference: 'REF-TXN-12345'
+  }, { headers: { Authorization: `Bearer ${adminToken}` } });
+  assert(payoutPaidRes.status === 200 && payoutPaidRes.body.success === true && payoutPaidRes.body.count === 1,
+    'Marking a partner payout as paid still works');
+
   process.exit(0);
 
 }
