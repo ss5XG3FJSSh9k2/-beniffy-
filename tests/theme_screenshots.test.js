@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { waitForSplash } = require('./helpers.js');
 
 async function ensureSetup() {
   const res = await fetch('http://localhost:3001/api/setup/status').then(r => r.json()).catch(() => null);
@@ -57,8 +58,10 @@ async function run() {
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     await page.goto('http://localhost:5173');
+    await waitForSplash(page);
     await page.evaluate(() => localStorage.clear());
     await page.goto('http://localhost:5173');
+    await waitForSplash(page);
 
     console.log('Capturing B2B Site...');
     await captureThemeToggle(page, 'B2B_Site', 'B2B Site');
@@ -71,6 +74,7 @@ async function run() {
         }
     }, tokens.customer);
     await page.goto('http://localhost:5173');
+    await waitForSplash(page);
     await page.waitForTimeout(1000);
     await page.evaluate(() => {
         const tabs = Array.from(document.querySelectorAll('.role-switcher button.role-tab'));
@@ -102,6 +106,7 @@ async function run() {
         }
     }, tokens.stockist);
     await page.goto('http://localhost:5173');
+    await waitForSplash(page);
     await page.waitForTimeout(1000);
     await page.evaluate(() => {
         const tabs = Array.from(document.querySelectorAll('.role-switcher button.role-tab'));
@@ -127,6 +132,7 @@ async function run() {
     console.log('Capturing Admin...');
     await page.evaluate(() => localStorage.clear());
     await page.goto('http://localhost:5173');
+    await waitForSplash(page);
     await page.waitForTimeout(1000);
     await captureThemeToggle(page, 'Admin', 'Admin Portal');
 
@@ -139,6 +145,7 @@ async function run() {
         }
     }, tokens.partner);
     await page.goto('http://localhost:5173');
+    await waitForSplash(page);
     await page.waitForTimeout(1000);
     await page.evaluate(() => {
         const tabs = Array.from(document.querySelectorAll('.role-switcher button.role-tab'));
@@ -165,14 +172,17 @@ async function run() {
     await page.evaluate(() => { localStorage.clear(); });
     await page.route('**/api/setup/status', route => route.fulfill({ json: { needs_setup: true } }));
     await page.goto('http://localhost:5173');
+    await waitForSplash(page);
     await page.waitForTimeout(3000);
     await captureThemeToggle(page, 'Setup', null);
     
     // Now for 440px width tests
     const phonePage = await browser.newPage({ viewport: { width: 440, height: 800 } });
     await phonePage.goto('http://localhost:5173');
+    await waitForSplash(phonePage);
     await phonePage.evaluate(() => localStorage.clear());
     await phonePage.goto('http://localhost:5173');
+    await waitForSplash(phonePage);
     
     // B2B
     await phonePage.evaluate(() => {
@@ -192,6 +202,7 @@ async function run() {
         }
     }, tokens.customer);
     await phonePage.goto('http://localhost:5173');
+    await waitForSplash(phonePage);
     await phonePage.waitForTimeout(1000);
     await phonePage.evaluate(() => {
         const tabs = Array.from(document.querySelectorAll('.role-switcher button.role-tab'));

@@ -1,5 +1,6 @@
 const { chromium } = require('playwright');
 const session = require('../backend/lib/session.js');
+const { waitForSplash } = require('./helpers.js');
 
 async function launchBrowser() {
   const options = { headless: true };
@@ -251,6 +252,7 @@ async function runSmokeTests() {
         await page.goto('http://localhost:5173');
         await page.evaluate(() => localStorage.clear());
         await page.goto('http://localhost:5173');
+        await waitForSplash(page);
 
         // Select the role tab
         const roleBtn = page.locator(`.role-switcher button.role-tab:has-text("${role.tabName}")`);
@@ -304,6 +306,7 @@ async function runSmokeTests() {
           }, { user: sessionData.user, token: sessionData.token, roleKey: role.roleKey });
 
           await page.reload();
+          await waitForSplash(page);
           await page.waitForTimeout(500);
 
           // Select the role tab to display the logged in screen

@@ -9,6 +9,8 @@
     <!-- Google Fonts: Inter and Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
       try {
@@ -25,8 +27,56 @@
         document.documentElement.setAttribute('data-theme', 'light');
       }
     </script>
+    <style>
+      #splash { position: fixed; inset: 0; z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #FDF0D5; color: #61210F; font-family: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif; transition: opacity 300ms ease; }
+      [data-theme='dark'] #splash { background: #20201F; color: #FDF0D5; }
+      #splash.sp-out { opacity: 0; pointer-events: none; }
+      .sp-word { display: flex; font-size: clamp(48px, 14vw, 72px); font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
+      .sp-ch { display: inline-block; opacity: 0; transform: translateY(14px); animation: sp-rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards; animation-delay: calc(var(--i) * 45ms); }
+      .sp-i { position: relative; }
+      .sp-coin, .sp-ring { position: absolute; left: 50%; top: 0.08em; width: 0.21em; height: 0.21em; margin-left: -0.105em; border-radius: 50%; box-sizing: border-box; }
+      .sp-coin { background: #EE6E4D; opacity: 0; transform: translateY(-3.2em); animation: sp-drop 620ms 420ms forwards; }
+      .sp-ring { border: 2px solid #EE6E4D; opacity: 0; animation: sp-ripple 700ms 960ms ease-out forwards; }
+      .sp-tag { font-size: 14px; font-weight: 500; letter-spacing: 0.02em; opacity: 0; transform: translateY(6px); animation: sp-rise 450ms 1150ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+      @keyframes sp-rise { to { opacity: 1; transform: translateY(0); } }
+      @keyframes sp-drop {
+        0% { opacity: 1; transform: translateY(-3.2em) scale(1, 1); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+        62% { opacity: 1; transform: translateY(0) scale(1, 1); animation-timing-function: ease-out; }
+        72% { opacity: 1; transform: translateY(0.02em) scale(1.25, 0.75); animation-timing-function: ease-out; }
+        84% { opacity: 1; transform: translateY(-0.12em) scale(0.95, 1.05); animation-timing-function: ease-in; }
+        100% { opacity: 1; transform: translateY(0) scale(1, 1); }
+      }
+      @keyframes sp-ripple { 0% { opacity: 0.7; transform: scale(1); } 100% { opacity: 0; transform: scale(4.2); } }
+      @media (prefers-reduced-motion: reduce) {
+        .sp-ch, .sp-coin, .sp-tag { opacity: 1; transform: none; animation: none; }
+        .sp-ring { display: none; }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash" aria-hidden="true">
+      <div class="sp-word"><span class="sp-ch" style="--i:0">b</span><span class="sp-ch" style="--i:1">e</span><span class="sp-ch" style="--i:2">n</span><span class="sp-ch sp-i" style="--i:3">ı<span class="sp-ring"></span><span class="sp-coin"></span></span><span class="sp-ch" style="--i:4">f</span><span class="sp-ch" style="--i:5">f</span><span class="sp-ch" style="--i:6">y</span></div>
+      <div class="sp-tag">Shop local. Pay less for everything else.</div>
+    </div>
+    <script>
+      (function () {
+        var el = document.getElementById('splash');
+        if (!el) return;
+        var seen = false;
+        try { seen = sessionStorage.getItem('beniffy.splash') === '1'; } catch (e) {}
+        if (seen) { el.remove(); return; }
+        try { sessionStorage.setItem('beniffy.splash', '1'); } catch (e) {}
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var gone = false;
+        function hide() {
+          if (gone) return; gone = true;
+          el.classList.add('sp-out');
+          setTimeout(function () { el.remove(); }, 320);
+        }
+        el.addEventListener('click', hide);
+        setTimeout(hide, reduced ? 700 : 1900);
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
