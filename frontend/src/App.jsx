@@ -41,7 +41,6 @@ import {
   Phone,
   LogOut,
   HelpCircle,
-  Battery,
   Clock,
   ArrowLeft,
   Tv,
@@ -1029,13 +1028,6 @@ export default function App() {
       .catch(() => {});
   }, []);
   const [nowTick, setNowTick] = useState(Date.now());
-  // Clock shown in the phone mock-ups' status bars.
-  const [clockTick, setClockTick] = useState(Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setClockTick(Date.now()), 30000);
-    return () => clearInterval(timer);
-  }, []);
-  const phoneClock = new Date(clockTick).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   const [confirmCancelOrderId, setConfirmCancelOrderId] = useState(null);
   const [confirmDeliverySwitchOrderId, setConfirmDeliverySwitchOrderId] = useState(null);
 
@@ -1934,7 +1926,20 @@ export default function App() {
   };
 
   // Multi-lingual & Simulation States
-  const [lang, setLang] = useState('en');
+  const [lang, setLangState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fastnet_lang');
+      if (['en', 'hi', 'bn'].includes(saved)) return saved;
+    } catch {}
+    return 'en';
+  });
+  const setLang = (l) => {
+    const val = typeof l === 'function' ? l(lang) : l;
+    setLangState(val);
+    try {
+      localStorage.setItem('fastnet_lang', val);
+    } catch {}
+  };
   const t = (en, hi, bn) => lang === 'hi' ? hi : lang === 'bn' ? bn : en;
 
   const [changingSlotOrderId, setChangingSlotOrderId] = useState(null);
@@ -6345,7 +6350,7 @@ export default function App() {
       ? t('Stockist & Store Manager Login', 'स्टॉकिस्ट और स्टोर प्रबंधक लॉगिन', 'স্টকিস্ট ও স্টোর ম্যানেজার লগইন')
       : isAdminApp
       ? t('Platform Administrator Operations', 'प्लेटफ़ॉर्म प्रशासक संचालन', 'প্ল্যাটফর্ম অ্যাডমিনিস্ট্রেটর অপারেশনস')
-      : t('Hyperlocal ISP Commerce Login', 'हाईपरलोकल आईएसपी कॉमर्स लॉगिन', 'হাইপারলোকাল আইএসপি কমার্স লগইন');
+      : null;
 
     const renderCustomerSignupBtn = () => (
       <button className="btn btn-secondary" style={{ width: '100%', fontSize: '0.7rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
@@ -6362,13 +6367,15 @@ export default function App() {
     );
 
     return (
-      <div className="login-content-container" style={{ padding: isAdminApp ? '1.5rem' : '2.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', justifyContent: 'flex-start', minHeight: '100%', overflowY: 'auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '1rem', paddingTop: '1rem' }}>
-          <div style={{ marginBottom: '1rem' }}>
-            {isStockistApp ? <BeniffyWordmark size={40} role="STOCKIST" /> : isAdminApp ? <BeniffyWordmark size={40} /> : <BeniffyWordmark size={40} />}
+      <div className="login-content-container" style={{ padding: isAdminApp ? '1.5rem' : '2.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: (isCustomerApp || isStockistApp) ? 0 : '1.25rem', justifyContent: 'flex-start', minHeight: '100%', overflowY: 'auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: (isCustomerApp || isStockistApp) ? '28px' : '1rem', paddingTop: isAdminApp ? '1rem' : 0 }}>
+          <div style={{ marginBottom: (isCustomerApp || isStockistApp) ? '12px' : '1rem', display: 'flex', justifyContent: 'center' }}>
+            {isStockistApp ? <BeniffyWordmark size={40} role="STOCKIST" /> : <BeniffyWordmark size={40} />}
           </div>
-          <h2 className="login-heading" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{loginTitle}</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{loginSubtitle}</p>
+          <h2 className="login-heading" style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>{loginTitle}</h2>
+          {loginSubtitle && (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px', marginBottom: 0 }}>{loginSubtitle}</p>
+          )}
         </div>
 
         {!otpSent ? (
@@ -6388,10 +6395,10 @@ export default function App() {
                 {loginErrorMessage}
               </div>
             )}
-            <button className="btn" onClick={handleSendOtp}>Send One-Time Password</button>
+            <button className="btn" style={{ marginBottom: (isCustomerApp || isStockistApp) ? '1rem' : 0 }} onClick={handleSendOtp}>Send One-Time Password</button>
             
             {isDevMode && (
-              <div style={{ background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px dashed var(--border-color)', color: 'var(--text-muted)' }}>
+              <div style={{ background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px dashed var(--border-color)', color: 'var(--text-muted)', marginBottom: (isCustomerApp || isStockistApp) ? '1rem' : 0 }}>
                 <strong>Demo Phone Options:</strong>
                 {isCustomerApp && (
                   <>
@@ -6428,6 +6435,63 @@ export default function App() {
                   {t('New here? Create an account', 'नए हैं? खाता बनाएं', 'নতুন? অ্যাকাউন্ট তৈরি করুন')}
                 </p>
                 {renderCustomerSignupBtn()}
+              </div>
+            )}
+            {isCustomerApp && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.25rem', marginTop: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setLang('en')}
+                  aria-pressed={lang === 'en'}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: lang === 'en' ? 'var(--primary)' : 'var(--text-muted)',
+                    fontWeight: lang === 'en' ? 700 : 400,
+                    minHeight: '44px',
+                    padding: '0 0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  English
+                </button>
+                <span style={{ color: 'var(--text-muted)' }}>·</span>
+                <button
+                  type="button"
+                  onClick={() => setLang('hi')}
+                  aria-pressed={lang === 'hi'}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: lang === 'hi' ? 'var(--primary)' : 'var(--text-muted)',
+                    fontWeight: lang === 'hi' ? 700 : 400,
+                    minHeight: '44px',
+                    padding: '0 0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  हिंदी
+                </button>
+                <span style={{ color: 'var(--text-muted)' }}>·</span>
+                <button
+                  type="button"
+                  onClick={() => setLang('bn')}
+                  aria-pressed={lang === 'bn'}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: lang === 'bn' ? 'var(--primary)' : 'var(--text-muted)',
+                    fontWeight: lang === 'bn' ? 700 : 400,
+                    minHeight: '44px',
+                    padding: '0 0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  বাংলা
+                </button>
               </div>
             )}
             {isStockistApp && (
@@ -9150,53 +9214,10 @@ export default function App() {
           <div className="phone-notch"></div>
           <div className="phone-screen">
             {splash.app === 'customer' && <AppSplash theme={resolve(themes.customer)} key={splash.key} role={null} onDone={() => setSplash(s => ({ ...s, app: null }))} />}
-            {/* Language Selector Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.75rem', background: 'var(--surface-overlay)', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.7rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)' }}>
-                <Languages size={12} />
-                <span>Language:</span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.35rem' }}>
-                <button 
-                  onClick={() => setLang('en')} 
-                  style={{ background: lang === 'en' ? 'var(--primary)' : 'none', border: 'none', color: lang === 'en' ? 'var(--on-primary)' : 'var(--text-main)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: lang === 'en' ? 'bold' : 'normal' }}
-                >
-                  English
-                </button>
-                <button 
-                  onClick={() => setLang('hi')} 
-                  style={{ background: lang === 'hi' ? 'var(--primary)' : 'none', border: 'none', color: lang === 'hi' ? 'var(--on-primary)' : 'var(--text-main)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: lang === 'hi' ? 'bold' : 'normal' }}
-                >
-                  हिंदी
-                </button>
-                <button 
-                  onClick={() => setLang('bn')} 
-                  style={{ background: lang === 'bn' ? 'var(--primary)' : 'none', border: 'none', color: lang === 'bn' ? 'var(--on-primary)' : 'var(--text-main)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: lang === 'bn' ? 'bold' : 'normal' }}
-                >
-                  বাংলা
-                </button>
-              </div>
-            </div>
-
             {isLoggedOut ? (
-              <>
-                <div className="phone-header">
-                  <BeniffyWordmark size={24} />
-                  <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
-                </div>
-                {/* Localized Auth Form */}
-                {renderAuthForm('customer')}
-              </>
+              renderAuthForm('customer')
             ) : (
               <>
-                {/* Simulated Phone Status Bar */}
-                <div className="phone-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <BeniffyWordmark size={24} />
-                    <span className="badge badge-success" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem' }}>{formatPoints(customerBalance)}</span>
-                  </div>
-                  <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
-                </div>
 
                 {checkoutResult && (
                   <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 100, display: 'flex', flexDirection: 'column', padding: '1.25rem', overflowY: 'auto' }}>
@@ -9383,7 +9404,7 @@ export default function App() {
                               : `*Fulfillment:* Home Delivery\n\nYour order will be delivered to your registered address shortly.`
                           }\n\nThank you for choosing Beniffy!`}
                         </p>
-                        <span style={{ alignSelf: 'flex-end', fontSize: '0.5rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{phoneClock} <CheckCheck size={10} style={{ display: 'inline', color: 'var(--accent)' }} /></span>
+                        <span style={{ alignSelf: 'flex-end', fontSize: '0.5rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>10:00 <CheckCheck size={10} style={{ display: 'inline', color: 'var(--accent)' }} /></span>
                       </div>
                     </div>
 
@@ -11131,6 +11152,58 @@ export default function App() {
                         </button>
                       </div>
                           </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Language', 'भाषा', 'ভাষা')}</span>
+                            <div style={{ display: 'flex', gap: '0' }}>
+                              <button
+                                type="button"
+                                aria-pressed={lang === 'en'}
+                                onClick={() => setLang('en')}
+                                style={{
+                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                                  border: '1px solid var(--border-color)',
+                                  background: lang === 'en' ? 'var(--primary)' : 'var(--bg-surface)',
+                                  color: lang === 'en' ? 'var(--on-primary)' : 'var(--text-main)',
+                                  borderRadius: '8px 0 0 8px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                English
+                              </button>
+                              <button
+                                type="button"
+                                aria-pressed={lang === 'hi'}
+                                onClick={() => setLang('hi')}
+                                style={{
+                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                                  border: '1px solid var(--border-color)',
+                                  borderLeft: 'none',
+                                  background: lang === 'hi' ? 'var(--primary)' : 'var(--bg-surface)',
+                                  color: lang === 'hi' ? 'var(--on-primary)' : 'var(--text-main)',
+                                  borderRadius: '0',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                हिंदी
+                              </button>
+                              <button
+                                type="button"
+                                aria-pressed={lang === 'bn'}
+                                onClick={() => setLang('bn')}
+                                style={{
+                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                                  border: '1px solid var(--border-color)',
+                                  borderLeft: 'none',
+                                  background: lang === 'bn' ? 'var(--primary)' : 'var(--bg-surface)',
+                                  color: lang === 'bn' ? 'var(--on-primary)' : 'var(--text-main)',
+                                  borderRadius: '0 8px 8px 0',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                বাংলা
+                              </button>
+                            </div>
+                          </div>
                         </div>
 
                         <button
@@ -11635,43 +11708,21 @@ export default function App() {
           <div className="phone-screen">
             {splash.app === 'stockist' && <AppSplash theme={resolve(themes.stockist)} key={splash.key} role="STOCKIST" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
             {isLoggedOut ? (
-              <>
-                <div className="phone-header">
-                  <BeniffyWordmark size={24} role="STOCKIST" />
-                  <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
-                </div>
-                {renderAuthForm('stockist')}
-              </>
+              renderAuthForm('stockist')
             ) : !stockistProfile ? (
-              <>
-                <div className="phone-header">
-                  <BeniffyWordmark size={24} role="STOCKIST" />
-                  <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
-                </div>
-                <div style={{ padding: '2rem 1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justify: 'center', height: '100%', gap: '1rem' }}>
-                  <ShieldAlert size={48} style={{ color: 'var(--warning-text)', alignSelf: 'center' }} />
-                  <h3>KYC Pending / Approved Profile Missing</h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    Your KYC is either pending approval from the Super Admin, or your stockist profile has not been initialized.
-                  </p>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', background: 'var(--bg-surface)', padding: '0.5rem', borderRadius: '4px' }}>
-                    Go to the **Admin Dashboard** tab to approve pending KYC and assign a Vendor first.
-                  </p>
-                  <button className="btn btn-secondary" onClick={handleLogout}>Log Out</button>
-                </div>
-              </>
+              <div style={{ padding: '2rem 1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justify: 'center', height: '100%', gap: '1rem' }}>
+                <ShieldAlert size={48} style={{ color: 'var(--warning-text)', alignSelf: 'center' }} />
+                <h3>KYC Pending / Approved Profile Missing</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  Your KYC is either pending approval from the Super Admin, or your stockist profile has not been initialized.
+                </p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', background: 'var(--bg-surface)', padding: '0.5rem', borderRadius: '4px' }}>
+                  Go to the **Admin Dashboard** tab to approve pending KYC and assign a Vendor first.
+                </p>
+                <button className="btn btn-secondary" onClick={handleLogout}>Log Out</button>
+              </div>
             ) : (
               <>
-                <div className="phone-header" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    {offlineMode ? <WifiOff size={12} style={{ color: 'var(--danger-text)' }} /> : <Wifi size={12} style={{ color: 'var(--accent)' }} />}
-                    {stockistProfile.name}
-                  </span>
-                  <span className={`badge ${offlineMode ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.55rem' }}>
-                    {offlineMode ? 'Offline' : 'Online'}
-                  </span>
-                </div>
-
                 <div style={{ padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', flex: 1, overflowY: 'auto' }}>
                   
                   {stockistActiveTab === 'orders' && (

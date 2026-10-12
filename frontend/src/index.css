@@ -334,7 +334,8 @@ h1, h2, h3, h4, h5, h6 {
   overflow-y: auto;
   position: relative;
   scrollbar-width: none; /* Hide scrollbars for mobile look */
-  padding-top: 10px; /* offset for notch space */
+  padding-top: 10px; /* legacy offset */
+  padding-top: 36px; /* offset for notch space */
 }
 
 .phone-screen::-webkit-scrollbar {
@@ -385,22 +386,6 @@ h1, h2, h3, h4, h5, h6 {
 @media (prefers-reduced-motion: reduce) {
   .cs-role { opacity: 1; clip-path: none; animation: none; }
   .cs-dropx, .cs-splat { display: none; }
-}
-
-.phone-header {
-  height: 44px;
-  background: var(--bg-surface-elevated);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 1.5rem;
-  border-bottom: 1px solid var(--surface-overlay);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .phone-footer {
