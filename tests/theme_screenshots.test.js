@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const { waitForSplash } = require('./helpers.js');
+const {  waitForSplash , newLightContext, newLightPage } = require('./helpers.js');
 
 async function ensureSetup() {
   const res = await fetch('http://localhost:3001/api/setup/status').then(r => r.json()).catch(() => null);

@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { newLightContext, newLightPage } = require('./helpers.js');
 const fs = require('fs');
 
 async function getTokens() {

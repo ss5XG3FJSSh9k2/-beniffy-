@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { newLightContext, newLightPage } = require('./helpers.js');
 const fs = require('fs');
 
 async function run() {
@@ -6,7 +7,7 @@ async function run() {
   
   if (!fs.existsSync('screenshots')) fs.mkdirSync('screenshots');
 
-  const context = await browser.newContext();
+  const context = await newLightContext(browser);
   const page = await context.newPage();
 
   await page.goto('http://localhost:5173');

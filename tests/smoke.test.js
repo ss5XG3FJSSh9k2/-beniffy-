@@ -1,6 +1,6 @@
 const { chromium } = require('playwright');
 const session = require('../backend/lib/session.js');
-const { waitForSplash } = require('./helpers.js');
+const {  waitForSplash , newLightContext, newLightPage } = require('./helpers.js');
 
 async function launchBrowser() {
   const options = { headless: true };
@@ -233,7 +233,7 @@ async function runSmokeTests() {
     for (const role of ROLES) {
       // 1. Logged out test
       {
-        const page = await browser.newPage();
+        const page = await newLightPage(browser);
         const errors = [];
 
         page.on('pageerror', err => {
@@ -277,7 +277,7 @@ async function runSmokeTests() {
 
       // 2. Logged in test with home screen marker assertion
       {
-        const page = await browser.newPage();
+        const page = await newLightPage(browser);
         const errors = [];
 
         page.on('pageerror', err => {

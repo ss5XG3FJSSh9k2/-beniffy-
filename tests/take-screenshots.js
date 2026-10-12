@@ -1,9 +1,10 @@
 const { chromium } = require('playwright');
+const { newLightContext, newLightPage } = require('./helpers.js');
 const fs = require('fs');
 
 async function run() {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
+  const context = await newLightContext(browser);
   
   if (!fs.existsSync('screenshots')) fs.mkdirSync('screenshots');
 

@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { newLightContext, newLightPage } = require('./helpers.js');
 const fs = require('fs');
 
 const TOKENS = [
@@ -104,7 +105,7 @@ async function run() {
   }
 
   let totalFails = [];
-  const context = await browser.newContext();
+  const context = await newLightContext(browser);
   const page = await context.newPage();
 
   // 1. Setup Screen

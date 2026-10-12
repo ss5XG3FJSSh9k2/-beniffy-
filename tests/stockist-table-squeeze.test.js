@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { newLightContext, newLightPage } = require('./helpers.js');
 const path = require('path');
 const fs = require('fs');
 

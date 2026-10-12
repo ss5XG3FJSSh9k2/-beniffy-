@@ -1,9 +1,10 @@
 const { chromium } = require('playwright');
+const { newLightContext, newLightPage } = require('./helpers.js');
 const assert = require('assert');
 
 async function runTests() {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
+  const context = await newLightContext(browser);
   const page = await context.newPage();
   page.on('console', msg => console.log('BROWSER:', msg.text()));
 

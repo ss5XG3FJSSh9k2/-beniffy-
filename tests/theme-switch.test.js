@@ -1,9 +1,10 @@
 const { chromium } = require('playwright');
+const { newLightContext, newLightPage } = require('./helpers.js');
 const assert = require('assert');
 
 async function run() {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
+  const context = await newLightContext(browser);
   const page = await context.newPage();
 
   console.log('--- Test 1: Seamless Theme Switch ---');

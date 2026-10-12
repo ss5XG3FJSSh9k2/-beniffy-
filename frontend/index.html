@@ -16,11 +16,13 @@
       try {
         var raw = window.localStorage.getItem('fastnet.themes.v1');
         var t = 'light';
+        var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (raw) {
           var saved = JSON.parse(raw);
-          t = saved['marketing'] === 'dark' ? 'dark' : 'light';
+          var m = saved['marketing'];
+          t = m === 'system' || !m ? (sysDark ? 'dark' : 'light') : m;
         } else {
-          t = window.localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
+          t = sysDark ? 'dark' : 'light';
         }
         document.documentElement.setAttribute('data-theme', t);
       } catch (e) {

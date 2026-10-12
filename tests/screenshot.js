@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { newLightContext, newLightPage } = require('./helpers.js');
 const fs = require('fs');
 
 async function run() {
@@ -18,7 +19,7 @@ async function run() {
 
   const themes = ['light', 'dark'];
 
-  const page = await browser.newPage();
+  const page = await newLightPage(browser);
   
   for (const scenario of scenarios) {
     for (const theme of themes) {

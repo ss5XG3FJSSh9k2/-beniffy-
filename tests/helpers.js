@@ -10,4 +10,13 @@ async function waitForSplash(page) {
   }
 }
 
-module.exports = { waitForSplash };
+
+
+async function newLightContext(browser, options = {}) {
+  return await browser.newContext({ colorScheme: 'light', ...options });
+}
+async function newLightPage(browser, options = {}) {
+  const ctx = await newLightContext(browser, options);
+  return await ctx.newPage();
+}
+module.exports = { waitForSplash, newLightContext, newLightPage };

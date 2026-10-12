@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { newLightContext, newLightPage } = require('./helpers.js');
 
 function calculateLuminance(r, g, b) {
     var a = [r, g, b].map(function (v) {
@@ -38,7 +39,7 @@ async function run() {
   const themes = ['light', 'dark'];
   let failures = [];
 
-  const page = await browser.newPage();
+  const page = await newLightPage(browser);
   
   for (const scenario of scenarios) {
     for (const theme of themes) {

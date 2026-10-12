@@ -565,10 +565,10 @@ const loadThemes = () => {
     const raw = window.localStorage.getItem(THEME_KEY);
     if (raw) {
       const saved = JSON.parse(raw) || {};
-      return Object.fromEntries(THEME_APPS.map(a => [a, saved[a] === 'dark' ? 'dark' : 'light']));
+      return Object.fromEntries(THEME_APPS.map(a => [a, ['light', 'dark', 'system'].includes(saved[a]) ? saved[a] : 'system']));
     }
-    return all(window.localStorage.getItem('theme') === 'dark' ? 'dark' : 'light');
-  } catch (e) { return all('light'); }
+    return all('system');
+  } catch (e) { return all('system'); }
 };
 
 const ThemeToggle = ({ theme, onToggle, appName }) => (
@@ -591,63 +591,137 @@ const ThemeToggle = ({ theme, onToggle, appName }) => (
   </button>
 );
 
-const CustomerSplash = ({ onDone }) => {
+const AppSplash = ({ theme, onDone, role }) => {
   const [out, setOut] = React.useState(false);
+  const lockupRef = React.useRef(null);
+  const coinRef = React.useRef(null);
+  const roleRef = React.useRef(null);
+
+  React.useLayoutEffect(() => {
+    if (role && lockupRef.current && coinRef.current && roleRef.current) {
+      const lockRect = lockupRef.current.getBoundingClientRect();
+      const coinRect = coinRef.current.getBoundingClientRect();
+      const roleRect = roleRef.current.getBoundingClientRect();
+      const lockupRefStyle = lockupRef.current.style;
+      
+      const x0 = coinRect.left + coinRect.width / 2 - lockRect.left;
+      const y0 = coinRect.top + coinRect.height / 2 - lockRect.top;
+      const x1 = roleRect.left + roleRect.width / 2 - lockRect.left;
+      const y1 = roleRect.top + roleRect.height / 2 - lockRect.top;
+
+      lockupRefStyle.setProperty('--x0', `${x0}px`);
+      lockupRefStyle.setProperty('--y0', `${y0}px`);
+      lockupRefStyle.setProperty('--x1', `${x1}px`);
+      lockupRefStyle.setProperty('--y1', `${y1}px`);
+    }
+  }, [role]);
+
   React.useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const t1 = setTimeout(() => setOut(true), reduced ? 700 : 1900);
-    const t2 = setTimeout(onDone, (reduced ? 700 : 1900) + 300);
+    const dur = role ? 2300 : 1900;
+    const animDur = reduced ? 700 : dur;
+    
+    if (role && !reduced && lockupRef.current) {
+      setTimeout(() => {
+        if (lockupRef.current) lockupRef.current.classList.add('cs-landed');
+      }, 1560);
+    }
+    
+    const t1 = setTimeout(() => setOut(true), animDur);
+    const t2 = setTimeout(onDone, animDur + 300);
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
+  }, [role]); // Removing onDone to prevent timer reset if parent re-renders
+
   const skip = () => { setOut(true); setTimeout(onDone, 300); };
   const letters = ['b', 'e', 'n', null, 'f', 'f', 'y'];
+  
+  const word = (
+    <div className="cs-word">
+      {letters.map((ch, i) => ch ? (
+        <span key={i} className="cs-ch" style={{ '--i': i }}>{ch}</span>
+      ) : (
+        <span key={i} className="cs-ch cs-i" style={{ '--i': i }}>ı<span className="cs-ring"></span><span ref={coinRef} className="cs-coin"></span></span>
+      ))}
+    </div>
+  );
+
   return (
-    <div className={`cs-splash ${out ? 'cs-out' : ''}`} onClick={skip} role="presentation" aria-hidden="true">
-      <div className="cs-word">
-        {letters.map((ch, i) => ch ? (
-          <span key={i} className="cs-ch" style={{ '--i': i }}>{ch}</span>
-        ) : (
-          <span key={i} className="cs-ch cs-i" style={{ '--i': i }}>ı<span className="cs-ring"></span><span className="cs-coin"></span></span>
-        ))}
-      </div>
-      <div className="cs-tag">Shop local. Pay less for everything else.</div>
+    <div className={`cs-splash ${out ? 'cs-out' : ''}`} data-theme={theme} onClick={skip} role="presentation" aria-hidden="true">
+      {role ? (
+        <div className="cs-lockup" ref={lockupRef}>
+          {word}
+          <div className="cs-role" ref={roleRef}>{role}</div>
+          <div className="cs-dropx" style={{ transform: 'translateX(var(--x0))' }}><div className="cs-dropy"></div></div>
+          <div className="cs-splat"></div>
+        </div>
+      ) : (
+        <>
+          {word}
+          <div className="cs-tag">Shop local. Pay less for everything else.</div>
+        </>
+      )}
     </div>
   );
 };
 
 
-const BeniffyWordmark = ({ size = 24 }) => {
+const BeniffyWordmark = ({ size = 24, role }) => {
   return (
-    <span aria-label="Beniffy" style={{
-      position: 'relative',
-      display: 'inline-block',
-      fontWeight: 800,
-      letterSpacing: '-0.035em',
-      lineHeight: 1,
-      color: 'var(--text-main)',
-      fontFamily: '"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif',
-      fontSize: `${size}px`
-    }}>
-      <span aria-hidden="true">ben</span>
-      <span aria-hidden="true" style={{ position: 'relative', display: 'inline-block' }}>
-        ı
-        <span style={{
-          position: 'absolute',
-          left: '50%',
-          top: '0.08em',
-          width: '0.21em',
-          height: '0.21em',
-          marginLeft: '-0.105em',
-          borderRadius: '50%',
-          background: '#EE6E4D'
-        }}></span>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: role ? '0.25em' : '0', fontSize: `${size}px` }}>
+      <span aria-label="Beniffy" style={{
+        position: 'relative',
+        display: 'inline-block',
+        fontWeight: 800,
+        letterSpacing: '-0.035em',
+        lineHeight: 1,
+        color: 'var(--text-main)',
+        fontFamily: '"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif'
+      }}>
+        <span aria-hidden="true">ben</span>
+        <span aria-hidden="true" style={{ position: 'relative', display: 'inline-block' }}>
+          ı
+          <span style={{
+            position: 'absolute',
+            left: '50%',
+            top: '0.08em',
+            width: '0.21em',
+            height: '0.21em',
+            marginLeft: '-0.105em',
+            borderRadius: '50%',
+            background: '#EE6E4D'
+          }}></span>
+        </span>
+        <span aria-hidden="true">ffy</span>
       </span>
-      <span aria-hidden="true">ffy</span>
-    </span>
+      {role && (
+        <span aria-hidden="true" style={{
+          fontSize: '0.275em',
+          fontWeight: 800,
+          letterSpacing: '0.34em',
+          marginRight: '-0.34em',
+          lineHeight: 1,
+          color: 'var(--text-main)',
+          textTransform: 'uppercase'
+        }}>
+          {role}
+        </span>
+      )}
+    </div>
   );
 };
 
+const systemDark = () => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
 export default function App() {
+  const [osDark, setOsDark] = React.useState(systemDark);
+  React.useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const on = (e) => setOsDark(e.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  const resolve = (pref) => pref === 'system' || !pref ? (osDark ? 'dark' : 'light') : pref;
+
   const [themes, setThemes] = React.useState(loadThemes);
   const vtRef = React.useRef(null);
   
@@ -700,9 +774,18 @@ export default function App() {
   const togglePhoneTheme = (app, next, e) => {
     if (switchingRef.current) return;
     const phone = e.currentTarget.closest('.phone-mockup');
+    
+    const currentResolved = resolve(themes[app]);
+    const nextResolved = resolve(next);
+    
     const applyTheme = () => {
       flushSync(() => setThemes(prev => ({ ...prev, [app]: next })));
     };
+
+    if (currentResolved === nextResolved) {
+      applyTheme();
+      return;
+    }
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (typeof document.startViewTransition !== 'function' || reduced || !phone) {
@@ -803,8 +886,7 @@ export default function App() {
     catch { return false; }
   });
   const [activeRole, setActiveRole] = useState('marketing');
-  const [customerSplashKey, setCustomerSplashKey] = useState(0);
-  const [showCustomerSplash, setShowCustomerSplash] = useState(false);
+  const [splash, setSplash] = useState({ app: null, key: 0 });
   const [dbState, setDbState] = useState(null);
   const [regions, setRegions] = useState([]);
   const [selectedRegionId, setSelectedRegionId] = useState('');
@@ -948,7 +1030,7 @@ export default function App() {
   // Setup state (Round BF5d)
   const [needsSetup, setNeedsSetup] = useState(false);
   const themeApp = needsSetup ? 'admin' : activeRole === 'db' ? 'admin' : ['customer','stockist','partner'].includes(activeRole) ? 'marketing' : activeRole;
-  const theme = themes[themeApp] || 'light';
+  const theme = resolve(themes[themeApp] || 'light');
   React.useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
@@ -1036,9 +1118,8 @@ export default function App() {
   }, [activeRole]);
 
   useEffect(() => {
-    if (activeRole === 'customer') {
-      setCustomerSplashKey(k => k + 1);
-      setShowCustomerSplash(true);
+    if (activeRole === 'customer' || activeRole === 'stockist' || activeRole === 'partner') {
+      setSplash(s => ({ app: activeRole, key: s.key + 1 }));
     }
   }, [activeRole]);
 
@@ -6263,9 +6344,9 @@ export default function App() {
 
     return (
       <div className="login-content-container" style={{ padding: '2.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', justifyContent: 'flex-start', minHeight: '100%', overflowY: 'auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '0.75rem', paddingTop: '1rem' }}>
-          <div style={{ display: 'inline-flex', padding: '0.75rem', borderRadius: '50%', background: 'var(--primary-glow)', color: 'var(--primary)', marginBottom: '0.75rem' }}>
-            <Smartphone size={32} />
+        <div style={{ textAlign: 'center', marginBottom: '1rem', paddingTop: '1rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            {isStockistApp ? <BeniffyWordmark size={40} role="STOCKIST" /> : isAdminApp ? <BeniffyWordmark size={40} /> : <BeniffyWordmark size={40} />}
           </div>
           <h2 className="login-heading" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{loginTitle}</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{loginSubtitle}</p>
@@ -7528,9 +7609,9 @@ export default function App() {
 
     return (
       <div className="card" style={{ maxWidth: '450px', margin: '2rem auto', padding: '1.5rem', position: 'relative' }}>
-        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>Partner Login</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Beniffy</p>
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <BeniffyWordmark size={40} role="PARTNER" />
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '1rem' }}>Partner Login</h2>
         </div>
 
         {partnerLoginTab === 'password' ? (
@@ -7604,7 +7685,7 @@ export default function App() {
         )}
 
         {showFirstTimeSetupFlow && (
-          <div data-theme={themes.partner} style={{ color: 'var(--text-main)' }}>
+          <div data-theme={resolve(themes.partner)} style={{ color: 'var(--text-main)' }}>
           <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-main)', zIndex: 'var(--z-modal)' }}>
             <div className="modal-content FirstTimeSetupFlow" style={{ maxWidth: '450px', width: '90%', padding: '1.5rem', background: 'var(--card-bg, #1e1e2e)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
               <PanelErrorBoundary t={t}>
@@ -7698,7 +7779,12 @@ export default function App() {
 
   const renderPartnerView = () => {
     if (!currentUser || currentUser.role !== 'PARTNER_ADMIN') {
-      return renderPartnerAuthForm();
+      return (
+        <div style={{ position: 'relative', minHeight: '420px', width: '100%' }}>
+          {renderPartnerAuthForm()}
+          {splash.app === 'partner' && <AppSplash theme={resolve(themes.partner)} key={splash.key} role="PARTNER" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
+        </div>
+      );
     }
 
     return (
@@ -7708,7 +7794,7 @@ export default function App() {
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Partner Hub: {partnerData?.display_name || partnerData?.name || 'Partner Account'}</span>
         </div>
 
-        <div className="phone-mockup" data-theme={themes.partner} style={{ maxWidth: '600px', width: '100%' }}>
+        <div className="phone-mockup" data-theme={resolve(themes.partner)} style={{ maxWidth: '600px', width: '100%' }}>
           <div className="phone-screen" style={{ minHeight: '550px', display: 'flex', flexDirection: 'column' }}>
             
             {/* Header */}
@@ -8243,7 +8329,22 @@ export default function App() {
                     <h5 style={{ margin: 0, marginBottom: '0.75rem', color: 'var(--text-main)' }}>{t('Appearance', 'दिखावट', 'চেহারা')}</h5>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Theme', 'थीम', 'থিম')}</span>
-                      <div style={{ display: 'flex', gap: '0' }}>
+                                            <div style={{ display: 'flex', gap: '0' }}>
+                        <button
+                          type="button"
+                          aria-pressed={themes.partner === 'system' || !themes.partner}
+                          onClick={(e) => themes.partner !== 'system' && togglePhoneTheme('partner', 'system', e)}
+                          style={{
+                            padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                            border: '1px solid var(--border-color)',
+                            background: themes.partner === 'system' || !themes.partner ? 'var(--primary)' : 'var(--bg-surface)',
+                            color: themes.partner === 'system' || !themes.partner ? 'var(--on-primary)' : 'var(--text-main)',
+                            borderRadius: '8px 0 0 8px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t('System', 'सिस्टम', 'সিস্টেম')}
+                        </button>
                         <button
                           type="button"
                           aria-pressed={themes.partner === 'light'}
@@ -8251,9 +8352,10 @@ export default function App() {
                           style={{
                             padding: '0.3rem 0.6rem', fontSize: '0.7rem',
                             border: '1px solid var(--border-color)',
+                            borderLeft: 'none',
                             background: themes.partner === 'light' ? 'var(--primary)' : 'var(--bg-surface)',
                             color: themes.partner === 'light' ? 'var(--on-primary)' : 'var(--text-main)',
-                            borderRadius: '8px 0 0 8px',
+                            borderRadius: '0',
                             cursor: 'pointer'
                           }}
                         >
@@ -8671,7 +8773,7 @@ export default function App() {
     return (
       <div className="marketing-container">
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem 1rem 0' }}>
-          <ThemeToggle theme={themes.marketing} appName="B2B Site" onToggle={(e) => toggleTheme('marketing', e)} />
+          <ThemeToggle theme={resolve(themes.marketing)} appName="B2B Site" onToggle={(e) => toggleTheme('marketing', e)} />
         </div>
         <div className="marketing-hero">
           <div className="badge badge-primary" style={{ alignSelf: 'center', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
@@ -9002,10 +9104,10 @@ export default function App() {
           <span><UserCheck size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> {t('Customer View', 'कस्टमर व्यू', 'গ্রাহক মোড')}: {isLoggedOut ? t('Not logged in', 'लॉग इन नहीं है', 'লগইন করা নেই') : `${currentUser.name} (${activeRegionName})`}</span>
         </div>
         
-        <div className="phone-mockup" data-theme={themes.customer}>
+        <div className="phone-mockup" data-theme={resolve(themes.customer)}>
           <div className="phone-notch"></div>
           <div className="phone-screen">
-            {showCustomerSplash && <CustomerSplash key={customerSplashKey} onDone={() => setShowCustomerSplash(false)} />}
+            {splash.app === 'customer' && <AppSplash theme={resolve(themes.customer)} key={splash.key} role={null} onDone={() => setSplash(s => ({ ...s, app: null }))} />}
             {/* Language Selector Bar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.75rem', background: 'var(--surface-overlay)', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.7rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)' }}>
@@ -9037,7 +9139,7 @@ export default function App() {
             {isLoggedOut ? (
               <>
                 <div className="phone-header">
-                  <span>Beniffy</span>
+                  <BeniffyWordmark size={24} />
                   <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
                 </div>
                 {/* Localized Auth Form */}
@@ -9048,7 +9150,7 @@ export default function App() {
                 {/* Simulated Phone Status Bar */}
                 <div className="phone-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <span>Beniffy</span>
+                    <BeniffyWordmark size={24} />
                     <span className="badge badge-success" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem' }}>{formatPoints(customerBalance)}</span>
                   </div>
                   <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
@@ -10937,39 +11039,55 @@ export default function App() {
                           <h4 style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>{t('Appearance', 'दिखावट', 'চেহারা')}</h4>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Theme', 'थीम', 'থিম')}</span>
-                            <div style={{ display: 'flex', gap: '0' }}>
-                              <button
-                                type="button"
-                                aria-pressed={themes.customer === 'light'}
-                                onClick={(e) => themes.customer !== 'light' && togglePhoneTheme('customer', 'light', e)}
-                                style={{
-                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
-                                  border: '1px solid var(--border-color)',
-                                  background: themes.customer === 'light' ? 'var(--primary)' : 'var(--bg-surface)',
-                                  color: themes.customer === 'light' ? 'var(--on-primary)' : 'var(--text-main)',
-                                  borderRadius: '8px 0 0 8px',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                {t('Light', 'रोशनी', 'হালকা')}
-                              </button>
-                              <button
-                                type="button"
-                                aria-pressed={themes.customer === 'dark'}
-                                onClick={(e) => themes.customer !== 'dark' && togglePhoneTheme('customer', 'dark', e)}
-                                style={{
-                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
-                                  border: '1px solid var(--border-color)',
-                                  borderLeft: 'none',
-                                  background: themes.customer === 'dark' ? 'var(--primary)' : 'var(--bg-surface)',
-                                  color: themes.customer === 'dark' ? 'var(--on-primary)' : 'var(--text-main)',
-                                  borderRadius: '0 8px 8px 0',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                {t('Dark', 'अंधेरा', 'অন্ধকার')}
-                              </button>
-                            </div>
+                                                  <div style={{ display: 'flex', gap: '0' }}>
+                        <button
+                          type="button"
+                          aria-pressed={themes.customer === 'system' || !themes.customer}
+                          onClick={(e) => themes.customer !== 'system' && togglePhoneTheme('customer', 'system', e)}
+                          style={{
+                            padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                            border: '1px solid var(--border-color)',
+                            background: themes.customer === 'system' || !themes.customer ? 'var(--primary)' : 'var(--bg-surface)',
+                            color: themes.customer === 'system' || !themes.customer ? 'var(--on-primary)' : 'var(--text-main)',
+                            borderRadius: '8px 0 0 8px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t('System', 'सिस्टम', 'সিস্টেম')}
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={themes.customer === 'light'}
+                          onClick={(e) => themes.customer !== 'light' && togglePhoneTheme('customer', 'light', e)}
+                          style={{
+                            padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                            border: '1px solid var(--border-color)',
+                            borderLeft: 'none',
+                            background: themes.customer === 'light' ? 'var(--primary)' : 'var(--bg-surface)',
+                            color: themes.customer === 'light' ? 'var(--on-primary)' : 'var(--text-main)',
+                            borderRadius: '0',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t('Light', 'रोशनी', 'হালকা')}
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={themes.customer === 'dark'}
+                          onClick={(e) => themes.customer !== 'dark' && togglePhoneTheme('customer', 'dark', e)}
+                          style={{
+                            padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                            border: '1px solid var(--border-color)',
+                            borderLeft: 'none',
+                            background: themes.customer === 'dark' ? 'var(--primary)' : 'var(--bg-surface)',
+                            color: themes.customer === 'dark' ? 'var(--on-primary)' : 'var(--text-main)',
+                            borderRadius: '0 8px 8px 0',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t('Dark', 'अंधेरा', 'অন্ধকার')}
+                        </button>
+                      </div>
                           </div>
                         </div>
 
@@ -11470,13 +11588,14 @@ export default function App() {
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> SHOPKEEPER VIEW (দোকানদার মোড): {isLoggedOut ? "Not logged in (লগইন করা নেই)" : `${stockistProfile?.name || currentUser.name} (${activeRegionName})`}</span>
         </div>
 
-        <div className="phone-mockup" data-theme={themes.stockist}>
+        <div className="phone-mockup" data-theme={resolve(themes.stockist)}>
           <div className="phone-notch"></div>
           <div className="phone-screen">
+            {splash.app === 'stockist' && <AppSplash theme={resolve(themes.stockist)} key={splash.key} role="STOCKIST" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
             {isLoggedOut ? (
               <>
                 <div className="phone-header">
-                  <span>Beniffy</span>
+                  <BeniffyWordmark size={24} role="STOCKIST" />
                   <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
                 </div>
                 {renderAuthForm('stockist')}
@@ -11484,7 +11603,7 @@ export default function App() {
             ) : !stockistProfile ? (
               <>
                 <div className="phone-header">
-                  <span>Beniffy</span>
+                  <BeniffyWordmark size={24} role="STOCKIST" />
                   <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
                 </div>
                 <div style={{ padding: '2rem 1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justify: 'center', height: '100%', gap: '1rem' }}>
@@ -12703,39 +12822,55 @@ export default function App() {
                           <h4 style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>{t('Appearance', 'दिखावट', 'চেহারা')}</h4>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Theme', 'थीम', 'থিম')}</span>
-                            <div style={{ display: 'flex', gap: '0' }}>
-                              <button
-                                type="button"
-                                aria-pressed={themes.stockist === 'light'}
-                                onClick={(e) => themes.stockist !== 'light' && togglePhoneTheme('stockist', 'light', e)}
-                                style={{
-                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
-                                  border: '1px solid var(--border-color)',
-                                  background: themes.stockist === 'light' ? 'var(--primary)' : 'var(--bg-surface)',
-                                  color: themes.stockist === 'light' ? 'var(--on-primary)' : 'var(--text-main)',
-                                  borderRadius: '8px 0 0 8px',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                {t('Light', 'रोशनी', 'হালকা')}
-                              </button>
-                              <button
-                                type="button"
-                                aria-pressed={themes.stockist === 'dark'}
-                                onClick={(e) => themes.stockist !== 'dark' && togglePhoneTheme('stockist', 'dark', e)}
-                                style={{
-                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
-                                  border: '1px solid var(--border-color)',
-                                  borderLeft: 'none',
-                                  background: themes.stockist === 'dark' ? 'var(--primary)' : 'var(--bg-surface)',
-                                  color: themes.stockist === 'dark' ? 'var(--on-primary)' : 'var(--text-main)',
-                                  borderRadius: '0 8px 8px 0',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                {t('Dark', 'अंधेरा', 'অন্ধকার')}
-                              </button>
-                            </div>
+                                                  <div style={{ display: 'flex', gap: '0' }}>
+                        <button
+                          type="button"
+                          aria-pressed={themes.stockist === 'system' || !themes.stockist}
+                          onClick={(e) => themes.stockist !== 'system' && togglePhoneTheme('stockist', 'system', e)}
+                          style={{
+                            padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                            border: '1px solid var(--border-color)',
+                            background: themes.stockist === 'system' || !themes.stockist ? 'var(--primary)' : 'var(--bg-surface)',
+                            color: themes.stockist === 'system' || !themes.stockist ? 'var(--on-primary)' : 'var(--text-main)',
+                            borderRadius: '8px 0 0 8px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t('System', 'सिस्टम', 'সিস্টেম')}
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={themes.stockist === 'light'}
+                          onClick={(e) => themes.stockist !== 'light' && togglePhoneTheme('stockist', 'light', e)}
+                          style={{
+                            padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                            border: '1px solid var(--border-color)',
+                            borderLeft: 'none',
+                            background: themes.stockist === 'light' ? 'var(--primary)' : 'var(--bg-surface)',
+                            color: themes.stockist === 'light' ? 'var(--on-primary)' : 'var(--text-main)',
+                            borderRadius: '0',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t('Light', 'रोशनी', 'হালকা')}
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={themes.stockist === 'dark'}
+                          onClick={(e) => themes.stockist !== 'dark' && togglePhoneTheme('stockist', 'dark', e)}
+                          style={{
+                            padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                            border: '1px solid var(--border-color)',
+                            borderLeft: 'none',
+                            background: themes.stockist === 'dark' ? 'var(--primary)' : 'var(--bg-surface)',
+                            color: themes.stockist === 'dark' ? 'var(--on-primary)' : 'var(--text-main)',
+                            borderRadius: '0 8px 8px 0',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t('Dark', 'अंधेरा', 'অন্ধকার')}
+                        </button>
+                      </div>
                           </div>
                         </div>
 
@@ -12754,7 +12889,7 @@ export default function App() {
                         </div>
 
                         {showPersonalDetails && createPortal(
-                          <div data-theme={themes.stockist} style={{ color: 'var(--text-main)' }}>
+                          <div data-theme={resolve(themes.stockist)} style={{ color: 'var(--text-main)' }}>
                           <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-main)', backdropFilter: 'blur(2px)', zIndex: 'var(--z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setShowPersonalDetails(false)}>
                             <div style={{ width: '100%', maxWidth: '360px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxHeight: `calc(85vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                               <h4 style={{ margin: 0, color: 'var(--text-main)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>{t('Personal Details', 'व्यक्तिगत विवरण', 'ব্যক্তিগত বিবরণ')}</h4>
@@ -12879,7 +13014,7 @@ export default function App() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
           <div className="perspective-banner">
             <span><Settings size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> OPERATOR PORTAL: Beniffy</span>
-            <ThemeToggle theme={themes.admin} appName="Admin Portal" onToggle={(e) => toggleTheme('admin', e)} />
+            <ThemeToggle theme={resolve(themes.admin)} appName="Admin Portal" onToggle={(e) => toggleTheme('admin', e)} />
           </div>
           <div className="phone-mockup" style={{ maxWidth: '420px', width: '100%' }}>
             <div className="phone-notch"></div>
@@ -12900,7 +13035,7 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
         <div className="perspective-banner">
           <span><Settings size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> OPERATOR PORTAL: Beniffy</span>
-          <ThemeToggle theme={themes.admin} appName="Admin Portal" onToggle={(e) => toggleTheme('admin', e)} />
+          <ThemeToggle theme={resolve(themes.admin)} appName="Admin Portal" onToggle={(e) => toggleTheme('admin', e)} />
         </div>
 
         <div className="admin-container">
@@ -16318,7 +16453,7 @@ export default function App() {
       <div className="simulator-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: `calc(100vh / var(--ui-scale))`, padding: '1.5rem', background: 'var(--bg-main)' }}>
         <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-elevated)', backdropFilter: 'blur(16px)', position: 'relative' }}>
           <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-            <ThemeToggle theme={themes.admin} appName="Setup" onToggle={(e) => toggleTheme('admin', e)} />
+            <ThemeToggle theme={resolve(themes.admin)} appName="Setup" onToggle={(e) => toggleTheme('admin', e)} />
           </div>
           {setupSuccessAdmin ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}>
