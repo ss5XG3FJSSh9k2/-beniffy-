@@ -3927,9 +3927,9 @@ async function main() {
   const approveRedemptionBlock = approveRedemptionIdx !== -1 ? appContent.substring(approveRedemptionIdx, approveRedemptionIdx + 1000) : '';
   assert(approveRedemptionBlock.includes('fetchAnalytics()'), 'fetchAnalytics is called after redemption approve handler');
 
-  // Test #682: Grep: the summary cards render a — placeholder when analyticsData is null, rather than 0
-  const placeholderMatch = appContent.includes("analyticsData ? (analyticsData?.orders?.total_today ?? 0) : '—'") || appContent.includes("analyticsData ? `₹${analyticsData?.orders?.revenue_this_week_rupees ?? 0}` : '—'");
-  assert(placeholderMatch, 'summary cards render a — placeholder when analyticsData is null');
+  // Test #682: Grep: the summary cards render a - placeholder when analyticsData is null, rather than 0
+  const placeholderMatch = appContent.includes("analyticsData ? (analyticsData?.orders?.total_today ?? 0) : '-'") || appContent.includes("analyticsData ? `₹${analyticsData?.orders?.revenue_this_week_rupees ?? 0}` : '-'");
+  assert(placeholderMatch, 'summary cards render a - placeholder when analyticsData is null');
 
   // Test #683: Grep: each of the three cards has an onClick that sets an admin tab
   const card1Click = appContent.includes("onClick={() => { setAdminTab('redemptions'); fetchRedemptionApprovals(); }}");
@@ -4691,7 +4691,7 @@ async function main() {
   assert(validAddrOrderRes.status === 200 && validAddrOrderRes.body.orderId, 'HOME_DELIVERY with valid address returns 200');
 
   // Issue 8: Customer signup delivery address label updated to optional note
-  assert(latestAppCode.includes('Delivery Address (optional — you can add this at checkout)'), 'App.jsx includes updated customer signup delivery address label');
+  assert(latestAppCode.includes('Delivery Address (optional, you can add this at checkout)'), 'App.jsx includes updated customer signup delivery address label');
 
   // Issue BF18-6b: GET /api/admin/kyc-queue returns masked ID numbers
   const bf18bKycQueueRes = await get('http://localhost:3001/api/admin/kyc-queue');

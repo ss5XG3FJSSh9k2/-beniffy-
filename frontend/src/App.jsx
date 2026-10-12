@@ -281,7 +281,7 @@ MemoizedCustomerRow.displayName = 'MemoizedCustomerRow';
 const MemoizedOrderRow = React.memo(({ order, stockistName }) => {
   return (
     <tr>
-      <td style={{ fontWeight: 'bold' }}>#{order.id ? order.id.slice(-6) : '—'}</td>
+      <td style={{ fontWeight: 'bold' }}>#{order.id ? order.id.slice(-6) : '-'}</td>
       <td>{stockistName || order.stockist_name || order.stockist_id}</td>
       <td>₹{(parseFloat(order.total) || 0).toFixed(2)}</td>
       <td>
@@ -289,7 +289,7 @@ const MemoizedOrderRow = React.memo(({ order, stockistName }) => {
           {order.status}
         </span>
       </td>
-      <td style={{ fontSize: '0.7rem' }}>{order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}</td>
+      <td style={{ fontSize: '0.7rem' }}>{order.created_at ? new Date(order.created_at).toLocaleDateString() : '-'}</td>
     </tr>
   );
 });
@@ -298,10 +298,10 @@ MemoizedOrderRow.displayName = 'MemoizedOrderRow';
 const MemoizedAuditLogRow = React.memo(({ log }) => {
   return (
     <tr>
-      <td style={{ fontSize: '0.7rem' }}>{log.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}</td>
+      <td style={{ fontSize: '0.7rem' }}>{log.timestamp ? new Date(log.timestamp).toLocaleString() : '-'}</td>
       <td><span className="badge badge-secondary" style={{ fontSize: '0.65rem' }}>{log.action}</span></td>
       <td>{log.actor_id || log.user_id || 'System'}</td>
-      <td style={{ fontSize: '0.7rem' }}>{log.target_table ? `${log.target_table}:${log.target_id || ''}` : '—'}</td>
+      <td style={{ fontSize: '0.7rem' }}>{log.target_table ? `${log.target_table}:${log.target_id || ''}` : '-'}</td>
     </tr>
   );
 });
@@ -558,6 +558,24 @@ const FieldError = ({ error }) => {
 };
 
 export default function App() {
+  const [theme, setTheme] = React.useState(() => {
+    try {
+      const storedTheme = window.localStorage.getItem('theme');
+      return storedTheme || 'light';
+    } catch (e) {
+      return 'light';
+    }
+  });
+  
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      window.localStorage.setItem('theme', theme);
+    } catch (e) { }
+  }, [theme]);
+  
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -1355,7 +1373,7 @@ export default function App() {
   const [loginErrorMessage, setLoginErrorMessage] = useState('');
   const [stockistPendingUser, setStockistPendingUser] = useState(null);
 
-  // Round P3 — Customer Signup Partner Selection & Profile State
+  // Round P3 - Customer Signup Partner Selection & Profile State
   const [signupCablePartnerId, setSignupCablePartnerId] = useState('');
   const [noCableProvider, setNoCableProvider] = useState(false);
   const [hasBroadbandAnswered, setHasBroadbandAnswered] = useState(false);
@@ -1582,13 +1600,13 @@ export default function App() {
   const [billImgErrors, setBillImgErrors] = useState({});
 
   const formatBillDate = (dateVal) => {
-    if (!dateVal) return '—';
+    if (!dateVal) return '-';
     const d = new Date(dateVal);
-    return isNaN(d.getTime()) ? '—' : d.toLocaleString();
+    return isNaN(d.getTime()) ? '-' : d.toLocaleString();
   };
 
   const formatBillPrice = (val) => {
-    if (val === undefined || val === null || val === '' || isNaN(Number(val))) return '—';
+    if (val === undefined || val === null || val === '' || isNaN(Number(val))) return '-';
     return `₹${Number(val).toFixed(2)}`;
   };
 
@@ -1596,7 +1614,7 @@ export default function App() {
 
   // Aadhaar masking helper (supports XXXX-XXXX- and xxxx-xxxx-)
   const maskAadhaar = (n) => {
-    if (!n) return '—';
+    if (!n) return '-';
     const clean = String(n).replace(/\D/g, '');
     if (clean.length === 12) {
       return `XXXX-XXXX-${clean.slice(8)}`;
@@ -6266,7 +6284,7 @@ export default function App() {
               )}
             </div>
             <div className="input-group">
-              <label className="input-label">{t('Delivery Address (optional — you can add this at checkout)', 'डिलीवरी का पता (वैकल्पिक — आप इसे चेकआउट पर जोड़ सकते हैं)', 'ডেলিভারি ঠিকানা (ঐচ্ছিক — আপনি চেকআউটে এটি যোগ করতে পারেন)')}</label>
+              <label className="input-label">{t('Delivery Address (optional, you can add this at checkout)', 'डिलीवरी का पता (वैकल्पिक, आप इसे चेकआउट पर जोड़ सकते हैं)', 'ডেলিভারি ঠিকানা (ঐচ্ছিক, আপনি চেকআউটে এটি যোগ করতে পারেন)')}</label>
               <input type="text" placeholder="e.g. 12 Main Road, Garia" className="text-input" value={regAddress} onChange={e => setRegAddress(e.target.value)} />
             </div>
             <div className="input-group">
@@ -7922,7 +7940,7 @@ export default function App() {
                   <h4 style={{ margin: 0, fontSize: '0.9rem' }}>{t('Partner Profile', 'साझेदार प्रोफ़ाइल', 'পার্টনার প্রোফাইল')}</h4>
 
                   <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.75rem' }}>
-                    <div><strong>{t('Legal Name', 'कानूनी नाम', 'আইনি নাম')}:</strong> {partnerData?.legal_name || '—'}</div>
+                    <div><strong>{t('Legal Name', 'कानूनी नाम', 'আইনি নাম')}:</strong> {partnerData?.legal_name || '-'}</div>
                     <div><strong>{t('GST Number', 'जीएसटी नंबर', 'জিএসটি নম্বর')}:</strong> {partnerData?.gst_number || 'N/A'}</div>
                     <div><strong>{t('Services Offered', 'पेश की जाने वाली सेवाएं', 'প্রদত্ত সেবা সমূহ')}:</strong> {(partnerData?.service_types || []).join(', ')}</div>
                   </div>
@@ -9978,7 +9996,7 @@ export default function App() {
                           return (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                               {/* Header Hero */}
-                              <div style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(236,72,153,0.15) 100%)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '14px', padding: '1rem', textAlign: 'center' }}>
+                              <div style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, var(--primary-glow) 100%)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '14px', padding: '1rem', textAlign: 'center' }}>
                                 <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{t('Your Balance', 'आपका बैलेंस', 'আপনার ব্যালেন্স')}</div>
                                 <div style={{ fontSize: '2rem', fontWeight: '800', color: 'white', lineHeight: 1 }}>{formatPoints(customerBalance)}</div>
                                 <div style={{ fontSize: '0.6rem', color: '#818cf8', marginTop: '0.35rem' }}>{t('Redeemable across FastNet broadband, wifi, and cable TV plans', 'फास्टनेट ब्रॉडबैंड, वाईफाई और केबल टीवी प्लान में रिडीम करने योग्य', 'ফাস্টনেট ব্রডব্যান্ড, ওয়াইফাই এবং কেবল টিভি প্ল্যানে রিডিম করার যোগ্য')}</div>
@@ -10023,7 +10041,7 @@ export default function App() {
                               {/* Cable Recharges Section */}
                               {renderRewardSection(
                                 t('Cable Recharges', 'केबल रिचार्ज', 'কেবল রিচার্জ'),
-                                '#ec4899',
+                                'var(--primary)',
                                 cableItems,
                                 emptyReasons.cable,
                                 bindingsObj.cable_partner_name,
@@ -10033,7 +10051,7 @@ export default function App() {
                               {/* Broadband Recharges Section */}
                               {renderRewardSection(
                                 t('Broadband Recharges', 'ब्रॉडबैंड रिचार्ज', 'ব্রডব্যান্ড রিচার্জ'),
-                                '#6366f1',
+                                'var(--primary)',
                                 broadbandItems,
                                 emptyReasons.broadband,
                                 bindingsObj.broadband_partner_name,
@@ -10100,7 +10118,7 @@ export default function App() {
                                             )}
                                           </div>
                                           <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#ec4899' }}>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--primary)' }}>
                                               -{formatPoints(item.points_deducted || item.amount || 0)}
                                             </div>
                                           </div>
@@ -10788,7 +10806,7 @@ export default function App() {
                           return null;
                         })()}
 
-                        {/* TODO: Google Maps here once API key is configured — pass stockist lat/long */}
+                        {/* TODO: Google Maps here once API key is configured. Pass stockist lat/long */}
                         <div style={{ height: '180px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px dashed var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.25rem' }}>
                           <MapPin size={24} style={{ color: 'var(--text-muted)' }} />
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('Live map coming soon','लाइव मैप जल्द','লাইভ ম্যাপ শীঘ্রই')}</span>
@@ -12374,7 +12392,7 @@ export default function App() {
                         <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           <div><span style={{color: 'var(--text-muted)'}}>{t('Region','क्षेत्र','অঞ্চল')}: </span><strong>{regions.find(r => r.id === stockistProfile.region_id)?.name || stockistProfile.region_id}</strong></div>
                           <div><span style={{color: 'var(--text-muted)'}}>{t('Wholesaler','थोक विक्रेता','পাইকারি বিক্রেতা')}: </span><strong>{vendors.find(v => v.id === stockistProfile.vendor_id)?.name || stockistProfile.vendor_id}</strong></div>
-                          <div><span style={{color: 'var(--text-muted)'}}>{t('Current Commission Rate','वर्तमान कमीशन दर','বর্তমান কমিশন হার')}: </span><strong>{stockistProfile.commission_rate != null ? `${stockistProfile.commission_rate}%` : '—'}</strong></div>
+                          <div><span style={{color: 'var(--text-muted)'}}>{t('Current Commission Rate','वर्तमान कमीशन दर','বর্তমান কমিশন হার')}: </span><strong>{stockistProfile.commission_rate != null ? `${stockistProfile.commission_rate}%` : '-'}</strong></div>
                           <div><span style={{color: 'var(--text-muted)'}}>{t('Minimum Order','न्यूनतम ऑर्डर','সর্বনিম্ন অর্ডার')}: </span><strong>₹{stockistProfile.min_order_value}</strong></div>
                           <p style={{ fontSize: '0.65rem', color: 'var(--accent)', marginTop: '0.2rem', marginBottom: 0 }}>
                             {t('Contact FastNet support to change any of these details.', 'इन विवरणों को बदलने के लिए FastNet सहायता से संपर्क करें।', 'এই বিবরণগুলি পরিবর্তন করতে FastNet সহায়তার সাথে যোগাযোগ করুন।')}
@@ -12790,7 +12808,7 @@ export default function App() {
                     {t('Orders In Progress Today', 'आज प्रगति में ऑर्डर', 'আজকের প্রসেসিংয়ে থাকা অর্ডার')}
                   </div>
                   <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--primary)', marginTop: '0.35rem' }}>
-                    {analyticsData ? (analyticsData?.orders?.total_today ?? 0) : '—'}
+                    {analyticsData ? (analyticsData?.orders?.total_today ?? 0) : '-'}
                   </div>
                 </div>
 
@@ -12802,7 +12820,7 @@ export default function App() {
                     {t('Revenue This Week', 'इस सप्ताह का राजस्व', 'এই সপ্তাহের মোট রাজস্ব')}
                   </div>
                   <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#4ade80', marginTop: '0.35rem' }}>
-                    {analyticsData ? `₹${analyticsData?.orders?.revenue_this_week_rupees ?? 0}` : '—'}
+                    {analyticsData ? `₹${analyticsData?.orders?.revenue_this_week_rupees ?? 0}` : '-'}
                   </div>
                 </div>
                 <div 
@@ -13656,7 +13674,7 @@ export default function App() {
                           {(healthData?.stockist_volume_leaderboard || []).map(s => (
                             <tr key={s.stockist_id}>
                               <td>{s.stockist_name}</td>
-                              <td>{regions.find(r => r.id === s.region_id)?.name || s.region_id || '—'}</td>
+                              <td>{regions.find(r => r.id === s.region_id)?.name || s.region_id || '-'}</td>
                               <td style={{ fontWeight: 'bold', color: 'var(--accent)' }}>₹{(s.gmv_30d || 0).toFixed(2)}</td>
                             </tr>
                           ))}
@@ -13746,10 +13764,10 @@ export default function App() {
                             <tr key={lead.id} style={{ opacity: lead.status === 'REJECTED' ? 0.6 : 1 }}>
                               <td style={{ fontFamily: 'monospace' }}>{lead.id}</td>
                               <td style={{ fontWeight: 'bold' }}>{lead.name}</td>
-                              <td>{lead.contact_name || '—'}</td>
+                              <td>{lead.contact_name || '-'}</td>
                               <td>{lead.phone}</td>
                               <td>{(Array.isArray(lead.service_types) && lead.service_types.length > 0 ? lead.service_types : [lead.service_type || 'CABLE']).map(st => getServiceTypeLabel(st)).join(', ')}</td>
-                              <td>{regions.find(r => r.id === lead.region_id)?.name || lead.region_id || '—'}</td>
+                              <td>{regions.find(r => r.id === lead.region_id)?.name || lead.region_id || '-'}</td>
                               <td>
                                 <span className={`badge ${lead.status === 'ONBOARDED' ? 'badge-success' : lead.status === 'REJECTED' ? 'badge-danger' : lead.status === 'CONTACTED' ? 'badge-primary' : 'badge-warning'}`}>
                                   {lead.status || 'NEW'}
@@ -14115,7 +14133,7 @@ export default function App() {
                             return (
                               <tr key={`${u.source}-${u.user_id || u.id}`}>
                                 <td><span className="badge badge-secondary">{u.type || (u.role === 'PARTNER_LEAD' ? 'Partner Lead' : 'Stockist')}</span></td>
-                                <td>{u.phone || '—'}</td>
+                                <td>{u.phone || '-'}</td>
                                 <td><strong>{u.name || 'Unnamed'}</strong></td>
                                 <td style={{ color: 'var(--danger)', fontSize: '0.8rem' }}>{reasonText}</td>
                                 <td>{renderKycStatusBadge(u.kyc_status || 'BLACKLISTED', true)}</td>
@@ -14977,7 +14995,7 @@ export default function App() {
                             {fb.reporter_role === 'CUSTOMER' ? (
                               <span className="badge badge-success" style={{ fontSize: '0.6rem', padding: '0.15rem 0.35rem' }}>Customer <ArrowRight size={9} style={{ display: 'inline' }} /> Shop</span>
                             ) : (
-                              <span className="badge badge-warning" style={{ fontSize: '0.6rem', padding: '0.15rem 0.35rem', background: 'rgba(236,72,153,0.15)', color: '#ec4899' }}>Shop <ArrowRight size={9} style={{ display: 'inline' }} /> Customer</span>
+                              <span className="badge badge-warning" style={{ fontSize: '0.6rem', padding: '0.15rem 0.35rem', background: 'var(--primary-glow)', color: 'var(--primary)' }}>Shop <ArrowRight size={9} style={{ display: 'inline' }} /> Customer</span>
                             )}
                           </td>
                           <td style={{ fontWeight: 'bold' }}>{fb.reporter_name}</td>
@@ -15380,7 +15398,7 @@ export default function App() {
                             <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                               <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>{r.name}</td>
                               <td style={{ padding: '0.75rem 0.5rem' }}><code>{r.code}</code></td>
-<td style={{ padding: '0.75rem 0.5rem' }}>{r.delivery_fee !== null && r.delivery_fee !== undefined ? '₹' + parseFloat(r.delivery_fee).toFixed(2) : <span style={{color: 'var(--text-muted)'}}>Not set — delivery off</span>}</td>
+<td style={{ padding: '0.75rem 0.5rem' }}>{r.delivery_fee !== null && r.delivery_fee !== undefined ? '₹' + parseFloat(r.delivery_fee).toFixed(2) : <span style={{color: 'var(--text-muted)'}}>Not set. Delivery off</span>}</td>
                               <td style={{ padding: '0.75rem 0.5rem' }}>{r.counts?.users || 0}</td>
                               <td style={{ padding: '0.75rem 0.5rem' }}>{r.counts?.stockists || 0}</td>
                               <td style={{ padding: '0.75rem 0.5rem' }}>{r.counts?.partners || 0}</td>
@@ -15510,7 +15528,7 @@ export default function App() {
                             <tr key={v.id}>
                               <td style={{ fontFamily: 'monospace' }}>{v.id}</td>
                               <td style={{ color: v.is_active === false ? 'var(--text-muted)' : 'inherit' }}>{v.name}</td>
-                              <td style={{ color: v.is_active === false ? 'var(--text-muted)' : 'inherit' }}>{(regions.find(r => r.id === v.region_id) || adminRegionsList.find(r => r.id === v.region_id) || {}).name || v.region_id || '—'}</td>
+                              <td style={{ color: v.is_active === false ? 'var(--text-muted)' : 'inherit' }}>{(regions.find(r => r.id === v.region_id) || adminRegionsList.find(r => r.id === v.region_id) || {}).name || v.region_id || '-'}</td>
                               <td>
                                 {v.approved_count > 0 ? (
                                   <button
@@ -15637,10 +15655,10 @@ export default function App() {
                           return (
                           <tr key={r.id}>
                             <td style={{ fontWeight: 'bold' }}>{r.name}</td>
-                            <td style={{ fontSize: '0.7rem' }}>{r.description || '—'}</td>
+                            <td style={{ fontSize: '0.7rem' }}>{r.description || '-'}</td>
                             <td>{r.point_cost}</td>
                             <td>₹{r.value_rupees}</td>
-                            <td>{r.min_order_value ? `₹${r.min_order_value}` : '—'}</td>
+                            <td>{r.min_order_value ? `₹${r.min_order_value}` : '-'}</td>
                             <td>{repeatText}</td>
                             <td>
                               {untilText}
@@ -16310,8 +16328,16 @@ export default function App() {
           <div>
             <span className="brand-name">FastNet Loyalty</span>
             <span style={{ fontSize: '0.65rem', display: 'block', color: 'var(--primary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Pilot Platform Simulator</span>
+          
+            </div>
+            <button 
+              onClick={toggleTheme} 
+              style={{ marginLeft: '1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.25rem 0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
+            >
+              {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+            </button>
           </div>
-        </div>
+
 
         {/* Global Surface Switcher */}
         <div className="role-switcher">
@@ -17811,7 +17837,7 @@ export default function App() {
                 <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary)' }}>Service Regions ({selectedPartnerDetail.region_count ?? [...new Set((selectedPartnerDetail.regions || []).map(r => r.region_id))].length})</h4>
                 {(selectedPartnerDetail.regions || []).map(r => (
                   <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}>
-                    <span>{(regions.find(reg => reg.id === r.region_id) || adminRegionsList.find(reg => reg.id === r.region_id) || {}).name || r.region_id || '—'} ({getServiceTypeLabel(r.service_type)})</span>
+                    <span>{(regions.find(reg => reg.id === r.region_id) || adminRegionsList.find(reg => reg.id === r.region_id) || {}).name || r.region_id || '-'} ({getServiceTypeLabel(r.service_type)})</span>
                     <span className={`badge ${r.is_active ? 'badge-success' : 'badge-secondary'}`}>{r.is_active ? 'Active' : 'Inactive'}</span>
                   </div>
                 ))}
@@ -17992,7 +18018,7 @@ export default function App() {
           || selectedStockistDetail.user?.phone
           || selectedStockistDetail.phone
           || selectedStockistDetail.stockist?.phone
-          || '—';
+          || '-';
         const ownerName = selectedStockistDetail.user_name
           || selectedStockistDetail.user?.name
           || '';
@@ -18000,7 +18026,7 @@ export default function App() {
           ?? selectedStockistDetail.commission_rate
           ?? null;
         const regId = selectedStockistDetail.region_id || selectedStockistDetail.stockist?.region_id;
-        const regName = (regions.find(r => r.id === regId) || adminRegionsList.find(r => r.id === regId) || {}).name || regId || '—';
+        const regName = (regions.find(r => r.id === regId) || adminRegionsList.find(r => r.id === regId) || {}).name || regId || '-';
         const vendorId = selectedStockistDetail.vendor_id || selectedStockistDetail.stockist?.vendor_id;
         const vendorName = vendors.find(v => v.id === vendorId)?.name || vendorId || 'N/A';
         const radius = selectedStockistDetail.delivery_radius_km ?? selectedStockistDetail.stockist?.delivery_radius_km ?? 3.0;
@@ -18011,7 +18037,7 @@ export default function App() {
         const kycDate = selectedStockistDetail.created_at || selectedStockistDetail.stockist?.created_at || selectedStockistDetail.user?.created_at;
         const kycStatus = selectedStockistDetail.kyc_status || selectedStockistDetail.stockist?.kyc_status || 'PENDING';
         const isActive = selectedStockistDetail.is_active ?? selectedStockistDetail.stockist?.is_active ?? (kycStatus === 'APPROVED');
-        const shopName = selectedStockistDetail.name || selectedStockistDetail.stockist?.name || '—';
+        const shopName = selectedStockistDetail.name || selectedStockistDetail.stockist?.name || '-';
 
         const userId = selectedStockistDetail.user_id
           || selectedStockistDetail.user?.id
@@ -18022,7 +18048,7 @@ export default function App() {
         const kyc = typeof kycRaw === 'string'
           ? (() => { try { return JSON.parse(kycRaw); } catch { return {}; } })()
           : kycRaw;
-        const idType = kyc.id_type || '—';
+        const idType = kyc.id_type || '-';
         const idNumber = kyc.id_number || '';
         const docUrl = kyc.document_photo_url || '';
 
@@ -18038,18 +18064,18 @@ export default function App() {
                 <div><strong>Shop Name:</strong> {shopName}</div>
                 <div>
                   <strong>Phone / Owner:</strong>{' '}
-                  {phone !== '—' ? (
+                  {phone !== '-' ? (
                     <a href={`tel:${phone}`} style={{ color: 'var(--primary)', textDecoration: 'underline' }}>
                       {phone}
                     </a>
                   ) : (
-                    '—'
+                    '-'
                   )}
                   {ownerName && ownerName !== shopName ? ` (${ownerName})` : ''}
                 </div>
                 <div><strong>Region:</strong> {regName}</div>
                 <div><strong>{t('Wholesaler','थोक विक्रेता','পাইকারি বিক্রেতা')}:</strong> {vendorName}</div>
-                <div><strong>Commission Rate:</strong> {rate != null ? `${rate}%` : '—'}</div>
+                <div><strong>Commission Rate:</strong> {rate != null ? `${rate}%` : '-'}</div>
                 <div><strong>Delivery Radius:</strong> {radius} km</div>
                 <div><strong>Min Order Value:</strong> ₹{minOrder}</div>
                 <div><strong>Product Count:</strong> {productCount} SKUs</div>
@@ -18071,7 +18097,7 @@ export default function App() {
                         {revealedIds[userId] ? t('Hide', 'छिपाएँ', 'লুকান') : t('Show', 'दिखाएँ', 'দেখান')}
                       </button>
                     </>
-                  ) : '—'}
+                  ) : '-'}
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <button
@@ -18204,7 +18230,7 @@ export default function App() {
           <p className="cookie-banner-text">
             {t('We use cookies to improve your experience on our platform.', 'We use cookies to improve your experience on our platform.', 'We use cookies to improve your experience on our platform.')}
             {' '}
-            <button style={{ background: 'none', border: 'none', color: '#6366F1', textDecoration: 'underline', cursor: 'pointer', padding: 0 }} onClick={() => setShowCookiesPolicyModal(true)}>
+            <button style={{ background: 'none', border: 'none', color: 'var(--primary)', textDecoration: 'underline', cursor: 'pointer', padding: 0 }} onClick={() => setShowCookiesPolicyModal(true)}>
               {t('Cookies Policy', 'Cookies Policy', 'Cookies Policy')}
             </button>
           </p>
@@ -18226,16 +18252,16 @@ export default function App() {
           <p>Operated by FastNet Communications Pvt. Ltd. | CIN: U72900TG2024PTC189012</p>
           <p>Plot 42, Hitec City, Hyderabad, Telangana, India | Phone: +91-40-67890123 | Email: support@fastnetloyalty.com</p>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }}>
-            <button style={{ background: 'none', border: 'none', color: '#6366F1', cursor: 'pointer' }} onClick={() => setShowPrivacyPolicyModal(true)}>
+            <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowPrivacyPolicyModal(true)}>
               {t('Privacy Policy', 'Privacy Policy', 'Privacy Policy')}
             </button>
-            <button style={{ background: 'none', border: 'none', color: '#6366F1', cursor: 'pointer' }} onClick={() => setShowTermsModal(true)}>
+            <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowTermsModal(true)}>
               {t('Terms & Conditions', 'Terms & Conditions', 'Terms & Conditions')}
             </button>
-            <button style={{ background: 'none', border: 'none', color: '#6366F1', cursor: 'pointer' }} onClick={() => setShowRefundPolicyModal(true)}>
+            <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowRefundPolicyModal(true)}>
               {t('Refund Policy', 'Refund Policy', 'Refund Policy')}
             </button>
-            <button style={{ background: 'none', border: 'none', color: '#6366F1', cursor: 'pointer' }} onClick={() => setShowCookiesPolicyModal(true)}>
+            <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowCookiesPolicyModal(true)}>
               {t('Cookies Policy', 'Cookies Policy', 'Cookies Policy')}
             </button>
           </div>
