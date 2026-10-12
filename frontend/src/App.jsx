@@ -615,6 +615,38 @@ const CustomerSplash = ({ onDone }) => {
   );
 };
 
+
+const BeniffyWordmark = ({ size = 24 }) => {
+  return (
+    <span aria-label="Beniffy" style={{
+      position: 'relative',
+      display: 'inline-block',
+      fontWeight: 800,
+      letterSpacing: '-0.035em',
+      lineHeight: 1,
+      color: 'var(--text-main)',
+      fontFamily: '"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif',
+      fontSize: `${size}px`
+    }}>
+      <span aria-hidden="true">ben</span>
+      <span aria-hidden="true" style={{ position: 'relative', display: 'inline-block' }}>
+        ı
+        <span style={{
+          position: 'absolute',
+          left: '50%',
+          top: '0.08em',
+          width: '0.21em',
+          height: '0.21em',
+          marginLeft: '-0.105em',
+          borderRadius: '50%',
+          background: '#EE6E4D'
+        }}></span>
+      </span>
+      <span aria-hidden="true">ffy</span>
+    </span>
+  );
+};
+
 export default function App() {
   const [themes, setThemes] = React.useState(loadThemes);
   const vtRef = React.useRef(null);
@@ -2132,11 +2164,11 @@ export default function App() {
 
   useEffect(() => {
     if (unacknowledgedOrders.length > 0) {
-      document.title = `(${unacknowledgedOrders.length}) FastNet: Stockist`;
+      document.title = `(${unacknowledgedOrders.length}) Beniffy: Stockist`;
     } else {
-      document.title = 'FastNet';
+      document.title = 'Beniffy';
     }
-    return () => { document.title = 'FastNet'; };
+    return () => { document.title = 'Beniffy'; };
   }, [unacknowledgedOrders.length]);
 
   useEffect(() => {
@@ -6160,7 +6192,7 @@ export default function App() {
           <label className="input-label">{t('Email Address', 'ईमेल पता', 'ইমেল ঠিকানা')}</label>
           <input 
             type="email" 
-            placeholder="example@fastnet.com" 
+            placeholder="example@beniffy.com" 
             className="text-input" 
             value={addEmailInput}
             onChange={e => setAddEmailInput(e.target.value.trim().toLowerCase())}
@@ -6301,7 +6333,7 @@ export default function App() {
             {isStockistApp && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
                 <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  {t('Want to sell on FastNet? Register your shop', 'फास्टनेट पर बेचना चाहते हैं? अपनी दुकान पंजीकृत करें', 'ফাস্টনেটে বিক্রি করতে চান? আপনার দোকান নিবন্ধন করুন')}
+                  {t('Want to sell on Beniffy? Register your shop', 'बेनिफ़ी पर बेचना चाहते हैं? अपनी दुकान पंजीकृत करें', 'বেনিফিে বিক্রি করতে চান? আপনার দোকান নিবন্ধন করুন')}
                 </p>
                 {renderStockistSignupBtn()}
               </div>
@@ -6320,7 +6352,7 @@ export default function App() {
             </div>
             <div className="input-group">
               <label className="input-label">{t('Email Address', 'ईमेल पता', 'ইমেল ঠিকানা')}</label>
-              <input type="email" placeholder="example@fastnet.com" className="text-input" value={regEmail} onChange={e => setRegEmail(e.target.value.trim().toLowerCase())} />
+              <input type="email" placeholder="example@beniffy.com" className="text-input" value={regEmail} onChange={e => setRegEmail(e.target.value.trim().toLowerCase())} />
             </div>
             <div className="input-group">
               <label className="input-label">{t('Select Region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</label>
@@ -6515,7 +6547,7 @@ export default function App() {
             </div>
             <div className="input-group">
               <label className="input-label">{t('Email Address', 'ईमेल पता', 'ইমেল ঠিকানা')}</label>
-              <input type="email" placeholder="example@fastnet.com" className="text-input" value={regEmail} onChange={e => setRegEmail(e.target.value.trim().toLowerCase())} />
+              <input type="email" placeholder="example@beniffy.com" className="text-input" value={regEmail} onChange={e => setRegEmail(e.target.value.trim().toLowerCase())} />
             </div>
             <div className="input-group">
               <label className="input-label">{t('Shop Name', 'दुकान का नाम', 'দোকানের নাম')}</label>
@@ -6588,9 +6620,9 @@ export default function App() {
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--accent)', background: 'var(--success-glow)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.5rem', margin: '0.5rem 0' }}>
               {t(
-                'Please enter these details carefully. You cannot change them yourself later. To correct any detail, you\'ll need to contact FastNet support.',
-                'कृपया ये विवरण सावधानी से भरें। आप इन्हें बाद में स्वयं नहीं बदल सकते। किसी भी विवरण को ठीक करने के लिए आपको FastNet सहायता से संपर्क करना होगा।',
-                'অনুগ্রহ করে এই বিবরণগুলি সাবধানে লিখুন। আপনি পরে নিজে এগুলি পরিবর্তন করতে পারবেন না। কোনো বিবরণ সংশোধন করতে FastNet সহায়তার সাথে যোগাযোগ করতে হবে।'
+                'Please enter these details carefully. You cannot change them yourself later. To correct any detail, you\'ll need to contact Beniffy support.',
+                'कृपया ये विवरण सावधानी से भरें। आप इन्हें बाद में स्वयं नहीं बदल सकते। किसी भी विवरण को ठीक करने के लिए आपको Beniffy सहायता से संपर्क करना होगा।',
+                'অনুগ্রহ করে এই বিবরণগুলি সাবধানে লিখুন। আপনি পরে নিজে এগুলি পরিবর্তন করতে পারবেন না। কোনো বিবরণ সংশোধন করতে Beniffy সহায়তার সাথে যোগাযোগ করতে হবে।'
               ).replace('পঞ্চাশ', 'পারবেন না')}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -7498,7 +7530,7 @@ export default function App() {
       <div className="card" style={{ maxWidth: '450px', margin: '2rem auto', padding: '1.5rem', position: 'relative' }}>
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>Partner Login</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>FastNet Operator Hub</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Beniffy</p>
         </div>
 
         {partnerLoginTab === 'password' ? (
@@ -7657,7 +7689,7 @@ export default function App() {
             </button>
           </p>
           <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>
-            {t("Partner accounts are created by FastNet after your application is approved.", "आपकी अर्ज़ी मंज़ूर होने के बाद फास्टनेट द्वारा पार्टनर खाते बनाए जाते हैं।", "আপনার আবেদন অনুমোদিত হওয়ার পর ফাস্টনেট দ্বারা পার্টনার অ্যাকাউন্ট তৈরি করা হয়।")}
+            {t("Partner accounts are created by Beniffy after your application is approved.", "आपकी अर्ज़ी मंज़ूर होने के बाद बेनिफ़ी द्वारा पार्टनर खाते बनाए जाते हैं।", "আপনার আবেদন অনুমোদিত হওয়ার পর বেনিফি দ্বারা পার্টনার অ্যাকাউন্ট তৈরি করা হয়।")}
           </p>
         </div>
       </div>
@@ -7761,7 +7793,7 @@ export default function App() {
                       {t('redemptions waiting for activation', 'सक्रियकरण के लिए लंबित रिडीम', 'সক্রিয়করণের অপেক্ষায় থাকা রিডিম')}
                     </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                      {t('Redemptions approved by FastNet ready for service setup', 'फास्टनेट द्वारा अनुमोदित रिडीम सेवा सेटअप के लिए तैयार हैं', 'ফাস্টনেট দ্বারা অনুমোদিত রিডিম সেবা সেটআপের জন্য প্রস্তুত')}
+                      {t('Redemptions approved by Beniffy ready for service setup', 'बेनिफ़ी द्वारा अनुमोदित रिडीम सेवा सेटअप के लिए तैयार हैं', 'বেনিফি দ্বারা অনুমোদিত রিডিম সেবা সেটআপের জন্য প্রস্তুত')}
                     </div>
                   </div>
 
@@ -7862,7 +7894,7 @@ export default function App() {
                           ))}
                           {partnerQueueList.length === 0 && (
                             <tr><td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>
-                              {t("No redemptions waiting. New ones appear here when FastNet approves them.", "कोई रिडीम लंबित नहीं है। फास्टनेट के अनुमोदन पर नए यहां दिखाई देंगे।", "কোনো রিডিম অপেক্ষায় নেই। ফাস্টনেট অনুমোদন করলে নতুনগুলো এখানে দেখাবে।")}
+                              {t("No redemptions waiting. New ones appear here when Beniffy approves them.", "कोई रिडीम लंबित नहीं है। बेनिफ़ी के अनुमोदन पर नए यहां दिखाई देंगे।", "কোনো রিডিম অপেক্ষায় নেই। বেনিফি অনুমোদন করলে নতুনগুলো এখানে দেখাবে।")}
                             </td></tr>
                           )}
                         </tbody>
@@ -8645,9 +8677,9 @@ export default function App() {
           <div className="badge badge-primary" style={{ alignSelf: 'center', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
             Hyperlocal Supermarket Network
           </div>
-          <h1>Your Neighborhood Grocery Shop, <span className="gradient-text">Subsidized by FastNet</span></h1>
+          <h1>Your Neighborhood Grocery Shop, <span className="gradient-text">Subsidized by Beniffy</span></h1>
           <p>
-            Welcome to the FastNet Marketplace! Shop for fresh produce and daily essentials from your favorite local grocery stores. Every purchase automatically earns points that discount your broadband or cable TV bill.
+            Welcome to the Beniffy! Shop for fresh produce and daily essentials from your favorite local grocery stores. Every purchase automatically earns points that discount your broadband or cable TV bill.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
             <button className="btn" onClick={() => switchViewToRole('customer')}>Shop Groceries Now</button>
@@ -8802,7 +8834,7 @@ export default function App() {
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '1rem', padding: '2rem', textAlign: 'center' }}>
           <h2 style={{ marginBottom: '1rem' }}>Are you a cable/internet operator?</h2>
           <p style={{ color: 'var(--text-muted)', maxWidth: '600px', margin: '0 auto 1.5rem', fontSize: '0.9rem' }}>
-            Partner with FastNet Hyperlocal and turn your subscriber base into a local marketplace. Leave your details and we'll get in touch.
+            Partner with Beniffy and turn your subscriber base into a local marketplace. Leave your details and we'll get in touch.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '400px', margin: '0 auto' }}>
             <input 
@@ -9005,7 +9037,7 @@ export default function App() {
             {isLoggedOut ? (
               <>
                 <div className="phone-header">
-                  <span>FastNet 5G</span>
+                  <span>Beniffy</span>
                   <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
                 </div>
                 {/* Localized Auth Form */}
@@ -9016,7 +9048,7 @@ export default function App() {
                 {/* Simulated Phone Status Bar */}
                 <div className="phone-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <span>FastNet 5G</span>
+                    <span>Beniffy</span>
                     <span className="badge badge-success" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem' }}>{formatPoints(customerBalance)}</span>
                   </div>
                   <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
@@ -9186,7 +9218,7 @@ export default function App() {
                         FN
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>FastNet Updates</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Beniffy Updates</span>
                         <span style={{ fontSize: '0.55rem', opacity: 0.8 }}>online</span>
                       </div>
                     </div>
@@ -9199,13 +9231,13 @@ export default function App() {
                       
                       {/* Message Bubble */}
                       <div style={{ alignSelf: 'flex-start', background: 'var(--bg-surface-elevated)', color: 'var(--text-main)', padding: '0.5rem 0.75rem', borderRadius: '0 8px 8px 8px', maxWidth: '85%', fontSize: '0.7rem', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                        <span style={{ color: 'var(--success-text)', fontWeight: 'bold', fontSize: '0.65rem' }}>FastNet Supermarket</span>
+                        <span style={{ color: 'var(--success-text)', fontWeight: 'bold', fontSize: '0.65rem' }}>Beniffy</span>
                         <p style={{ margin: 0, whiteSpace: 'pre-line' }}>
-                          {`Hello ${simulatedWaMessage.customerName || 'Valued Customer'}!\n\nYour FastNet Supermarket order is confirmed at *${simulatedWaMessage.stockistName}*.\n\n*Order ID:* #${simulatedWaMessage.orderId.substring(2).toUpperCase()}\n*Total Price:* ₹${simulatedWaMessage.totalPrice}\n*Subtotal:* ₹${simulatedWaMessage.subtotal}\n*Rewards Earned:* +${simulatedWaMessage.points} pts\n\n${
+                          {`Hello ${simulatedWaMessage.customerName || 'Valued Customer'}!\n\nYour Beniffy order is confirmed at *${simulatedWaMessage.stockistName}*.\n\n*Order ID:* #${simulatedWaMessage.orderId.substring(2).toUpperCase()}\n*Total Price:* ₹${simulatedWaMessage.totalPrice}\n*Subtotal:* ₹${simulatedWaMessage.subtotal}\n*Rewards Earned:* +${simulatedWaMessage.points} pts\n\n${
                             simulatedWaMessage.fulfillmentType === 'PICKUP'
                               ? `*Fulfillment:* Store Pickup\n*Verification PIN:* ${simulatedWaMessage.pickupPin || '1234'}\n\nPlease share this PIN with the shopkeeper when picking up your items.`
                               : `*Fulfillment:* Home Delivery\n\nYour order will be delivered to your registered address shortly.`
-                          }\n\nThank you for choosing FastNet!`}
+                          }\n\nThank you for choosing Beniffy!`}
                         </p>
                         <span style={{ alignSelf: 'flex-end', fontSize: '0.5rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{phoneClock} <CheckCheck size={10} style={{ display: 'inline', color: 'var(--accent)' }} /></span>
                       </div>
@@ -10041,9 +10073,9 @@ export default function App() {
                                     {emptyReason === 'partner_inactive' && (
                                       <span>
                                         {t(
-                                          `Your ${typeLabelEn} provider (${partnerName || t('your provider', 'आपका प्रदाता', 'আপনার প্রদানকারী')}) is currently paused. Please contact FastNet support or select a different provider in Profile > Partners.`,
-                                          `आपका ${typeLabelHi} प्रदाता (${partnerName || t('आपका प्रदाता', 'आपका प्रदाता', 'আপনার প্রদানকারী')}) वर्तमान में रुका हुआ है। कृपया फास्टनेट सहायता से संपर्क करें या प्रोफाइल > पार्टनर्स में एक अलग प्रदाता चुनें।`,
-                                          `আপনার ${typeLabelBn} প্রদানকারী (${partnerName || t('আপনার প্রদানকারী', 'आपका प्रदाता', 'আপনার প্রদানকারী')}) বর্তমানে সাময়িকভাবে বন্ধ রয়েছে। অনুগ্রহ করে ফাস্টনেট সহায়তার সাথে যোগাযোগ করুন অথবা প্রোফাইল > পার্টনার্সে অন্য প্রদানকারী বাছুন।`
+                                          `Your ${typeLabelEn} provider (${partnerName || t('your provider', 'आपका प्रदाता', 'আপনার প্রদানকারী')}) is currently paused. Please contact Beniffy support or select a different provider in Profile > Partners.`,
+                                          `आपका ${typeLabelHi} प्रदाता (${partnerName || t('आपका प्रदाता', 'आपका प्रदाता', 'আপনার প্রদানকারী')}) वर्तमान में रुका हुआ है। कृपया बेनिफ़ी सहायता से संपर्क करें या प्रोफाइल > पार्टनर्स में एक अलग प्रदाता चुनें।`,
+                                          `আপনার ${typeLabelBn} প্রদানকারী (${partnerName || t('আপনার প্রদানকারী', 'आपका प्रदाता', 'আপনার প্রদানকারী')}) বর্তমানে সাময়িকভাবে বন্ধ রয়েছে। অনুগ্রহ করে বেনিফি সহায়তার সাথে যোগাযোগ করুন অথবা প্রোফাইল > পার্টনার্সে অন্য প্রদানকারী বাছুন।`
                                         )}
                                       </span>
                                     )}
@@ -10206,7 +10238,7 @@ export default function App() {
                               <div style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, var(--primary-glow) 100%)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '14px', padding: '1rem', textAlign: 'center' }}>
                                 <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{t('Your Balance', 'आपका बैलेंस', 'আপনার ব্যালেন্স')}</div>
                                 <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1 }}>{formatPoints(customerBalance)}</div>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--secondary)', marginTop: '0.35rem' }}>{t('Redeemable across FastNet broadband, wifi, and cable TV plans', 'फास्टनेट ब्रॉडबैंड, वाईफाई और केबल टीवी प्लान में रिडीम करने योग्य', 'ফাস্টনেট ব্রডব্যান্ড, ওয়াইফাই এবং কেবল টিভি প্ল্যানে রিডিম করার যোগ্য')}</div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--secondary)', marginTop: '0.35rem' }}>{t('Redeemable across Beniffy broadband, wifi, and cable TV plans', 'बेनिफ़ी ब्रॉडबैंड, वाईफाई और केबल टीवी प्लान में रिडीम करने योग्य', 'বেনিফি ব্রডব্যান্ড, ওয়াইফাই এবং কেবল টিভি প্ল্যানে রিডিম করার যোগ্য')}</div>
                               </div>
 
                               {/* Refer a friend Tile */}
@@ -10282,7 +10314,7 @@ export default function App() {
                                       const partnerDisplayName = item.partner_display_name || item.partner_name || t('Partner', 'साझेदार', 'পার্টনার');
                                       let statusLabel = item.status;
                                       if (item.status === 'PENDING_ADMIN_APPROVAL') {
-                                        statusLabel = t('Waiting for FastNet approval', 'फास्टनेट की मंजूरी का इंतजार', 'ফাস্টনেট অনুমোদনের জন্য অপেক্ষা করা হচ্ছে');
+                                        statusLabel = t('Waiting for Beniffy approval', 'बेनिफ़ी की मंजूरी का इंतजार', 'বেনিফি অনুমোদনের জন্য অপেক্ষা করা হচ্ছে');
                                       } else if (item.status === 'APPROVED_AWAITING_PARTNER') {
                                         statusLabel = t(`${partnerDisplayName} will contact you soon`, `${partnerDisplayName} आपसे जल्द ही संपर्क करेंगे`, `${partnerDisplayName} শীঘ্রই আপনার সাথে যোগাযোগ করবে`);
                                       } else if (item.status === 'FULFILLED') {
@@ -10338,9 +10370,9 @@ export default function App() {
 
                               <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.75rem' }}>
                                 {t(
-                                  'Points earned from FastNet grocery orders · Redeemable on FastNet services and as coupons at checkout · Non-transferable',
-                                  'फास्टनेट ग्रोसरी ऑर्डर से अर्जित पॉइंट्स · फास्टनेट सेवाओं पर और चेकआउट के समय कूपन के रूप में रिडीम करने योग्य · अहस्तांतरणीय',
-                                  'ফাস্টনেট মুদিখানা অর্ডার থেকে অর্জিত পয়েন্ট · ফাস্টনেট পরিষেবা এবং চেকআউটের সময় কুপন হিসেবে রিডিম করার যোগ্য · হস্তান্তরযোগ্য নয়'
+                                  'Points earned from Beniffy grocery orders · Redeemable on Beniffy services and as coupons at checkout · Non-transferable',
+                                  'बेनिफ़ी ग्रोसरी ऑर्डर से अर्जित पॉइंट्स · बेनिफ़ी सेवाओं पर और चेकआउट के समय कूपन के रूप में रिडीम करने योग्य · अहस्तांतरणीय',
+                                  'বেনিফি মুদিখানা অর্ডার থেকে অর্জিত পয়েন্ট · বেনিফি পরিষেবা এবং চেকআউটের সময় কুপন হিসেবে রিডিম করার যোগ্য · হস্তান্তরযোগ্য নয়'
                                 )}
                               </div>
                             </div>
@@ -10969,7 +11001,7 @@ export default function App() {
                             }}
                           >
                             <Phone size={14} style={{ color: 'var(--accent)' }} />
-                            {t('Contact FastNet Support (1800-123-456)', 'फास्टनेट सहायता से संपर्क करें (1800-123-456)', 'ফাস্টনেট সহায়তায় যোগাযোগ (১৮০০-১২৩-৪৫৬)')}
+                            {t('Contact Beniffy support (1800-123-456)', 'बेनिफ़ी सहायता से संपर्क करें (1800-123-456)', 'বেনিফি সহায়তায় যোগাযোগ (১৮০০-১২৩-৪৫৬)')}
                           </a>
                         </div>
                       </div>
@@ -11444,7 +11476,7 @@ export default function App() {
             {isLoggedOut ? (
               <>
                 <div className="phone-header">
-                  <span>FastNet 5G</span>
+                  <span>Beniffy</span>
                   <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
                 </div>
                 {renderAuthForm('stockist')}
@@ -11452,7 +11484,7 @@ export default function App() {
             ) : !stockistProfile ? (
               <>
                 <div className="phone-header">
-                  <span>FastNet 5G</span>
+                  <span>Beniffy</span>
                   <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
                 </div>
                 <div style={{ padding: '2rem 1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justify: 'center', height: '100%', gap: '1rem' }}>
@@ -11582,7 +11614,7 @@ export default function App() {
                           <span style={{ fontSize: '1.4rem', fontWeight: 'bold', fontFamily: 'var(--font-display)', color: 'var(--warning-text)' }}>
                             ₹{stockistAnalytics?.cod_commission_outstanding !== undefined ? stockistAnalytics.cod_commission_outstanding.toFixed(2) : '0.00'}
                           </span>
-                          <span style={{ fontSize: '0.5rem', color: 'var(--text-muted)' }}>{t("Owed to FastNet", "फास्टनेट का देय", "ফাস্টনেট এর বকেয়া")}</span>
+                          <span style={{ fontSize: '0.5rem', color: 'var(--text-muted)' }}>{t("Owed to Beniffy", "बेनिफ़ी का देय", "বেনিফি এর বকেয়া")}</span>
                         </div>
                       </div>
 
@@ -12317,7 +12349,7 @@ export default function App() {
                             </div>
                           )}
                           <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', margin: '0.35rem 0 0 0' }}>
-                            Upload a photo of the wholesaler's bill or invoice showing you paid the cost price for this stock. This helps us verify prices are honest. Bills are only visible to FastNet admin.
+                            Upload a photo of the wholesaler's bill or invoice showing you paid the cost price for this stock. This helps us verify prices are honest. Bills are only visible to Beniffy admin.
                           </p>
                         </div>
                         
@@ -12643,7 +12675,7 @@ export default function App() {
                           <div><span style={{color: 'var(--text-muted)'}}>{t('Current Commission Rate','वर्तमान कमीशन दर','বর্তমান কমিশন হার')}: </span><strong>{stockistProfile.commission_rate != null ? `${stockistProfile.commission_rate}%` : '-'}</strong></div>
                           <div><span style={{color: 'var(--text-muted)'}}>{t('Minimum Order','न्यूनतम ऑर्डर','সর্বনিম্ন অর্ডার')}: </span><strong>₹{stockistProfile.min_order_value}</strong></div>
                           <p style={{ fontSize: '0.65rem', color: 'var(--accent)', marginTop: '0.2rem', marginBottom: 0 }}>
-                            {t('Contact FastNet support to change any of these details.', 'इन विवरणों को बदलने के लिए FastNet सहायता से संपर्क करें।', 'এই বিবরণগুলি পরিবর্তন করতে FastNet সহায়তার সাথে যোগাযোগ করুন।')}
+                            {t('Contact Beniffy support to change any of these details.', 'इन विवरणों को बदलने के लिए Beniffy सहायता से संपर्क करें।', 'এই বিবরণগুলি পরিবর্তন করতে Beniffy সহায়তার সাথে যোগাযোগ করুন।')}
                           </p>
                         </div>
                       </div>
@@ -12737,9 +12769,9 @@ export default function App() {
                               </div>
                               <p style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: '0.75rem' }}>
                                 {t(
-                                  'These details cannot be edited here. If you want to change any detail, please contact FastNet support.',
-                                  'इन विवरणों को यहां संपादित नहीं किया जा सकता। किसी भी विवरण को बदलने के लिए, कृपया FastNet सहायता से संपर्क करें।',
-                                  'এই বিবরণগুলি এখানে সম্পাদনা করা যাবে না। কোনো বিবরণ পরিবর্তন করতে চাইলে, অনুগ্রহ করে FastNet সহায়তার সাথে যোগাযোগ করুন।'
+                                  'These details cannot be edited here. If you want to change any detail, please contact Beniffy support.',
+                                  'इन विवरणों को यहां संपादित नहीं किया जा सकता। किसी भी विवरण को बदलने के लिए, कृपया Beniffy सहायता से संपर्क करें।',
+                                  'এই বিবরণগুলি এখানে সম্পাদনা করা যাবে না। কোনো বিবরণ পরিবর্তন করতে চাইলে, অনুগ্রহ করে Beniffy সহায়তার সাথে যোগাযোগ করুন।'
                                 )}
                               </p>
                               <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setShowPersonalDetails(false)}>{t('Close','बंद करें','বন্ধ করুন')}</button>
@@ -12846,7 +12878,7 @@ export default function App() {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
           <div className="perspective-banner">
-            <span><Settings size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> OPERATOR PORTAL: FastNet Operations Dashboard</span>
+            <span><Settings size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> OPERATOR PORTAL: Beniffy</span>
             <ThemeToggle theme={themes.admin} appName="Admin Portal" onToggle={(e) => toggleTheme('admin', e)} />
           </div>
           <div className="phone-mockup" style={{ maxWidth: '420px', width: '100%' }}>
@@ -12867,7 +12899,7 @@ export default function App() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
         <div className="perspective-banner">
-          <span><Settings size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> OPERATOR PORTAL: FastNet Operations Dashboard</span>
+          <span><Settings size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> OPERATOR PORTAL: Beniffy</span>
           <ThemeToggle theme={themes.admin} appName="Admin Portal" onToggle={(e) => toggleTheme('admin', e)} />
         </div>
 
@@ -12875,7 +12907,7 @@ export default function App() {
           <div className="admin-header">
             <div>
               <h1>Operator Admin Dashboard</h1>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>FastNet Pilot Tenant Operations</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Beniffy Operations</p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button className="btn btn-danger" onClick={handleResetDb} style={{ fontSize: '0.8rem' }}>
@@ -13185,7 +13217,7 @@ export default function App() {
                       <Sparkles size={16} /> {t('Getting Started: Initial Platform Setup', 'आरंभ करना: प्रारंभिक प्लेटफ़ॉर्म सेटअप', 'শুরু করুন: প্রাথমিক প্ল্যাটফর্ম সেটআপ')}
                     </h3>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                      {t('Follow these steps in order to set up your FastNet network.', 'अपने फास्टनेट नेटवर्क को सेट करने के लिए इन चरणों का पालन करें।', 'আপনার ফাস্টনেট নেটওয়ার্ক সেট আপ করতে নিচের ধাপগুলো অনুসরণ করুন।')}
+                      {t('Follow these steps in order to set up your Beniffy network.', 'अपने बेनिफ़ी नेटवर्क को सेट करने के लिए इन चरणों का पालन करें।', 'আপনার বেনিফি নেটওয়ার্ক সেট আপ করতে নিচের ধাপগুলো অনুসরণ করুন।')}
                     </p>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
@@ -14200,7 +14232,7 @@ export default function App() {
                 <div>
                   <h2 style={{ fontSize: '1.4rem', marginBottom: '1rem' }}>Pending KYC Approvals</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                    Verify local grocery stores applying to open shops on the FastNet Hyperlocal Marketplace. Approve to assign local wholesale suppliers, or reject/blacklist fraud applications.
+                    Verify local grocery stores applying to open shops on the Beniffy Marketplace. Approve to assign local wholesale suppliers, or reject/blacklist fraud applications.
                   </p>
 
                   <div className="table-scroll">
@@ -15577,7 +15609,7 @@ export default function App() {
                     <div>
                       <h2 style={{ fontSize: '1.4rem' }}>Subscriber Bill Discounts</h2>
                       <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        Approve and synchronize redeemed bill discounts with FastNet billing system.
+                        Approve and synchronize redeemed bill discounts with Beniffy billing system.
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -16323,7 +16355,7 @@ export default function App() {
             <form onSubmit={handleCreateAdminSetup} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ textAlign: 'center' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0, marginBottom: '0.35rem' }}>
-                  Welcome to FastNet
+                  Welcome to Beniffy
                 </h2>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
                   No accounts exist yet. Create the administrator account to get started.
@@ -16619,10 +16651,9 @@ export default function App() {
 
       {/* Simulator Workspace Header */}
       <header className="simulator-header">
-        <div className="brand" onClick={() => setActiveRole('marketing')} style={{ cursor: 'pointer' }}>
-          <div className="brand-logo">F</div>
+        <div className="brand" onClick={() => setActiveRole('marketing')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div>
-            <span className="brand-name">FastNet Loyalty</span>
+            <BeniffyWordmark size={24} />
             <span style={{ fontSize: '0.65rem', display: 'block', color: 'var(--primary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Pilot Platform Simulator</span>
           
             </div>
@@ -18538,9 +18569,12 @@ export default function App() {
       {/* Footer with Business Details (Part 2 Items 17, 18) */}
       <footer style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--border-color)', padding: '1.5rem 1rem', marginTop: '2rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center' }}>
-          <p style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1rem' }}>FastNet Loyalty Platform</p>
-          <p>Operated by FastNet Communications Pvt. Ltd. | CIN: U72900TG2024PTC189012</p>
-          <p>Plot 42, Hitec City, Hyderabad, Telangana, India | Phone: +91-40-67890123 | Email: support@fastnetloyalty.com</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+            <BeniffyWordmark size={22} />
+            <p style={{ margin: 0 }}>Shop local. Pay less for everything else.</p>
+          </div>
+          {/* TODO(owner): registered company name, CIN, address, phone required before public launch. */}
+          <p style={{ margin: 0 }}>Email: support@beniffy.com</p>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }}>
             <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowPrivacyPolicyModal(true)}>
               {t('Privacy Policy', 'Privacy Policy', 'Privacy Policy')}
@@ -18574,7 +18608,7 @@ export default function App() {
               <p><strong>{t('Data Collected:', 'Data Collected:', 'Data Collected:')}</strong> {t('Phone number, name, delivery address, order history, points ledger.', 'Phone number, name, delivery address, order history, points ledger.', 'Phone number, name, delivery address, order history, points ledger.')}</p>
               <p><strong>{t('Usage:', 'Usage:', 'Usage:')}</strong> {t('Order processing, telecom service activation, customer support, platform analytics.', 'Order processing, telecom service activation, customer support, platform analytics.', 'Order processing, telecom service activation, customer support, platform analytics.')}</p>
               <p><strong>{t('Data Retention:', 'Data Retention:', 'Data Retention:')}</strong> {t('Orders retained for 7 years for GST & tax compliance. Points stored until redemption.', 'Orders retained for 7 years for GST & tax compliance. Points stored until redemption.', 'Orders retained for 7 years for GST & tax compliance. Points stored until redemption.')}</p>
-              <p><strong>{t('User Rights:', 'User Rights:', 'User Rights:')}</strong> {t('Right to access, correct, and request deletion of personal data via privacy@fastnetloyalty.com.', 'Right to access, correct, and request deletion of personal data via privacy@fastnetloyalty.com.', 'Right to access, correct, and request deletion of personal data via privacy@fastnetloyalty.com.')}</p>
+              <p><strong>{t('User Rights:', 'User Rights:', 'User Rights:')}</strong> {t('Right to access, correct, and request deletion of personal data via privacy@beniffy.com.', 'Right to access, correct, and request deletion of personal data via privacy@beniffy.com.', 'Right to access, correct, and request deletion of personal data via privacy@beniffy.com.')}</p>
             </div>
             <div style={{ textAlign: 'right', marginTop: '1.5rem' }}>
               <button className="btn btn-primary" onClick={() => setShowPrivacyPolicyModal(false)}>Close</button>
@@ -18618,7 +18652,7 @@ export default function App() {
             <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               <p><strong>{t('Cancellation Window:', 'Cancellation Window:', 'Cancellation Window:')}</strong> {t('Orders can be cancelled within 1 minute of placement for a refund (minus platform commission fee).', 'ऑर्डर देने के 1 मिनट के भीतर रद्द किए जा सकते हैं, जिसमें से प्लेटफ़ॉर्म कमीशन शुल्क काटा जाएगा।', 'অর্ডার করার ১ মিনিটের মধ্যে বাতিল করা যেতে পারে (প্ল্যাটফর্ম কমিশন ফি কেটে নেওয়া হবে)।')}</p>
               <p><strong>{t('Non-Show / Delivery Issues:', 'Non-Show / Delivery Issues:', 'Non-Show / Delivery Issues:')}</strong> {t('If stockist or delivery fails, refund processed within 24 hours to original payment method.', 'If stockist or delivery fails, refund processed within 24 hours to original payment method.', 'If stockist or delivery fails, refund processed within 24 hours to original payment method.')}</p>
-              <p><strong>{t('Support Contact:', 'Support Contact:', 'Support Contact:')}</strong> {t('Email support@fastnetloyalty.com for refund assistance.', 'Email support@fastnetloyalty.com for refund assistance.', 'Email support@fastnetloyalty.com for refund assistance.')}</p>
+              <p><strong>{t('Support Contact:', 'Support Contact:', 'Support Contact:')}</strong> {t('Email support@beniffy.com for refund assistance.', 'Email support@beniffy.com for refund assistance.', 'Email support@beniffy.com for refund assistance.')}</p>
             </div>
             <div style={{ textAlign: 'right', marginTop: '1.5rem' }}>
               <button className="btn btn-primary" onClick={() => setShowRefundPolicyModal(false)}>Close</button>

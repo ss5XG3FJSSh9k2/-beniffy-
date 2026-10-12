@@ -39,7 +39,7 @@ const reps = [
   ['<strong>Wholesaler:</strong>', '<strong>{t(\\'Wholesaler\\',\\'थोक विक्रेता\\',\\'পাইকারি বিক্রেতা\\')}:</strong>'],
   ['<strong>Current Commission Rate:</strong>', '<strong>{t(\\'Current Commission Rate\\',\\'वर्तमान कमीशन दर\\',\\'বর্তমান कमीशन हार\\')}:</strong>'],
   ['<strong>Minimum Order:</strong>', '<strong>{t(\\'Minimum Order\\',\\'न्यूनतम ऑर्डर\\',\\'সর্বনিম্ন অর্ডার\\')}:</strong>'],
-  ['Contact FastNet support to change any of these details.', '{t(\\'Contact FastNet support to change any of these details.\\', \\'इन विवरणों को बदलने के लिए FastNet सहायता से संपर्क करें।\\', \\'এই বিবরণগুলি পরিবর্তন করতে FastNet সহায়তার সাথে যোগাযোগ করুন।\\')}'],
+  ['Contact Beniffy support to change any of these details.', '{t(\\'Contact Beniffy support to change any of these details.\\', \\'इन विवरणों को बदलने के लिए Beniffy सहायता से संपर्क करें।\\', \\'এই বিবরণগুলি পরিবর্তন করতে Beniffy সহায়তার সাথে যোগাযোগ করুন।\\')}'],
 
   // App Preferences
   ['<h3>App Preferences</h3>', '<h3>{t(\\'App Preferences\\', \\'ऐप प्राथमिकताएं\\', \\'অ্যাপ পছন্দসমূহ\\')}</h3>'],

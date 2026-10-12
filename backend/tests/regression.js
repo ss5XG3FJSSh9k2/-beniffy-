@@ -3624,8 +3624,8 @@ async function main() {
   const partnerB2bLinkMatch = appContent.includes("setActiveRole('marketing')");
   assert(partnerB2bLinkMatch, 'Partner login block contains link routing to B2B marketing view');
 
-  // Test #628: Grep: Partner login block contains explanatory line Partner accounts are created by FastNet after your application is approved.
-  const partnerExplanatoryMatch = appContent.includes("Partner accounts are created by FastNet after your application is approved.");
+  // Test #628: Grep: Partner login block contains explanatory line Partner accounts are created by Beniffy after your application is approved.
+  const partnerExplanatoryMatch = appContent.includes("Partner accounts are created by Beniffy after your application is approved.");
   assert(partnerExplanatoryMatch, 'Partner login block contains partner account creation explanatory line');
 
   // Test #629: Grep: Admin login block contains no signup affordance
@@ -3968,7 +3968,7 @@ async function main() {
 
   // Test #688: Grep: Each of 6 partner tabs has empty-state string
   const emptyStatesPass = appContent.includes("Nothing waiting. You're up to date.") &&
-    appContent.includes("No redemptions waiting. New ones appear here when FastNet approves them.") &&
+    appContent.includes("No redemptions waiting. New ones appear here when Beniffy approves them.") &&
     appContent.includes("You haven't added any packages yet.") &&
     appContent.includes("No service regions added yet.") &&
     appContent.includes("No feedback or issues reported yet.") &&
@@ -4136,7 +4136,7 @@ async function main() {
   await dbModule.saveTable('users', usersAfterRegChange);
 
   // Test #702: Grep: Stockist profile region notice exists
-  const stockistRegionNoticeExists = appContent.includes("Contact FastNet support to change any of these details.");
+  const stockistRegionNoticeExists = appContent.includes("Contact Beniffy support to change any of these details.");
   assert(stockistRegionNoticeExists, 'Stockist profile includes read-only region notice text');
 
   // Test #703: Product creation with image file stores image in R2 mock and sets image_url to /api/images/...
@@ -4172,7 +4172,7 @@ async function main() {
   assert(loginLayoutFixed, 'Customer login heading rendered inside login-content-container');
 
   // Round BF12: KYC, Blacklist, Support Appeals, COD Commission, Cart Drawer, Points Consistency
-  console.log('\n--- Round BF12: FastNet Loyalty Issues #1-9 ---');
+  console.log('\n--- Round BF12: Beniffy Loyalty Issues #1-9 ---');
 
   // Test #718: POST /api/admin/kyc/:userId/approve sets user kyc_status to APPROVED
   const kycApproveRes = await post('http://localhost:3001/api/admin/kyc/u-stk1/approve');
@@ -5172,8 +5172,8 @@ async function main() {
   assert(refunds.length === 1, 'Migration is idempotent (no duplicate refund rows)');
   
   // Static App.jsx text check
-  assert(!appJsxBfGr.includes('Redeemable against FastNet services only'), 'App.jsx no longer contains "Redeemable against FastNet services only"');
-  assert(appJsxBfGr.includes('Redeemable on FastNet services and as coupons at checkout'), 'App.jsx contains the new footer text');
+  assert(!appJsxBfGr.includes('Redeemable against Beniffy services only'), 'App.jsx no longer contains "Redeemable against Beniffy services only"');
+  assert(appJsxBfGr.includes('Redeemable on Beniffy services and as coupons at checkout'), 'App.jsx contains the new footer text');
 
   console.log('\\n--- BF-TRACK-PIN Tests ---');
   const bfTrackPinCartId = 'cart-' + Math.random().toString(36).substring(2,11);

@@ -1,21 +1,21 @@
 {
-  "name": "FastNet Stockist",
-  "short_name": "FastNet",
+  "name": "Beniffy",
+  "short_name": "Beniffy",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#FDF0D5",
   "theme_color": "#61210F",
-  "description": "FastNet rural connectivity and fulfillment",
+  "description": "Shop local. Pay less for everything else.",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png"
     },
     {
-      "src": "/favicon.svg",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png"
     }
   ]
 }

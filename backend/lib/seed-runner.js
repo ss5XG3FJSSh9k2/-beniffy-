@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 
 const DEFAULT_DB = {
   tenants: [
-    { id: 't1', name: 'FastNet Cable & Broadband', code: 'fastnet', created_at: new Date().toISOString() }
+    { id: 't1', name: 'Beniffy Cable & Broadband', code: 'fastnet', created_at: new Date().toISOString() }
   ],
   regions: [
     { id: 'r1', tenant_id: 't1', name: 'Kolkata South (Garia)', code: 'kolkata-garia', delivery_fee: 40.0, created_at: new Date().toISOString() },

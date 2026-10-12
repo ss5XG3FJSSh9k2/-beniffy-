@@ -635,7 +635,7 @@ const handleSendOtpRoute = async (req, res) => {
 
   const code = issueOtp('login:' + identifier);
   try {
-    await smsHelper.sendSms(user ? user.phone : identifier, `Your FastNet OTP is ${code}`);
+    await smsHelper.sendSms(user ? user.phone : identifier, `Your Beniffy OTP is ${code}`);
     res.json({ success: true, message: 'OTP sent' });
   } catch (err) {
     if (err.code === 'SMS_NOT_CONFIGURED') {
@@ -843,7 +843,7 @@ app.post('/api/setup/create-admin', async (req, res) => {
     if (!tenants.some(t => t.id === 't1')) {
       await db.insertRow('tenants', {
         id: 't1',
-        name: 'FastNet Cable & Broadband',
+        name: 'Beniffy Cable & Broadband',
         code: 'fastnet',
         created_at: new Date().toISOString()
       });
@@ -1956,7 +1956,7 @@ app.post('/api/admin/bill-photos/:id/reject', async (req, res) => {
       if (smsHelper.isSmsConfigured()) {
         try {
           const prodName = product ? product.name : 'a product';
-          await smsHelper.sendSms(user.phone, `FastNet: your bill for ${prodName} was rejected. Reason: ${reason}. Upload a new bill in the app to resume selling.`);
+          await smsHelper.sendSms(user.phone, `Beniffy: your bill for ${prodName} was rejected. Reason: ${reason}. Upload a new bill in the app to resume selling.`);
         } catch (e) {
           console.error('[SMS] Failed to send rejection SMS:', e.message);
         }
@@ -1987,7 +1987,7 @@ app.post('/api/admin/bill-photos/:id/reject', async (req, res) => {
       await db.updateRow('points_ledger', heldRow.id, { billing_sync_status: 'VOIDED' });
       const customer = users.find(u => u.id === heldRow.customer_id);
       if (customer && customer.phone) {
-        await smsHelper.sendSms(customer.phone, `FastNet: Your pending points for order ${heldRow.order_id.substring(2).toUpperCase()} could not be credited. Reason: ${reason.trim()}`);
+        await smsHelper.sendSms(customer.phone, `Beniffy: Your pending points for order ${heldRow.order_id.substring(2).toUpperCase()} could not be credited. Reason: ${reason.trim()}`);
       }
     }
   }
@@ -3564,7 +3564,7 @@ async function _sendOrderConfirmedSms(order) {
     const total = order.total_amount || order.subtotal || 0;
     const etaTime = order.pickup_slot || 'scheduled time';
 
-    const body = `FastNet: Order ${order.id} confirmed at ${stockistName}, ${itemCount} items, ₹${total}. Ready by ${etaTime}. Track in app.`;
+    const body = `Beniffy: Order ${order.id} confirmed at ${stockistName}, ${itemCount} items, ₹${total}. Ready by ${etaTime}. Track in app.`;
     await smsHelper.sendSms(phone, body);
 
     await db.updateRow('orders', order.id, { sms_confirmed_sent: true });
@@ -3589,7 +3589,7 @@ async function _sendOrderReadySms(order) {
     const stockistName = stockist ? stockist.name : 'Stockist';
     const pickupPin = order.pickup_pin || '----';
 
-    const body = `FastNet: Your order ${order.id} is ready for pickup at ${stockistName}. PIN: ${pickupPin}. Please collect within 24h.`;
+    const body = `Beniffy: Your order ${order.id} is ready for pickup at ${stockistName}. PIN: ${pickupPin}. Please collect within 24h.`;
     await smsHelper.sendSms(phone, body);
 
     await db.updateRow('orders', order.id, { sms_ready_sent: true });
@@ -4766,7 +4766,7 @@ app.get(['/api/customer/rewards/available/:customerUserId', '/api/customer/avail
         },
         partner: {
           id: 'GENERIC',
-          display_name: 'FastNet (Generic)'
+          display_name: 'Beniffy (Generic)'
         }
       })),
       bindings: {
@@ -5626,8 +5626,8 @@ app.post('/api/customer/phone-change/request', requireAuth, async (req, res) => 
   const user = users.find(u => u.id === user_id);
   const smsHelper = require('./lib/sms.js');
   try {
-    if (user && user.phone) await smsHelper.sendSms(user.phone, `Your FastNet code for changing phone number is ${currentCode}.`);
-    await smsHelper.sendSms(cleanPhone, `Your FastNet code to confirm new phone number is ${newCode}.`);
+    if (user && user.phone) await smsHelper.sendSms(user.phone, `Your Beniffy code for changing phone number is ${currentCode}.`);
+    await smsHelper.sendSms(cleanPhone, `Your Beniffy code to confirm new phone number is ${newCode}.`);
     return res.json({ success: true, message: 'OTP sent to both phone numbers' });
   } catch (err) {
     if (err.code === 'SMS_NOT_CONFIGURED') return res.status(503).json({ error: 'sms_unavailable' });
@@ -6356,10 +6356,10 @@ app.post('/api/admin/customers/:id/phone-change/send-current', async (req, res) 
   
   if (via === 'phone') {
     const sms = require('./lib/sms');
-    await sms.sendSms(user.phone, `Your FastNet admin change code is ${currentCode}.`);
+    await sms.sendSms(user.phone, `Your Beniffy admin change code is ${currentCode}.`);
   } else if (via === 'email') {
     const emailHelper = require('./lib/email');
-    await emailHelper.sendEmail(user.email, 'FastNet Admin Change Code', `Your code is ${currentCode}.`, `Your code is ${currentCode}.`);
+    await emailHelper.sendEmail(user.email, 'Beniffy Admin Change Code', `Your code is ${currentCode}.`, `Your code is ${currentCode}.`);
   }
   
   return res.json({ success: true });
@@ -6406,7 +6406,7 @@ app.post('/api/admin/customers/:id/phone-change/send-new', async (req, res) => {
   const newCode = issueOtp(purposeKey);
   
   const sms = require('./lib/sms');
-  await sms.sendSms(cleanPhone, `Your FastNet admin change code is ${newCode}.`);
+  await sms.sendSms(cleanPhone, `Your Beniffy admin change code is ${newCode}.`);
   
   return res.json({ success: true });
 });
@@ -7104,7 +7104,7 @@ app.post('/api/partner/auth/login-otp-request', async (req, res) => {
   if (user) {
     const code = issueOtp('login:' + phone);
     try {
-      await require('./lib/sms.js').sendSms(phone, `Your FastNet OTP is ${code}`);
+      await require('./lib/sms.js').sendSms(phone, `Your Beniffy OTP is ${code}`);
     } catch (e) {
       if (e.code === 'SMS_NOT_CONFIGURED') return res.status(503).json({ error: 'sms_unavailable' });
       return res.status(500).json({ error: 'sms_error' });
@@ -10433,7 +10433,7 @@ setInterval(async () => {
               const stockistUser = users.find(u => u.id === stockist.user_id);
               const phone = stockist.phone || stockist.contact_phone || (stockistUser ? stockistUser.phone : null);
               if (phone) {
-                await smsHelper.sendSms(phone, `FastNet: new order #${order.id.substring(2).toUpperCase()} at your shop. Open the app to accept.`);
+                await smsHelper.sendSms(phone, `Beniffy: new order #${order.id.substring(2).toUpperCase()} at your shop. Open the app to accept.`);
               }
             }
           }
@@ -10473,7 +10473,7 @@ setInterval(async () => {
               const stockistUser = users.find(u => u.id === stockist.user_id);
               const phone = stockist.phone || stockist.contact_phone || (stockistUser ? stockistUser.phone : null);
               if (phone) {
-                await smsHelper.sendSms(phone, `FastNet: new order #${order.id.substring(2).toUpperCase()} at your shop. Open the app to accept.`);
+                await smsHelper.sendSms(phone, `Beniffy: new order #${order.id.substring(2).toUpperCase()} at your shop. Open the app to accept.`);
               }
             }
           }

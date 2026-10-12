@@ -1,4 +1,4 @@
-# FastNet Loyalty Platform
+# Beniffy
 
 A modern loyalty and fulfillment system built for rural ISPs (Internet Service Providers) and local merchants (stockists). Subscribers earn points through local grocery/merchant purchases, which they can redeem for bill discounts or speed boosts with the ISP.
 
