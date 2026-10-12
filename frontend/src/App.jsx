@@ -574,45 +574,108 @@ export default function App() {
     } catch (e) { }
   }, [theme]);
   
-  const toggleTheme = () => {
+  const isSwitching = useRef(false);
+  
+  const toggleTheme = async (e) => {
+    if (isSwitching.current) return;
+    const next = theme === 'light' ? 'dark' : 'light';
     const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
     if (isReducedMotion) {
       document.documentElement.classList.add('theme-switching');
-      setTheme(prev => prev === 'light' ? 'dark' : 'light');
+      setTheme(next);
       setTimeout(() => {
         document.documentElement.classList.remove('theme-switching');
       }, 300);
       return;
     }
 
-    const existing = document.querySelector('.theme-burn');
-    if (existing) {
-      existing.remove();
-    }
-
-    const overlay = document.createElement('div');
-    overlay.className = 'theme-burn';
-    overlay.setAttribute('aria-hidden', 'true');
-    overlay.style.pointerEvents = 'none';
+    isSwitching.current = true;
+    let overlay;
     
-    const removeOverlay = () => {
-      if (overlay.parentNode) {
+    // Safety fallback
+    const safetyTimeout = setTimeout(() => {
+      if (overlay && overlay.parentNode) {
         overlay.parentNode.removeChild(overlay);
       }
-    };
+      isSwitching.current = false;
+    }, 1500);
     
-    overlay.addEventListener('animationend', removeOverlay);
-    setTimeout(removeOverlay, 1000);
-    
-    document.body.appendChild(overlay);
-    
-    setTimeout(() => {
-      document.documentElement.classList.add('theme-switching');
-      setTheme(prev => prev === 'light' ? 'dark' : 'light');
-      setTimeout(() => {
-        document.documentElement.classList.remove('theme-switching');
-      }, 300);
-    }, 360);
+    try {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const tx = rect.left + rect.width / 2;
+      const ty = rect.top + rect.height / 2;
+      
+      const cx = tx < window.innerWidth / 2 ? 0 : window.innerWidth;
+      const cy = ty < window.innerHeight / 2 ? 0 : window.innerHeight;
+      
+      const R = Math.hypot(window.innerWidth, window.innerHeight) * 1.5;
+      
+      overlay = document.createElement('div');
+      overlay.className = 'theme-burn';
+      
+      overlay.style.width = `${2 * R}px`;
+      overlay.style.height = `${2 * R}px`;
+      overlay.style.left = `${cx - R}px`;
+      overlay.style.top = `${cy - R}px`;
+      
+      if (next === 'light') {
+        overlay.style.setProperty('--burn-core', '#FDF0D5');
+        overlay.style.setProperty('--burn-ring', 'rgba(97,33,15,0.55)');
+        overlay.style.setProperty('--burn-glow', 'rgba(97,33,15,0)');
+      } else {
+        overlay.style.setProperty('--burn-core', '#20201F');
+        overlay.style.setProperty('--burn-ring', 'rgba(238,110,77,0.6)');
+        overlay.style.setProperty('--burn-glow', 'rgba(238,110,77,0)');
+      }
+      
+      document.body.appendChild(overlay);
+      
+      const grow = overlay.animate(
+        [
+          { transform: 'scale(0)' },
+          { transform: 'scale(1)' }
+        ],
+        {
+          duration: 650,
+          easing: 'cubic-bezier(0.65, 0, 0.35, 1)',
+          fill: 'forwards'
+        }
+      );
+      
+      await new Promise(r => {
+        grow.onfinish = r;
+        setTimeout(r, 700); // fallback
+      });
+      
+      document.documentElement.setAttribute('data-theme', next);
+      setTheme(next);
+      
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      
+      const reveal = overlay.animate(
+        [
+          { opacity: 1 },
+          { opacity: 0 }
+        ],
+        {
+          duration: 350,
+          easing: 'ease-out'
+        }
+      );
+      
+      await new Promise(r => {
+        reveal.onfinish = r;
+        setTimeout(r, 400); // fallback
+      });
+      
+    } finally {
+      clearTimeout(safetyTimeout);
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+      isSwitching.current = false;
+    }
   };
 
   function urlBase64ToUint8Array(base64String) {
@@ -16370,11 +16433,22 @@ export default function App() {
           
             </div>
             <button 
-              onClick={toggleTheme} 
-              style={{ marginLeft: '1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.25rem 0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
-            >
-              {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-            </button>
+                onClick={toggleTheme} 
+                aria-label={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.25rem 0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
+              >
+                {theme === 'light' ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    Dark
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    Light
+                  </>
+                )}
+              </button>
           </div>
 
 
