@@ -575,11 +575,44 @@ export default function App() {
   }, [theme]);
   
   const toggleTheme = () => {
-    document.documentElement.classList.add('theme-switching');
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (isReducedMotion) {
+      document.documentElement.classList.add('theme-switching');
+      setTheme(prev => prev === 'light' ? 'dark' : 'light');
+      setTimeout(() => {
+        document.documentElement.classList.remove('theme-switching');
+      }, 300);
+      return;
+    }
+
+    const existing = document.querySelector('.theme-burn');
+    if (existing) {
+      existing.remove();
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'theme-burn';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.style.pointerEvents = 'none';
+    
+    const removeOverlay = () => {
+      if (overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+    };
+    
+    overlay.addEventListener('animationend', removeOverlay);
+    setTimeout(removeOverlay, 1000);
+    
+    document.body.appendChild(overlay);
+    
     setTimeout(() => {
-      document.documentElement.classList.remove('theme-switching');
-    }, 300);
+      document.documentElement.classList.add('theme-switching');
+      setTheme(prev => prev === 'light' ? 'dark' : 'light');
+      setTimeout(() => {
+        document.documentElement.classList.remove('theme-switching');
+      }, 300);
+    }, 360);
   };
 
   function urlBase64ToUint8Array(base64String) {
@@ -9936,7 +9969,7 @@ export default function App() {
                                             background: canAfford ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.01)',
                                             border: `1px solid ${canAfford ? color + '33' : 'var(--surface-overlay)'}`,
                                             opacity: canAfford ? 1 : 0.55,
-                                            transition: 'all 0.2s'
+                                            transition: 'transform 0.2s, background-color 0.2s, opacity 0.2s'
                                           }}
                                         >
                                           <div style={{ flexShrink: 0, width: '32px', display: 'flex', justifyContent: 'center' }}>
@@ -9985,7 +10018,7 @@ export default function App() {
                                               cursor: (!canAfford || isLocked || emptyReason === 'no_binding') ? 'not-allowed' : 'pointer',
                                               background: (!canAfford || isLocked || emptyReason === 'no_binding') ? 'var(--border-color)' : color,
                                               color: (!canAfford || isLocked || emptyReason === 'no_binding') ? 'var(--text-muted)' : 'white',
-                                              transition: 'all 0.2s'
+                                              transition: 'transform 0.2s, background-color 0.2s, opacity 0.2s'
                                             }}
                                           >
                                             {t('Redeem', 'रिडीम', 'রিডিম')}
@@ -11394,7 +11427,7 @@ export default function App() {
                                 flexDirection: 'column', 
                                 gap: '0.5rem',
                                 border: isNew ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                                transition: 'all 0.3s ease'
+                                transition: 'transform 0.3s ease, background-color 0.3s ease, opacity 0.3s ease'
                               }}
                             >
                               {/* Order Header / New Badge */}
@@ -12793,7 +12826,7 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
                 <div 
                   onClick={() => { setAdminTab('redemptions'); fetchRedemptionApprovals(); }}
-                  style={{ background: 'var(--warning-glow)', border: '1px solid rgba(245,158,11,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
+                  style={{ background: 'var(--warning-glow)', border: '1px solid rgba(245,158,11,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'transform 0.2s, background-color 0.2s, opacity 0.2s' }}
                 >
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
                     {t('Redemptions Pending Admin Approval', 'प्रशासक अनुमोदन लंबित रिडीम', 'অ্যাডমিন অনুমোদনের অপেক্ষায় রিডিম')}
@@ -12808,7 +12841,7 @@ export default function App() {
 
                 <div 
                   onClick={() => { setAdminTab('analytics'); fetchAnalytics(); }}
-                  style={{ background: 'var(--primary-glow)', border: '1px solid rgba(99,102,241,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
+                  style={{ background: 'var(--primary-glow)', border: '1px solid rgba(99,102,241,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'transform 0.2s, background-color 0.2s, opacity 0.2s' }}
                 >
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
                     {t('Orders In Progress Today', 'आज प्रगति में ऑर्डर', 'আজকের প্রসেসিংয়ে থাকা অর্ডার')}
@@ -12820,7 +12853,7 @@ export default function App() {
 
                 <div 
                   onClick={() => { setAdminTab('analytics'); fetchAnalytics(); }}
-                  style={{ background: 'var(--success-glow)', border: '1px solid rgba(34,197,94,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
+                  style={{ background: 'var(--success-glow)', border: '1px solid rgba(34,197,94,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'transform 0.2s, background-color 0.2s, opacity 0.2s' }}
                 >
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
                     {t('Revenue This Week', 'इस सप्ताह का राजस्व', 'এই সপ্তাহের মোট রাজস্ব')}
@@ -12834,7 +12867,7 @@ export default function App() {
                   style={{ 
                     background: UNPAID > 0 ? 'var(--warning-glow)' : 'var(--success-glow)', 
                     border: UNPAID > 0 ? '1px solid rgba(245,158,11,0.2)' : '1px solid rgba(34,197,94,0.2)', 
-                    padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s',
+                    padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'transform 0.2s, background-color 0.2s, opacity 0.2s',
                     display: 'flex', flexDirection: 'column', gap: '0.5rem'
                   }}
                 >
@@ -15134,7 +15167,7 @@ export default function App() {
                                   border: `1px solid ${partnerFeedbackStatus === s.val ? 'var(--text-main)' : 'transparent'}`,
                                   cursor: 'pointer',
                                   opacity: partnerFeedbackStatus === s.val ? 1 : 0.6,
-                                  transition: 'all 0.2s',
+                                  transition: 'transform 0.2s, background-color 0.2s, opacity 0.2s',
                                   outline: 'none'
                                 }}
                                 className={`badge ${s.badge}`}

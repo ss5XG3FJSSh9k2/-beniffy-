@@ -44,7 +44,7 @@
 }
 
 .theme-switching, .theme-switching * {
-  transition: background-color 250ms ease, color 250ms ease, border-color 250ms ease, fill 250ms ease, stroke 250ms ease, box-shadow 250ms ease !important;
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, fill 300ms ease, stroke 300ms ease !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1352,3 +1352,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 input { color: var(--text-main); }
 
+
+
+.theme-burn { position: fixed; inset: 0; z-index: 1500; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at 20% 15%, rgba(238,110,77,0.85) 0%, rgba(238,110,77,0) 55%), radial-gradient(ellipse at 85% 80%, rgba(97,33,15,0.8) 0%, rgba(97,33,15,0) 60%), radial-gradient(ellipse at 60% 40%, rgba(253,240,213,0.9) 0%, rgba(253,240,213,0) 45%); filter: blur(40px); mix-blend-mode: screen; animation: theme-burn 900ms cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+@keyframes theme-burn { 0% { opacity: 0; transform: scale(1.08); } 40% { opacity: 0.95; transform: scale(1); } 100% { opacity: 0; transform: scale(1.03); } }
