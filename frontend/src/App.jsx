@@ -181,7 +181,7 @@ class PanelErrorBoundary extends React.Component {
     if (this.state.hasError) {
       const t = this.props.t || ((en, hi, bn) => en);
       return (
-        <div style={{ padding: '2rem', background: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: '8px', color: 'var(--danger)', margin: '1rem 0' }}>
+        <div style={{ padding: '2rem', background: 'var(--danger-bg)', border: '1px solid var(--danger)', borderRadius: '8px', color: 'var(--danger-text)', margin: '1rem 0' }}>
           <h3 style={{ marginBottom: '0.5rem' }}>{t('Unable to load panel', 'पैनल लोड करने में असमर्थ', 'প্যানেল লোড করতে অক্ষম')}</h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
             {t('An unexpected error occurred while rendering this view', 'यह दृश्य प्रस्तुत करते समय एक अप्रत्याशित त्रुटि हुई', 'এই ভিউ রেন্ডার করার সময় একটি অপ্রত্যাশিত ত্রুটি ঘটেছে')} ({this.state.error?.message || t('Unknown error', 'अज्ञात त्रुटि', 'অজানা ত্রুটি')}).
@@ -6195,7 +6195,7 @@ export default function App() {
               />
             </div>
             {loginErrorMessage && (
-              <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginBottom: '0.75rem', background: 'var(--danger)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--danger)', lineHeight: 1.4 }}>
+              <div style={{ color: 'var(--danger-text)', fontSize: '0.8rem', marginBottom: '0.75rem', background: 'var(--danger-bg)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--danger)', lineHeight: 1.4 }}>
                 {loginErrorMessage}
               </div>
             )}
@@ -6447,7 +6447,7 @@ export default function App() {
           /* Stockist Sign Up Flow */
           <>
             <div style={{ background: 'var(--warning-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.2)', fontSize: '0.75rem', textAlign: 'center' }}>
-              <Store size={14} style={{ color: 'var(--warning)', marginRight: '0.35rem', verticalAlign: 'middle' }} />
+              <Store size={14} style={{ color: 'var(--warning-text)', marginRight: '0.35rem', verticalAlign: 'middle' }} />
               {t('Register Local Shop (KYC Required)', 'स्थानीय दुकान पंजीकरण (KYC आवश्यक)', 'স্থানীয় দোকান নিবন্ধন (KYC প্রয়োজন)')}: {loginPhone}
             </div>
             {isCustomerApp && renderCustomerSignupBtn()}
@@ -7631,7 +7631,7 @@ export default function App() {
                 <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowNotifDropdown(!showNotifDropdown)}>
                   <Bell size={20} style={{ color: unreadNotifCount > 0 ? 'var(--primary)' : 'var(--text-muted)' }} />
                   {unreadNotifCount > 0 && (
-                    <span style={{ position: 'absolute', top: '-4px', right: '-6px', background: 'var(--danger)', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', borderRadius: '50%', padding: '0.1rem 0.35rem', fontSize: '0.6rem', fontWeight: 'bold' }}>
+                    <span style={{ position: 'absolute', top: '-4px', right: '-6px', background: 'var(--danger-bg)', color: 'var(--danger-text)', borderRadius: '50%', padding: '0.1rem 0.35rem', fontSize: '0.6rem', fontWeight: 'bold' }}>
                       {unreadNotifCount}
                     </span>
                   )}
@@ -7658,7 +7658,7 @@ export default function App() {
                       onClick={() => handleNotificationClick(n)}
                       style={{ padding: '0.4rem', borderBottom: '1px dashed var(--border-color)', cursor: 'pointer', background: n.is_read ? 'transparent' : 'rgba(99,102,241,0.1)' }}
                     >
-                      <div style={{ fontWeight: 'bold', fontSize: '0.75rem' }}>{n.title} {!n.is_read && <span style={{ color: 'var(--danger)' }}>●</span>}</div>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.75rem' }}>{n.title} {!n.is_read && <span style={{ color: 'var(--danger-text)' }}>●</span>}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                         {n.body}
                         {(n.customer_phone || n.phone) && (
@@ -7708,7 +7708,7 @@ export default function App() {
 
                   {/* Empty State Banner if 0 waiting */}
                   {partnerQueueList.length === 0 && (
-                    <div style={{ background: 'var(--success-glow)', border: '1px solid rgba(34,197,94,0.3)', padding: '0.75rem', borderRadius: '6px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--success)' }}>
+                    <div style={{ background: 'var(--success-glow)', border: '1px solid rgba(34,197,94,0.3)', padding: '0.75rem', borderRadius: '6px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--success-text)' }}>
                       {t("Nothing waiting. You're up to date.", "कुछ भी लंबित नहीं है। आप अपडेट हैं।", "কোনো কিছু অপেক্ষায় নেই। আপনি আপ-টু-ডেট।")}
                     </div>
                   )}
@@ -7720,7 +7720,7 @@ export default function App() {
                     </span>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginTop: '0.35rem' }}>
                       <div style={{ background: 'var(--surface-overlay)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--success)' }}>{partnerDashData?.month?.fulfilled_count || 0}</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--success-text)' }}>{partnerDashData?.month?.fulfilled_count || 0}</div>
                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{t('Fulfilled this month', 'इस महीने पूरे किए गए', 'এই মাসে সম্পন্ন')}</div>
                       </div>
                       <div style={{ background: 'var(--surface-overlay)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
@@ -7738,13 +7738,13 @@ export default function App() {
                   {(partnerDashData?.disputes?.open_count || 0) > 0 && (
                     <div 
                       onClick={() => { setPartnerAppTab('queue'); setPartnerQueueSubTab('disputes'); }}
-                      style={{ background: 'var(--danger)', border: '1px solid rgba(239,68,68,0.3)', padding: '0.75rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                      style={{ background: 'var(--danger-bg)', border: '1px solid rgba(239,68,68,0.3)', padding: '0.75rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                     >
                       <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--danger)' }}>{t('Open Disputes', 'खुले विवाद', 'খোলা বিরোধ')}</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--danger-text)' }}>{t('Open Disputes', 'खुले विवाद', 'খোলা বিরোধ')}</div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('Redemptions waiting on admin resolution', 'एडमिन समाधान की प्रतीक्षा में रिडीम', 'অ্যাডমিন সমাধানের অপেক্ষায় থাকা রিডিম')}</div>
                       </div>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: 'var(--danger)' }}>{partnerDashData?.disputes?.open_count || 0}</div>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: 'var(--danger-text)' }}>{partnerDashData?.disputes?.open_count || 0}</div>
                     </div>
                   )}
                 </div>
@@ -8113,7 +8113,7 @@ export default function App() {
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>All-Time Redemptions</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--warning)' }}>{pProfCounts?.disputes_open || 0}</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--warning-text)' }}>{pProfCounts?.disputes_open || 0}</div>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Open Disputes</div>
                     </div>
                   </div>
@@ -8397,7 +8397,7 @@ export default function App() {
                     })}
                   </div>
                   {((partnerData?.service_types || []).every(st => (partnerRegionsList || []).some(pr => pr.region_id === newRegionId && pr.service_type === st)) && (partnerData?.service_types || []).length > 0) && (
-                    <div style={{ fontSize: '0.7rem', color: 'var(--warning)', marginTop: '0.75rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--warning-text)', marginTop: '0.75rem', textAlign: 'center' }}>
                       All your services are already added for this region.
                     </div>
                   )}
@@ -8427,7 +8427,7 @@ export default function App() {
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '400px' }}>
               <PanelErrorBoundary t={t}>
-              <h4 style={{ color: 'var(--warning)' }}>Region Referenced in Packages</h4>
+              <h4 style={{ color: 'var(--warning-text)' }}>Region Referenced in Packages</h4>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Deactivating this region will also deactivate or update the following active packages:
               </p>
@@ -8758,7 +8758,7 @@ export default function App() {
             </select>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <button className="btn" onClick={handlePartnerSubmit} disabled={partnerPhone.length !== 10}>Get in touch</button>
-              {partnerPhone.length > 0 && partnerPhone.length !== 10 && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', textAlign: 'center' }}>Enter 10 digits</div>}
+              {partnerPhone.length > 0 && partnerPhone.length !== 10 && <div style={{ color: 'var(--danger-text)', fontSize: '0.75rem', textAlign: 'center' }}>Enter 10 digits</div>}
             </div>
           </div>
         </div>
@@ -8807,7 +8807,7 @@ export default function App() {
 
     return (
       <div style={{ marginTop: '0.4rem', fontSize: '0.65rem', background: 'var(--warning-glow)', border: '1px dashed var(--warning)', borderRadius: '6px', padding: '0.35rem', width: '100%' }}>
-        <span style={{ color: 'var(--warning)', fontWeight: 'bold' }}>Also available at:</span>
+        <span style={{ color: 'var(--warning-text)', fontWeight: 'bold' }}>Also available at:</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.2rem' }}>
           {alts.map(alt => (
             <div key={alt.shopId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -9038,7 +9038,7 @@ export default function App() {
                             {/* WhatsApp Notification Share Trigger (§B1) */}
                             <button 
                               className="btn btn-secondary" 
-                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.35rem', background: 'rgba(37,211,102,0.1)', color: 'var(--success)', border: '1px solid rgba(37,211,102,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}
+                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.35rem', background: 'rgba(37,211,102,0.1)', color: 'var(--success-text)', border: '1px solid rgba(37,211,102,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}
                               onClick={() => {
                                 setSimulatedWaMessage({
                                   orderId: o.id,
@@ -9094,7 +9094,7 @@ export default function App() {
                       
                       {/* Message Bubble */}
                       <div style={{ alignSelf: 'flex-start', background: 'var(--bg-surface-elevated)', color: 'var(--text-main)', padding: '0.5rem 0.75rem', borderRadius: '0 8px 8px 8px', maxWidth: '85%', fontSize: '0.7rem', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                        <span style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '0.65rem' }}>FastNet Supermarket</span>
+                        <span style={{ color: 'var(--success-text)', fontWeight: 'bold', fontSize: '0.65rem' }}>FastNet Supermarket</span>
                         <p style={{ margin: 0, whiteSpace: 'pre-line' }}>
                           {`Hello ${simulatedWaMessage.customerName || 'Valued Customer'}!\n\nYour FastNet Supermarket order is confirmed at *${simulatedWaMessage.stockistName}*.\n\n*Order ID:* #${simulatedWaMessage.orderId.substring(2).toUpperCase()}\n*Total Price:* ₹${simulatedWaMessage.totalPrice}\n*Subtotal:* ₹${simulatedWaMessage.subtotal}\n*Rewards Earned:* +${simulatedWaMessage.points} pts\n\n${
                             simulatedWaMessage.fulfillmentType === 'PICKUP'
@@ -9123,7 +9123,7 @@ export default function App() {
                 {deliverySwitchConfirm && (
                   <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning-text)' }}>
                         <AlertTriangle size={20} />
                         <h3 style={{ fontSize: '1rem', color: 'var(--text-main)', margin: 0 }}>{t('Switch to Home Delivery?', 'होम डिलीवरी पर स्विच?', 'হোম ডেলিভারিতে যাবেন?')}</h3>
                       </div>
@@ -9148,7 +9148,7 @@ export default function App() {
                 {noShowAlert && (
                   <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning-text)' }}>
                         <AlertTriangle size={20} />
                         <h3 style={{ fontSize: '1rem', color: 'var(--text-main)', margin: 0 }}>{t('Missed Pickup?', 'पिकअप छूट गया?', 'পিকআপ মিস হয়েছে?')}</h3>
                       </div>
@@ -9499,15 +9499,15 @@ export default function App() {
                                   <Clock size={14} /> {t('Select Pickup Slot (Required)', 'पिकअप समय चुनें (आवश्यक)', 'পিকআপ সময় নির্বাচন করুন (প্রয়োজনীয়)')}
                                 </div>
                                 {groupEntries.length === 0 ? (
-                                  <div style={{ color: 'var(--danger)', fontSize: '0.8rem', padding: '0.25rem 0' }}>Could not determine which shop this order is from. Please remove and re-add your items.</div>
+                                  <div style={{ color: 'var(--danger-text)', fontSize: '0.8rem', padding: '0.25rem 0' }}>Could not determine which shop this order is from. Please remove and re-add your items.</div>
                                 ) : (
                                   groupEntries.map(([sid, sName]) => {
                                     const stockist = customerStockists.find(s => s.id === sid) || { id: sid, opening_time: '08:00', closing_time: '20:00', prep_eta_minutes: 10 };
                                     let SLOTS = [];
                                     let slotErr = null;
                                     try { SLOTS = getAvailableSlots(stockist); } catch (err) { slotErr = err; }
-                                    if (slotErr) return <div key={sid} style={{ fontSize: '0.8rem', color: 'var(--danger)', padding: '0.2rem 0' }}><strong>{sName}:</strong> Could not load pickup times.</div>;
-                                    if (!SLOTS || SLOTS.length === 0) return <div key={sid} style={{ fontSize: '0.8rem', color: 'var(--danger)', padding: '0.2rem 0' }}><strong>{sName}:</strong> This shop has no pickup times available. Please choose Home Delivery or try another shop.</div>;
+                                    if (slotErr) return <div key={sid} style={{ fontSize: '0.8rem', color: 'var(--danger-text)', padding: '0.2rem 0' }}><strong>{sName}:</strong> Could not load pickup times.</div>;
+                                    if (!SLOTS || SLOTS.length === 0) return <div key={sid} style={{ fontSize: '0.8rem', color: 'var(--danger-text)', padding: '0.2rem 0' }}><strong>{sName}:</strong> This shop has no pickup times available. Please choose Home Delivery or try another shop.</div>;
                                     return (
                                       <div key={sid} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sName}:</div>
@@ -9565,7 +9565,7 @@ export default function App() {
                           {cartFulfillment === 'DELIVERY' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', backgroundColor: 'var(--surface-overlay)' }}>
                               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>
-                                {t('Delivery Address', 'डिलीवरी का पता', 'ডেলিভারি ঠিকানা')} <span style={{ color: 'var(--danger)' }}>*</span>
+                                {t('Delivery Address', 'डिलीवरी का पता', 'ডেলিভারি ঠিকানা')} <span style={{ color: 'var(--danger-text)' }}>*</span>
                               </label>
                               <textarea
                                 className="text-input" style={{ height: '70px', fontSize: '0.85rem', width: '100%', resize: 'none' }}
@@ -9574,7 +9574,7 @@ export default function App() {
                                 onChange={e => setDeliveryAddress(e.target.value)}
                               />
                               {((deliveryAddress !== undefined && deliveryAddress !== '' ? deliveryAddress : (profileAddress || currentUser?.address || '')).trim().length < 5) && (
-                                <small style={{ color: 'var(--danger)', fontSize: '0.7rem' }}>
+                                <small style={{ color: 'var(--danger-text)', fontSize: '0.7rem' }}>
                                   {t('Address must be at least 5 characters', 'पता कम से कम 5 अक्षरों का होना चाहिए', 'ঠিকানা কমপক্ষে ৫টি অক্ষরের হতে হবে')}
                                 </small>
                               )}
@@ -9646,7 +9646,7 @@ export default function App() {
                                 </h3>
                                 
                                 {isSectionDisabled && (
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--warning)' }}>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--warning-text)' }}>
                                     {t('Coupons work on single-shop Store Pickup orders.', 'कूपन सिंगल-शॉप स्टोर पिकअप ऑर्डर पर काम करते हैं।', 'কুপন সিঙ্গেল-শপ স্টোর পিকআপ অর্ডারে কাজ করে।')}
                                   </div>
                                 )}
@@ -9731,7 +9731,7 @@ export default function App() {
                                             </div>
                                           )}
                                           {isLocked && lockMessage && !isApplied && (
-                                            <div style={{ fontSize: '0.65rem', color: 'var(--warning)', marginTop: '0.2rem' }}>
+                                            <div style={{ fontSize: '0.65rem', color: 'var(--warning-text)', marginTop: '0.2rem' }}>
                                               {lockMessage}
                                             </div>
                                           )}
@@ -9813,7 +9813,7 @@ export default function App() {
                               <span>{t('Total', 'कुल', 'মোট')}</span>
                               <span>₹{cartTotal.toFixed(2)}</span>
                             </div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--warning)', marginTop: '0.5rem', textAlign: 'center', lineHeight: '1.4' }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--warning-text)', marginTop: '0.5rem', textAlign: 'center', lineHeight: '1.4' }}>
                               {t('Note: In case of cancellation, a platform commission is retained as a fee.', 'ध्यान दें: रद्दीकरण के मामले में, शुल्क के रूप में प्लेटफ़ॉर्म कमीशन बरकरार रखा जाता है।', 'দ্রষ্টব্য: বাতিলের ক্ষেত্রে, একটি প্ল্যাটফর্ম কমিশন ফি হিসাবে বজায় রাখা হয়।')}
                             </div>
                           </div>
@@ -10107,7 +10107,7 @@ export default function App() {
                               {/* Refer a friend Tile */}
                               <div className="referral-tile" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.05) 100%)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '12px', padding: '0.85rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                                  <Share2 size={16} style={{ color: 'var(--success)' }} />
+                                  <Share2 size={16} style={{ color: 'var(--success-text)' }} />
                                   <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                                     {t('Refer a friend', 'रेफर करें और कमाएं', 'বন্ধুকে রেফার করুন')}
                                   </span>
@@ -10122,7 +10122,7 @@ export default function App() {
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-overlay)', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px dashed rgba(34,197,94,0.4)' }}>
                                   <div>
                                     <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('Your Referral Code', 'आपका रेफरल कोड', 'আপনার রেফারেল কোড')}</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', letterSpacing: '0.1em', color: 'var(--success)' }}>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', letterSpacing: '0.1em', color: 'var(--success-text)' }}>
                                       {currentUser?.referral_code || '------'}
                                     </div>
                                   </div>
@@ -10251,7 +10251,7 @@ export default function App() {
                         </span>
                         <h1 style={{ fontSize: '1.75rem', margin: '0.25rem 0', color: 'var(--text-main)', fontWeight: 'bold' }}>{formatPoints(customerBalance)}</h1>
                         {customerHeldBalance > 0 && (
-                          <p style={{ fontSize: '0.65rem', color: 'var(--warning)', margin: '0.25rem 0 0' }}>
+                          <p style={{ fontSize: '0.65rem', color: 'var(--warning-text)', margin: '0.25rem 0 0' }}>
                             {formatPoints(customerHeldBalance)} {t('pending bill verification', 'बिल सत्यापन लंबित', 'বিল যাচাই মুলতুবি')}
                           </p>
                         )}
@@ -10270,7 +10270,7 @@ export default function App() {
                           style={{ padding: '0.25rem 0.5rem', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                           onClick={() => setShowFraudReportModal(true)}
                         >
-                          <ShieldAlert size={12} style={{ color: 'var(--warning)' }} />
+                          <ShieldAlert size={12} style={{ color: 'var(--warning-text)' }} />
                           {t('Report a problem', 'समस्या रिपोर्ट करें', 'সমস্যা রিপোর্ট করুন')}
                         </button>
                       </div>
@@ -10291,7 +10291,7 @@ export default function App() {
                             <div style={{ fontWeight: 'bold', color: ledgerAmountColor(l), fontSize: '0.8rem', textAlign: 'right' }}>
                               {l.amount > 0 ? '+' : ''}{formatPoints(l.amount)}
                               {l.type === 'EARN_HELD' && (
-                                <div style={{ fontSize: '0.55rem', color: 'var(--warning)', fontWeight: 'normal' }}>{t('pending', 'लंबित', 'মুলতুবি')}</div>
+                                <div style={{ fontSize: '0.55rem', color: 'var(--warning-text)', fontWeight: 'normal' }}>{t('pending', 'लंबित', 'মুলতুবি')}</div>
                               )}
                               {l.type === 'MANUAL_CREDIT' && (
                                 <div style={{ fontSize: '0.55rem', color: ledgerAmountColor(l), fontWeight: 'normal' }}>{t('from admin', 'एडमिन से', 'অ্যাডমিন থেকে')}</div>
@@ -10403,7 +10403,7 @@ export default function App() {
                               {o.status === 'READY' && o.fulfillment_type === 'PICKUP' && (
                                 <button
                                   className="btn btn-secondary"
-                                  style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', background: 'rgba(245,158,11,0.1)', color: 'var(--warning)', border: '1px solid var(--warning)' }}
+                                  style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', background: 'rgba(245,158,11,0.1)', color: 'var(--warning-text)', border: '1px solid var(--warning)' }}
                                   onClick={() => setNoShowAlert({ orderId: o.id, canReschedule: !o.reschedule_used })}
                                 >
                                   <AlertTriangle size={12} /> {t('Missed Pickup? Report & Reschedule', 'पिकअप छूट गया? रिशेड्यूल', 'পিকআপ মিস? পুনরায় নির্ধারণ')}
@@ -10468,7 +10468,7 @@ export default function App() {
 
                                   <button 
                                     className="badge badge-success" 
-                                    style={{ border: 'none', cursor: 'pointer', background: 'rgba(37,211,102,0.1)', color: 'var(--success)', padding: '0.2rem 0.4rem', fontSize: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.15rem' }}
+                                    style={{ border: 'none', cursor: 'pointer', background: 'rgba(37,211,102,0.1)', color: 'var(--success-text)', padding: '0.2rem 0.4rem', fontSize: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.15rem' }}
                                     onClick={() => setSimulatedWaMessage({
                                       orderId: o.id,
                                       customerName: currentUser.name,
@@ -10595,7 +10595,7 @@ export default function App() {
                         return (
                           <>
                             {isCableInactive && (
-                              <div style={{ background: 'var(--danger)', border: '1px solid #ef4444', color: 'var(--danger)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem' }}>
+                              <div style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger)', color: 'var(--danger-text)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem' }}>
                                 {t(
                                   'Your cable provider is currently inactive. Please choose a different provider or wait for their status to update.',
                                   'आपका केबल प्रदाता वर्तमान में निष्क्रिय है। कृपया एक अलग प्रदाता चुनें या उनकी स्थिति अपडेट होने की प्रतीक्षा करें।',
@@ -10604,7 +10604,7 @@ export default function App() {
                               </div>
                             )}
                             {isBroadbandInactive && (
-                              <div style={{ background: 'var(--danger)', border: '1px solid #ef4444', color: 'var(--danger)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem' }}>
+                              <div style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger)', color: 'var(--danger-text)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem' }}>
                                 {t(
                                   'Your broadband provider is currently inactive. Please choose a different provider or wait for their status to update.',
                                   'आपका ब्रॉडबैंड प्रदाता वर्तमान में निष्क्रिय है। कृपया एक अलग प्रदाता चुनें या उनकी स्थिति अपडेट होने की प्रतीक्षा करें।',
@@ -11014,9 +11014,9 @@ export default function App() {
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--warning-glow)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,153,0,0.2)', marginTop: '0.5rem' }}>
-                            <Sparkles size={16} style={{ color: 'var(--warning)' }} />
+                            <Sparkles size={16} style={{ color: 'var(--warning-text)' }} />
                             <div style={{ fontSize: '0.75rem' }}>
-                              <strong style={{ color: 'var(--warning)' }}>+{formatPoints(liveOrder.points_credited || liveOrder.estimated_points_credit || 0)}</strong>
+                              <strong style={{ color: 'var(--warning-text)' }}>+{formatPoints(liveOrder.points_credited || liveOrder.estimated_points_credit || 0)}</strong>
                               <span style={{ color: 'var(--text-muted)', marginLeft: '0.25rem' }}>{t('with this order', 'इस ऑर्डर के साथ', 'এই অর্ডারের সাথে')}</span>
                             </div>
                           </div>
@@ -11186,7 +11186,7 @@ export default function App() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <strong style={{ fontSize: '1.1rem' }}>{t('Your Carts', 'आपके कार्ट', 'আপনার কার্ট')} ({Object.keys(customerCarts).length})</strong>
                     {Object.keys(customerCarts).length > 0 && (
-                      <button onClick={() => setCustomerCarts({})} style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.85rem', cursor: 'pointer', padding: 0 }}>
+                      <button onClick={() => setCustomerCarts({})} style={{ background: 'none', border: 'none', color: 'var(--danger-text)', fontSize: '0.85rem', cursor: 'pointer', padding: 0 }}>
                         {t('Clear all', 'सभी हटाएं', 'সব মুছুন')}
                       </button>
                     )}
@@ -11216,7 +11216,7 @@ export default function App() {
                           </button>
                           <button 
                             onClick={() => setCustomerCarts(prev => { const n={...prev}; delete n[cart.stockistId]; return n; })}
-                            style={{ background: 'rgba(255,100,100,0.1)', border: 'none', color: 'var(--danger)', width: '24px', height: '24px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                            style={{ background: 'rgba(255,100,100,0.1)', border: 'none', color: 'var(--danger-text)', width: '24px', height: '24px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                           >✕</button>
                         </div>
                       </div>
@@ -11310,7 +11310,7 @@ export default function App() {
                   <span><Signal size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /><Battery size={12} style={{ display: 'inline', marginRight: '0.2rem' }} /> {phoneClock}</span>
                 </div>
                 <div style={{ padding: '2rem 1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justify: 'center', height: '100%', gap: '1rem' }}>
-                  <ShieldAlert size={48} style={{ color: 'var(--warning)', alignSelf: 'center' }} />
+                  <ShieldAlert size={48} style={{ color: 'var(--warning-text)', alignSelf: 'center' }} />
                   <h3>KYC Pending / Approved Profile Missing</h3>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                     Your KYC is either pending approval from the Super Admin, or your stockist profile has not been initialized.
@@ -11325,7 +11325,7 @@ export default function App() {
               <>
                 <div className="phone-header" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    {offlineMode ? <WifiOff size={12} style={{ color: 'var(--danger)' }} /> : <Wifi size={12} style={{ color: 'var(--accent)' }} />}
+                    {offlineMode ? <WifiOff size={12} style={{ color: 'var(--danger-text)' }} /> : <Wifi size={12} style={{ color: 'var(--accent)' }} />}
                     {stockistProfile.name}
                   </span>
                   <span className={`badge ${offlineMode ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.55rem' }}>
@@ -11350,7 +11350,7 @@ export default function App() {
                           {unacknowledgedOrders.length > 0 && (
                             <span style={{
                               position: 'absolute', top: -3, right: -3,
-                              background: 'var(--danger)', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                              background: 'var(--danger-bg)', color: 'var(--danger-text)',
                               borderRadius: '50%', minWidth: 17, height: 17,
                               fontSize: '0.62rem', fontWeight: 700,
                               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px'
@@ -11378,7 +11378,7 @@ export default function App() {
                             border: '1px solid var(--danger)', 
                             borderRadius: '8px', 
                             padding: '0.75rem', 
-                            color: 'var(--danger)', 
+                            color: 'var(--danger-text)', 
                             fontSize: '0.8rem',
                             display: 'flex',
                             alignItems: 'center',
@@ -11431,9 +11431,9 @@ export default function App() {
                         {/* COD Commission Owed Widget */}
                         <div style={{ background: 'linear-gradient(135deg, var(--bg-surface-elevated) 0%, rgba(255,255,255,0.02) 100%)', borderRadius: '12px', padding: '0.85rem 1rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '0.15rem', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                           <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                            <AlertCircle size={10} style={{ color: 'var(--warning)' }} /> {t("COD Commission Owed", "COD कमीशन देय", "COD কমিশন বকেয়া")}
+                            <AlertCircle size={10} style={{ color: 'var(--warning-text)' }} /> {t("COD Commission Owed", "COD कमीशन देय", "COD কমিশন বকেয়া")}
                           </span>
-                          <span style={{ fontSize: '1.4rem', fontWeight: 'bold', fontFamily: 'var(--font-display)', color: 'var(--warning)' }}>
+                          <span style={{ fontSize: '1.4rem', fontWeight: 'bold', fontFamily: 'var(--font-display)', color: 'var(--warning-text)' }}>
                             ₹{stockistAnalytics?.cod_commission_outstanding !== undefined ? stockistAnalytics.cod_commission_outstanding.toFixed(2) : '0.00'}
                           </span>
                           <span style={{ fontSize: '0.5rem', color: 'var(--text-muted)' }}>{t("Owed to FastNet", "फास्टनेट का देय", "ফাস্টনেট এর বকেয়া")}</span>
@@ -11633,7 +11633,7 @@ export default function App() {
                                     <span style={{ fontWeight: 'bold', fontSize: '0.75rem' }}>Order #{o.id.substring(2).toUpperCase()}</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                       {o.status === 'DELIVERED' && !o.stockist_reviewed && (
-                                        <span className="badge" style={{ background: 'rgba(245,158,11,0.15)', color: 'var(--warning)', fontSize: '0.6rem' }}>
+                                        <span className="badge" style={{ background: 'rgba(245,158,11,0.15)', color: 'var(--warning-text)', fontSize: '0.6rem' }}>
                                           {t('Needs Review', 'समीक्षा आवश्यक', 'রিভিউ প্রয়োজন')}
                                         </span>
                                       )}
@@ -11648,7 +11648,7 @@ export default function App() {
                                     <div>{o.customer_name || 'Customer'} • {o.items ? o.items.length : 0} items</div>
                                     <div style={{ color: 'var(--text-main)', marginTop: '0.1rem' }}>Total: ₹{parseFloat(o.total_price || 0).toFixed(2)}</div>
                                     {o.status === 'CANCELLED' && o.cancelled_by && (
-                                      <div style={{ marginTop: '0.2rem', color: 'var(--danger)' }}>
+                                      <div style={{ marginTop: '0.2rem', color: 'var(--danger-text)' }}>
                                         {t('Cancelled by', 'द्वारा रद्द', 'বাতিল করেছেন')} {o.cancelled_by}
                                       </div>
                                     )}
@@ -11656,7 +11656,7 @@ export default function App() {
                                   {(o.status === 'DELIVERED' || o.status === 'CANCELLED') && (
                                     <button 
                                       className="btn btn-secondary" 
-                                      style={{ width: '100%', padding: '0.25rem 0', marginTop: '0.5rem', fontSize: '0.65rem', background: 'rgba(245,158,11,0.06)', color: 'var(--warning)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}
+                                      style={{ width: '100%', padding: '0.25rem 0', marginTop: '0.5rem', fontSize: '0.65rem', background: 'rgba(245,158,11,0.06)', color: 'var(--warning-text)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}
                                       onClick={() => {
                                         setSubmittingFeedbackOrder(o);
                                         setFeedbackRating(5);
@@ -11759,12 +11759,12 @@ export default function App() {
                                       </span>
                                     )}
                                     {p.bill_status === 'REJECTED' && (
-                                      <span style={{ fontSize: '0.65rem', background: 'var(--danger)', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', padding: '2px 6px', borderRadius: 10 }} title={p.rejection_reason}>
+                                      <span style={{ fontSize: '0.65rem', background: 'var(--danger-bg)', color: 'var(--danger-text)', padding: '2px 6px', borderRadius: 10 }} title={p.rejection_reason}>
                                         {t('Rejected', 'अस्वीकृत', 'প্রত্যাখ্যাত')}{p.rejection_reason ? `: ${p.rejection_reason}` : ''}
                                       </span>
                                     )}
                                     {p.is_sellable === false && (
-                                      <div style={{ background: 'var(--danger)', border: '1px solid var(--danger)', padding: '0.2rem 0.5rem', borderRadius: '4px', marginTop: '0.25rem', color: 'var(--danger)', fontSize: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                      <div style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger)', padding: '0.2rem 0.5rem', borderRadius: '4px', marginTop: '0.25rem', color: 'var(--danger-text)', fontSize: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                           <AlertTriangle size={12} />
                                           <strong>{t("Not selling. Bill rejected", "बिक्री बंद. बिल अस्वीकृत", "বিক্রি বন্ধ. বিল প্রত্যাখ্যাত")}</strong>
@@ -11792,7 +11792,7 @@ export default function App() {
                                     <span>{t("Stock qty:", "स्टॉक मात्रा:", "স্টক পরিমাণ:")}</span>
                                     <strong style={{ color: p.stock_qty > 0 ? 'var(--accent)' : 'var(--danger)' }}>{p.stock_qty}</strong>
                                     {isLowStock && (
-                                      <span style={{ color: 'var(--warning)', display: 'inline-flex', alignItems: 'center', gap: '0.15rem', fontWeight: 'bold' }}>
+                                      <span style={{ color: 'var(--warning-text)', display: 'inline-flex', alignItems: 'center', gap: '0.15rem', fontWeight: 'bold' }}>
                                         <AlertTriangle size={10} /> {t("Low Stock", "कम स्टॉक", "কম স্টক")}
                                       </span>
                                     )}
@@ -11938,7 +11938,7 @@ export default function App() {
                               <div style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', marginBottom: '0.15rem' }}>
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}><CheckCircle2 size={10} style={{ color: 'var(--accent)' }} /> Fulfilled: <strong>{stockistAnalytics.total_fulfilled}</strong></span>
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}><AlertCircle size={10} style={{ color: 'var(--danger)' }} /> Cancelled: <strong>{stockistAnalytics.total_cancelled}</strong></span>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}><AlertCircle size={10} style={{ color: 'var(--danger-text)' }} /> Cancelled: <strong>{stockistAnalytics.total_cancelled}</strong></span>
                                 </div>
                                 <div style={{ height: '6px', background: 'var(--surface-overlay)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
                                   {stockistAnalytics.total_fulfilled + stockistAnalytics.total_cancelled > 0 ? (
@@ -12150,7 +12150,7 @@ export default function App() {
 
                         <div className="input-group">
                           <label className="input-label">
-                            {t('Wholesale bill / invoice (photo)', 'थोक बिल / चालान (फोटो)', 'পাইকারি বিল / ইনভয়েস (ছবি)')} <span style={{ color: 'var(--danger)' }}>*</span>
+                            {t('Wholesale bill / invoice (photo)', 'थोक बिल / चालान (फोटो)', 'পাইকারি বিল / ইনভয়েস (ছবি)')} <span style={{ color: 'var(--danger-text)' }}>*</span>
                           </label>
                           <input 
                             type="file" 
@@ -12201,7 +12201,7 @@ export default function App() {
                         </h3>
 
                         {(Math.abs(parseFloat(editProdPrice || 0) - editingProduct.price) > 0.001 || Math.abs(parseFloat(editProdCostPrice || 0) - editingProduct.cost_price) > 0.001) && (
-                          <div style={{ background: 'var(--danger)', border: '1px solid var(--danger)', padding: '0.5rem', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--danger)' }}>
+                          <div style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger)', padding: '0.5rem', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--danger-text)' }}>
                             ⚠️ Price change detected. A new bill is required.
                           </div>
                         )}
@@ -12238,7 +12238,7 @@ export default function App() {
                             </div>
                           )}
                           <label className="input-label">
-                            {t('Replace wholesale bill photo', 'थोक बिल फोटो बदलें', 'পাইকারি বিলের ছবি পরিবর্তন করুন')} {priceChanged && <span style={{ color: 'var(--danger)' }}>*</span>}
+                            {t('Replace wholesale bill photo', 'थोक बिल फोटो बदलें', 'পাইকারি বিলের ছবি পরিবর্তন করুন')} {priceChanged && <span style={{ color: 'var(--danger-text)' }}>*</span>}
                           </label>
                           <input 
                             type="file" 
@@ -12866,7 +12866,7 @@ export default function App() {
               {adminRedemptionApprovals.filter(r => r.status === 'DISPUTED').length > 0 && (
                 <div 
                   onClick={() => { setAdminTab('redemption_approvals'); setRedemptionApprovalSubTab('disputed'); fetchRedemptionApprovals(); }}
-                  style={{ background: 'rgba(234, 179, 8, 0.1)', border: '1px solid var(--warning)', padding: '1rem', borderRadius: '10px', cursor: 'pointer', marginBottom: '1.25rem', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  style={{ background: 'rgba(234, 179, 8, 0.1)', border: '1px solid var(--warning)', padding: '1rem', borderRadius: '10px', cursor: 'pointer', marginBottom: '1.25rem', color: 'var(--warning-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                 >
                   ⚠️
                   <div>
@@ -12877,7 +12877,7 @@ export default function App() {
               {adminPartnerFeedback.filter(f => f.status === 'NEW').length > 0 && (
                 <div 
                   onClick={() => { handleSetAdminTab('feedback'); }}
-                  style={{ background: 'rgba(234, 179, 8, 0.1)', border: '1px solid var(--warning)', padding: '1rem', borderRadius: '10px', cursor: 'pointer', marginBottom: '1.25rem', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  style={{ background: 'rgba(234, 179, 8, 0.1)', border: '1px solid var(--warning)', padding: '1rem', borderRadius: '10px', cursor: 'pointer', marginBottom: '1.25rem', color: 'var(--warning-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                 >
                   📝
                   <div>
@@ -12895,7 +12895,7 @@ export default function App() {
                     {t('Redemptions Pending Admin Approval', 'प्रशासक अनुमोदन लंबित रिडीम', 'অ্যাডমিন অনুমোদনের অপেক্ষায় রিডিম')}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.35rem' }}>
-                    <span style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--warning)' }}>
+                    <span style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--warning-text)' }}>
                       {adminRedemptionApprovals.filter(r => r.status === 'PENDING_ADMIN_APPROVAL').length}
                     </span>
                     <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>Pending</span>
@@ -12921,7 +12921,7 @@ export default function App() {
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
                     {t('Revenue This Week', 'इस सप्ताह का राजस्व', 'এই সপ্তাহের মোট রাজস্ব')}
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success)', marginTop: '0.35rem' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success-text)', marginTop: '0.35rem' }}>
                     {analyticsData ? `₹${analyticsData?.orders?.revenue_this_week_rupees ?? 0}` : '-'}
                   </div>
                 </div>
@@ -13010,7 +13010,7 @@ export default function App() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          {step1Done ? <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>1</span>}
+                          {step1Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>1</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step1Done ? '#4ade80' : 'white' }}>
                               1. {t('Create your first service region', 'अपना पहला सेवा क्षेत्र बनाएं', 'আপনার প্রথম পরিষেবা অঞ্চল তৈরি করুন')}
@@ -13034,7 +13034,7 @@ export default function App() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          {step2Done ? <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>2</span>}
+                          {step2Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>2</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step2Done ? '#4ade80' : (step1Done ? 'white' : 'var(--text-muted)') }}>
                               2. {t('Register a wholesaler for that region', 'उस क्षेत्र के लिए थोक विक्रेता पंजीकृत करें', 'সেই অঞ্চলের জন্য একজন পাইকারী বিক্রেতা রেজিস্টার করুন')}
@@ -13060,7 +13060,7 @@ export default function App() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          {step3Done ? <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>3</span>}
+                          {step3Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>3</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step3Done ? '#4ade80' : (step2Done ? 'white' : 'var(--text-muted)') }}>
                               3. {t('Wait for a shopkeeper to register, then approve them', 'दुकानदार के पंजीकरण की प्रतीक्षा करें, फिर उन्हें स्वीकृत करें', 'দোকানদারের নিবন্ধনের জন্য অপেক্ষা করুন, তারপর তাদের অনুমোদন করুন')}
@@ -13086,7 +13086,7 @@ export default function App() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          {step4Done ? <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>4</span>}
+                          {step4Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>4</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step4Done ? '#4ade80' : (step3Done ? 'white' : 'var(--text-muted)') }}>
                               4. {t('Invite customers to sign up', 'ग्राहकों को साइन अप करने के लिए आमंत्रित करें', 'গ্রাহকদের সাইন আপ করতে আমন্ত্রণ জানান')}
@@ -13125,7 +13125,7 @@ export default function App() {
                   {analyticsLoading ? (
                     <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading analytics data...</div>
                   ) : analyticsError ? (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--danger)' }}>Could not load analytics. Tap Refresh to retry.</div>
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--danger-text)' }}>Could not load analytics. Tap Refresh to retry.</div>
                   ) : analyticsData ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       {/* Section 1: Users Overview */}
@@ -13138,7 +13138,7 @@ export default function App() {
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Approved Stockists</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success)' }}>{analyticsData.users?.total_stockists_approved || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success-text)' }}>{analyticsData.users?.total_stockists_approved || 0}</div>
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Active Partners</div>
@@ -13173,7 +13173,7 @@ export default function App() {
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Revenue Today / Week / Month</div>
-                            <div style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--success)' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--success-text)' }}>
                               ₹{analyticsData.orders?.revenue_today_rupees || 0} / ₹{analyticsData.orders?.revenue_this_week_rupees || 0} / ₹{analyticsData.orders?.revenue_this_month_rupees || 0}
                             </div>
                           </div>
@@ -13200,7 +13200,7 @@ export default function App() {
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Pending Admin Approval</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--warning)' }}>{analyticsData.redemptions?.pending_approvals || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--warning-text)' }}>{analyticsData.redemptions?.pending_approvals || 0}</div>
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Points Redeemed (Month)</div>
@@ -13208,7 +13208,7 @@ export default function App() {
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Partner Payout Owed (Month 88%)</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success)' }}>₹{analyticsData.redemptions?.total_partner_payout_owed_this_month || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success-text)' }}>₹{analyticsData.redemptions?.total_partner_payout_owed_this_month || 0}</div>
                           </div>
                         </div>
                       </div>
@@ -13219,11 +13219,11 @@ export default function App() {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Points Issued All-time</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success)' }}>{analyticsData.points?.total_points_issued_all_time || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success-text)' }}>{analyticsData.points?.total_points_issued_all_time || 0}</div>
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Points Redeemed All-time</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--danger)' }}>{analyticsData.points?.total_points_redeemed_all_time || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--danger-text)' }}>{analyticsData.points?.total_points_redeemed_all_time || 0}</div>
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Points Outstanding</div>
@@ -13254,7 +13254,7 @@ export default function App() {
                                 <tr key={idx} style={{ borderBottom: '1px dashed var(--border-color)' }}>
                                   <td style={{ padding: '0.35rem', fontWeight: 'bold' }}>{s.name}</td>
                                   <td style={{ padding: '0.35rem', color: 'var(--text-muted)' }}>{s.region}</td>
-                                  <td style={{ padding: '0.35rem', color: 'var(--success)', fontWeight: 'bold' }}>₹{s.gmv}</td>
+                                  <td style={{ padding: '0.35rem', color: 'var(--success-text)', fontWeight: 'bold' }}>₹{s.gmv}</td>
                                 </tr>
                               ))}
                               {(analyticsData.stockists?.top_5_by_gmv_this_month || []).length === 0 && (
@@ -13677,7 +13677,7 @@ export default function App() {
                         marginBottom: '1.5rem',
                         padding: '0.85rem 1.25rem',
                         borderColor: 'rgba(239, 68, 68, 0.5)',
-                        background: 'var(--danger)',
+                        background: 'var(--danger-bg)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -13805,7 +13805,7 @@ export default function App() {
                           <tr key={idx}>
                             <td><span className="badge badge-warning">{f.entity_type}</span></td>
                             <td>{f.entity_name || f.entity_id}</td>
-                            <td style={{ fontWeight: 'bold', color: 'var(--danger)' }}>{f.active_reports_count}</td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--danger-text)' }}>{f.active_reports_count}</td>
                           </tr>
                         ))}
                         {(!healthData?.fraud_signals || healthData.fraud_signals.length === 0) && (
@@ -14237,7 +14237,7 @@ export default function App() {
                                 <td><span className="badge badge-secondary">{u.type || (u.role === 'PARTNER_LEAD' ? 'Partner Lead' : 'Stockist')}</span></td>
                                 <td>{u.phone || '-'}</td>
                                 <td><strong>{u.name || 'Unnamed'}</strong></td>
-                                <td style={{ color: 'var(--danger)', fontSize: '0.8rem' }}>{reasonText}</td>
+                                <td style={{ color: 'var(--danger-text)', fontSize: '0.8rem' }}>{reasonText}</td>
                                 <td>{renderKycStatusBadge(u.kyc_status || 'BLACKLISTED', true)}</td>
                                 <td>
                                   <div style={{ display: 'flex', gap: '0.3rem' }}>
@@ -14655,7 +14655,7 @@ export default function App() {
                             </td>
                             <td>
                               {b.held_points > 0 ? (
-                                <div style={{ color: 'var(--warning)', fontWeight: 'bold' }}>{formatPoints(b.held_points)}</div>
+                                <div style={{ color: 'var(--warning-text)', fontWeight: 'bold' }}>{formatPoints(b.held_points)}</div>
                               ) : <div style={{ color: 'var(--text-muted)' }}>0</div>}
                               {b.affected_orders > 0 && <div style={{ fontSize: '0.65rem' }}>{b.affected_orders} order(s)</div>}
                             </td>
@@ -14846,7 +14846,7 @@ export default function App() {
                   </p>
 
                   <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', borderColor: 'rgba(234, 179, 8, 0.4)', background: 'var(--warning-glow)' }}>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--warning)', margin: 0 }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--warning-text)', margin: 0 }}>
                       Legacy per-order commission rates are no longer used for new orders. Historical orders retain their original math.
                     </p>
                   </div>
@@ -14904,7 +14904,7 @@ export default function App() {
                           )}
                         </div>
                         {globalConfigDirty && (
-                          <p style={{ fontSize: '0.75rem', color: 'var(--warning)', margin: 0 }}>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--warning-text)', margin: 0 }}>
                             {t('Unsaved changes', 'सहेजे नहीं गए बदलाव', 'অসংরক্ষিত পরিবর্তন')}
                           </p>
                         )}
@@ -15047,7 +15047,7 @@ export default function App() {
                     <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                       <button 
                         className="btn btn-secondary" 
-                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', border: '1px solid var(--warning)', color: 'var(--warning)' }} 
+                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', border: '1px solid var(--warning)', color: 'var(--warning-text)' }} 
                         onClick={handleClearRateLimits}
                       >
                         {t('Clear Rate Limits', 'दर सीमाएँ साफ़ करें', 'রেট সীমা মুছুন')}
@@ -15105,11 +15105,11 @@ export default function App() {
                           <td style={{ fontFamily: 'monospace' }}>#{fb.order_id.substring(2).toUpperCase()}</td>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                              <span style={{ color: 'var(--warning)', fontWeight: 'bold' }}>
+                              <span style={{ color: 'var(--warning-text)', fontWeight: 'bold' }}>
                                 {'★'.repeat(fb.rating)}{'☆'.repeat(5 - fb.rating)}
                               </span>
                               {fb.report_flag && (
-                                <span className="badge badge-danger" style={{ fontSize: '0.55rem', padding: '0.1rem 0.25rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem', background: 'var(--danger)', color: 'var(--danger)' }}>
+                                <span className="badge badge-danger" style={{ fontSize: '0.55rem', padding: '0.1rem 0.25rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem', background: 'var(--danger-bg)', color: 'var(--danger-text)' }}>
                                   <AlertTriangle size={10} /> VIOLATION
                                 </span>
                               )}
@@ -15325,11 +15325,11 @@ export default function App() {
                           <td>{an.customer_name}</td>
                           <td>{an.stockist_name}</td>
                           <td><span className="badge badge-danger">{an.frequency_metric}</span></td>
-                          <td style={{ color: 'var(--warning)', fontSize: '0.8rem' }}>{an.reason}</td>
+                          <td style={{ color: 'var(--warning-text)', fontSize: '0.8rem' }}>{an.reason}</td>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                               {an.status === 'FLAGGED' ? (
-                                <span style={{ color: 'var(--danger)', fontWeight: 'bold', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <span style={{ color: 'var(--danger-text)', fontWeight: 'bold', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                   <AlertTriangle size={12} /> Flagged for Investigation
                                 </span>
                               ) : an.status === 'INVESTIGATED' ? (
@@ -15664,11 +15664,11 @@ export default function App() {
                                     setEditingVendorRegionId(v.region_id);
                                   }}>{t('Edit', 'संपादित करें', 'সম্পাদনা করুন')}</button>
                                   {v.is_active === false ? (
-                                    <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', borderColor: 'var(--success)', color: 'var(--success)' }} onClick={() => handleReactivateVendor(v)}>{t('Reactivate', 'पुनः सक्रिय करें', 'পুনরায় সক্রিয় করুন')}</button>
+                                    <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', borderColor: 'var(--success)', color: 'var(--success-text)' }} onClick={() => handleReactivateVendor(v)}>{t('Reactivate', 'पुनः सक्रिय करें', 'পুনরায় সক্রিয় করুন')}</button>
                                   ) : (
-                                    <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', borderColor: 'var(--warning)', color: 'var(--warning)' }} onClick={() => handleDeactivateVendor(v)}>{t('Deactivate', 'निष्क्रिय करें', 'নিষ্ক্রিয় করুন')}</button>
+                                    <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', borderColor: 'var(--warning)', color: 'var(--warning-text)' }} onClick={() => handleDeactivateVendor(v)}>{t('Deactivate', 'निष्क्रिय करें', 'নিষ্ক্রিয় করুন')}</button>
                                   )}
-                                  <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => handleRemoveVendor(v)}>{t('Delete', 'हटाएं', 'মুছে ফেলুন')}</button>
+                                  <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', borderColor: 'var(--danger)', color: 'var(--danger-text)' }} onClick={() => handleRemoveVendor(v)}>{t('Delete', 'हटाएं', 'মুছে ফেলুন')}</button>
                                 </div>
                               </td>
                             </tr>
@@ -15931,7 +15931,7 @@ export default function App() {
                         const isPaid = correspondingPayout?.is_paid;
                         
                         return (
-                          <tr key={o.id} style={isRefundDue ? { background: 'var(--danger)', borderLeft: '3px solid var(--danger)' } : {}}>
+                          <tr key={o.id} style={isRefundDue ? { background: 'var(--danger-bg)', borderLeft: '3px solid var(--danger)' } : {}}>
                             <td style={{ fontFamily: 'monospace' }}>#{o.id.substring(2).toUpperCase()}</td>
                             <td>{o.stockist_name}</td>
                             <td><span className="badge badge-primary" style={{ fontSize: '0.65rem' }}>{formatOrderStatusDisplay(o.status, o.fulfillment_type)}</span></td>
@@ -16096,7 +16096,7 @@ export default function App() {
         <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-elevated)', backdropFilter: 'blur(16px)' }}>
           {setupSuccessAdmin ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--success-glow)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--success-glow)', color: 'var(--success-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
                 <CheckCircle2 size={32} />
               </div>
               <div>
@@ -16137,7 +16137,7 @@ export default function App() {
               </div>
 
               {setupError && (
-                <div style={{ background: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.4)', color: 'var(--danger)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ background: 'var(--danger-bg)', border: '1px solid rgba(239, 68, 68, 0.4)', color: 'var(--danger-text)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <AlertCircle size={16} />
                   <span>{setupError}</span>
                 </div>
@@ -16369,7 +16369,7 @@ export default function App() {
                 {t('Reward Points Earned', 'अर्जित रिवॉर्ड अंक', 'অর্জিত রিওয়ার্ড পয়েন্ট')}
               </span>
               <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0.25rem 0' }}>
-                <Sparkles size={20} style={{ color: 'var(--warning)' }} />
+                <Sparkles size={20} style={{ color: 'var(--warning-text)' }} />
                 +{formatPoints(deliveredModalOrder.points_credited || 0)}
               </h2>
             </div>
@@ -16550,7 +16550,7 @@ export default function App() {
                     </div>
                   )}
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>
-                    Resp: <span style={{ color: 'var(--success)' }}>{log.response}</span>
+                    Resp: <span style={{ color: 'var(--success-text)' }}>{log.response}</span>
                   </div>
                 </div>
               ))}
@@ -16726,7 +16726,7 @@ export default function App() {
                     onChange={() => setGenericRewardErrors(prev => ({...prev, name: null}))}
                     autoFocus
                   />
-                  {genericRewardErrors.name && <div id="reward_name_error" style={{ fontSize: '0.78rem', color: 'var(--danger)', marginTop: '0.25rem' }}>{genericRewardErrors.name}</div>}
+                  {genericRewardErrors.name && <div id="reward_name_error" style={{ fontSize: '0.78rem', color: 'var(--danger-text)', marginTop: '0.25rem' }}>{genericRewardErrors.name}</div>}
                 </div>
 
                 <div className="input-group">
@@ -16764,7 +16764,7 @@ export default function App() {
                       />
                       <span style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.9rem', pointerEvents: 'none' }}>pts</span>
                     </div>
-                    {genericRewardErrors.point_cost && <div id="reward_point_cost_error" style={{ fontSize: '0.78rem', color: 'var(--danger)', marginTop: '0.25rem' }}>{genericRewardErrors.point_cost}</div>}
+                    {genericRewardErrors.point_cost && <div id="reward_point_cost_error" style={{ fontSize: '0.78rem', color: 'var(--danger-text)', marginTop: '0.25rem' }}>{genericRewardErrors.point_cost}</div>}
                   </div>
                   
                   <div className="input-group">
@@ -16791,7 +16791,7 @@ export default function App() {
                         onChange={() => setGenericRewardErrors(prev => ({...prev, value_rupees: null}))}
                       />
                     </div>
-                    {genericRewardErrors.value_rupees && <div id="reward_value_rupees_error" style={{ fontSize: '0.78rem', color: 'var(--danger)', marginTop: '0.25rem' }}>{genericRewardErrors.value_rupees}</div>}
+                    {genericRewardErrors.value_rupees && <div id="reward_value_rupees_error" style={{ fontSize: '0.78rem', color: 'var(--danger-text)', marginTop: '0.25rem' }}>{genericRewardErrors.value_rupees}</div>}
                   </div>
 
                   <div className="input-group">
@@ -16816,7 +16816,7 @@ export default function App() {
                         aria-invalid={!!genericRewardErrors.min_order_value}
                       />
                     </div>
-                    {genericRewardErrors.min_order_value && <div style={{ fontSize: '0.78rem', color: 'var(--danger)', marginTop: '0.25rem' }}>{genericRewardErrors.min_order_value}</div>}
+                    {genericRewardErrors.min_order_value && <div style={{ fontSize: '0.78rem', color: 'var(--danger-text)', marginTop: '0.25rem' }}>{genericRewardErrors.min_order_value}</div>}
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                       Orders of exactly this amount or more qualify. Leave empty for no minimum.
                     </div>
@@ -16866,8 +16866,8 @@ export default function App() {
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>days</span>
                       </div>
                     )}
-                    {genericRewardErrors.cooldown_mode && <div id="reward_cooldown_mode_error" style={{ fontSize: '0.78rem', color: 'var(--danger)', marginTop: '0.25rem' }}>{genericRewardErrors.cooldown_mode}</div>}
-                    {genericRewardErrors.cooldown_days && <div style={{ fontSize: '0.78rem', color: 'var(--danger)', marginTop: '0.25rem' }}>{genericRewardErrors.cooldown_days}</div>}
+                    {genericRewardErrors.cooldown_mode && <div id="reward_cooldown_mode_error" style={{ fontSize: '0.78rem', color: 'var(--danger-text)', marginTop: '0.25rem' }}>{genericRewardErrors.cooldown_mode}</div>}
+                    {genericRewardErrors.cooldown_days && <div style={{ fontSize: '0.78rem', color: 'var(--danger-text)', marginTop: '0.25rem' }}>{genericRewardErrors.cooldown_days}</div>}
                   </div>
 
                   <div className="input-group">
@@ -16891,7 +16891,7 @@ export default function App() {
                     <div id="reward_valid_until_desc" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                       Customers can't redeem after this date. Leave empty for no end date.
                     </div>
-                    {genericRewardErrors.valid_until && <div id="reward_valid_until_error" style={{ fontSize: '0.78rem', color: 'var(--danger)', marginTop: '0.25rem' }}>{genericRewardErrors.valid_until}</div>}
+                    {genericRewardErrors.valid_until && <div id="reward_valid_until_error" style={{ fontSize: '0.78rem', color: 'var(--danger-text)', marginTop: '0.25rem' }}>{genericRewardErrors.valid_until}</div>}
                   </div>
                 </div>
 
@@ -17350,7 +17350,7 @@ export default function App() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div className="input-group">
                 <label htmlFor="edit-stk-name" className="input-label">
-                  {t('Shop Name', 'दुकान का नाम', 'দোকানের নাম')} <span style={{ color: 'var(--danger)' }}>*</span>
+                  {t('Shop Name', 'दुकान का नाम', 'দোকানের নাম')} <span style={{ color: 'var(--danger-text)' }}>*</span>
                 </label>
                 <input 
                   id="edit-stk-name" 
@@ -17363,7 +17363,7 @@ export default function App() {
               </div>
               <div className="input-group">
                 <label htmlFor="edit-stk-address" className="input-label">
-                  {t('Shop Address', 'दुकान का पता', 'দোকানের ঠিকানা')} <span style={{ color: 'var(--danger)' }}>*</span>
+                  {t('Shop Address', 'दुकान का पता', 'দোকানের ঠিকানা')} <span style={{ color: 'var(--danger-text)' }}>*</span>
                 </label>
                 <input 
                   id="edit-stk-address" 
@@ -17377,7 +17377,7 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', alignItems: 'start' }}>
                 <div className="input-group">
                   <label htmlFor="edit-stk-open" className="input-label" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={t('Opening Time', 'खुलने का समय', 'খোলার সময়')}>
-                    {t('Opening Time', 'खुलने का समय', 'খোলার সময়')} <span style={{ color: 'var(--danger)' }}>*</span>
+                    {t('Opening Time', 'खुलने का समय', 'খোলার সময়')} <span style={{ color: 'var(--danger-text)' }}>*</span>
                   </label>
                   <input 
                     id="edit-stk-open" 
@@ -17392,7 +17392,7 @@ export default function App() {
                 </div>
                 <div className="input-group">
                   <label htmlFor="edit-stk-close" className="input-label" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={t('Closing Time', 'बंद होने का समय', 'বন্ধের সময়')}>
-                    {t('Closing Time', 'बंद होने का समय', 'বন্ধের সময়')} <span style={{ color: 'var(--danger)' }}>*</span>
+                    {t('Closing Time', 'बंद होने का समय', 'বন্ধের সময়')} <span style={{ color: 'var(--danger-text)' }}>*</span>
                   </label>
                   <input 
                     id="edit-stk-close" 
@@ -17407,13 +17407,13 @@ export default function App() {
                 </div>
                 <div className="input-group">
                   <label htmlFor="edit-stk-eta" className="input-label" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={t('Prep ETA (min)', 'तैयारी का समय (मिनट)', 'প্রস্তুতি সময় (মিনিট)')}>
-                    {t('Prep ETA', 'तैयारी का समय', 'প্রস্তুতি সময়')} <span style={{ color: 'var(--danger)' }}>*</span>
+                    {t('Prep ETA', 'तैयारी का समय', 'প্রস্তুতি সময়')} <span style={{ color: 'var(--danger-text)' }}>*</span>
                   </label>
                   <NumberStepper id="edit-stk-eta" value={editStkEta} onChange={v => setEditStkEta(parseInt(v, 10))} min={5} max={120} step={5} decimals={0} fullWidth />
                 </div>
                 <div className="input-group">
                   <label htmlFor="edit-stk-radius" className="input-label" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={t('Delivery Radius (km)', 'डिलीवरी का दायरा (किमी)', 'ডেলিভারি ব্যাসার্ধ (কিমি)')}>
-                    {t('Delivery Radius', 'डिलीवरी का दायरा', 'ডেলিভারি ব্যাসার্ধ')} <span style={{ color: 'var(--danger)' }}>*</span>
+                    {t('Delivery Radius', 'डिलीवरी का दायरा', 'ডেলিভারি ব্যাসার্ধ')} <span style={{ color: 'var(--danger-text)' }}>*</span>
                   </label>
                   <NumberStepper id="edit-stk-radius" value={editStkRadius} onChange={v => setEditStkRadius(parseFloat(v))} min={0.5} step={0.5} decimals={1} suffix="km" fullWidth />
                 </div>
@@ -17421,14 +17421,14 @@ export default function App() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.5rem' }}>
                 <div className="input-group">
-                  <label className="input-label">{t('Region', 'क्षेत्र', 'অঞ্চল')} <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <label className="input-label">{t('Region', 'क्षेत्र', 'অঞ্চল')} <span style={{ color: 'var(--danger-text)' }}>*</span></label>
                   <select className="text-input" value={editStkRegion} onChange={e => setEditStkRegion(e.target.value)}>
                     <option value="">{t('Select Region...', 'क्षेत्र चुनें...', 'অঞ্চল নির্বাচন করুন...')}</option>
                     {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
                 </div>
                 <div className="input-group">
-                  <label className="input-label">{t('Wholesaler', 'थोक विक्रेता', 'হোলসেলার')} <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <label className="input-label">{t('Wholesaler', 'थोक विक्रेता', 'হোলসেলার')} <span style={{ color: 'var(--danger-text)' }}>*</span></label>
                   <select className="text-input" value={editStkVendor} onChange={e => setEditStkVendor(e.target.value)}>
                     <option value="">{t('Select Wholesaler...', 'थोक विक्रेता चुनें...', 'হোলসেলার নির্বাচন করুন...')}</option>
                     {vendors.filter(v => !editStkRegion || v.region_id === editStkRegion).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
@@ -17451,7 +17451,7 @@ export default function App() {
               </div>
 
               <div style={{ padding: '0.75rem', background: 'var(--surface-overlay)', borderRadius: '6px', border: '1px solid rgba(255,0,0,0.1)', marginTop: '0.5rem' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--warning-text)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   <ShieldAlert size={14} /> {t('Identity / KYC (Changes are logged)', 'पहचान / KYC (परिवर्तन लॉग किए जाते हैं)', 'পরিচয় / KYC (পরিবর্তন লগ করা হয়)')}
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -17463,7 +17463,7 @@ export default function App() {
                     <label className="input-label">{t('Phone', 'फ़ोन', 'ফোন')}</label>
                     <input type="tel" inputMode="numeric" maxLength={10} className="text-input" value={editStkPhone} onChange={e => setEditStkPhone(normalizeFrontendPhone(e.target.value))} />
                     {editStkPhone.length > 0 && editStkPhone.length !== 10 && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: '0.2rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--danger-text)', marginTop: '0.2rem' }}>
                         {t('Enter exactly 10 digits', 'बिल्कुल 10 अंक दर्ज करें', 'ঠিক ১০টি সংখ্যা লিখুন')}
                       </span>
                     )}
@@ -17540,7 +17540,7 @@ export default function App() {
               )}
 
               <div className="input-group">
-                <label className="input-label" style={{ color: 'var(--warning)' }}>Type "CONFIRM" to authorize this change</label>
+                <label className="input-label" style={{ color: 'var(--warning-text)' }}>Type "CONFIRM" to authorize this change</label>
                 <input 
                   ref={commissionConfirmRef}
                   type="text" 
@@ -17579,7 +17579,7 @@ export default function App() {
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Stockist: <strong>{selectedStockistDetail.name}</strong></p>
 
             {stockistBindingsCount > 0 && (
-              <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid var(--warning)', borderRadius: '6px', padding: '0.65rem', margin: '0.75rem 0', fontSize: '0.75rem', color: 'var(--warning)' }}>
+              <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid var(--warning)', borderRadius: '6px', padding: '0.65rem', margin: '0.75rem 0', fontSize: '0.75rem', color: 'var(--warning-text)' }}>
                 <AlertTriangle size={14} style={{ display: 'inline', marginRight: '0.35rem' }} />
                 <strong>Warning:</strong> Moving this stockist will affect <strong>{stockistBindingsCount}</strong> existing customer binding(s).
               </div>
@@ -17876,7 +17876,7 @@ export default function App() {
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--danger)' }}>Reject Redemption Request</h3>
+              <h3 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--danger-text)' }}>Reject Redemption Request</h3>
               <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setShowRejectRedemptionModal(false)}><X size={14} /></button>
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
@@ -18106,7 +18106,7 @@ export default function App() {
             <h3>Reject Bill Photo</h3>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Product: {rejectingBill.product_name || rejectingBill.product_id}</p>
             <div className="input-group" style={{ margin: '1rem 0' }}>
-              <label className="input-label">Reason for Rejection (min 5 chars) <span style={{ color: 'var(--danger)' }}>*</span></label>
+              <label className="input-label">Reason for Rejection (min 5 chars) <span style={{ color: 'var(--danger-text)' }}>*</span></label>
               <textarea 
                 className="text-input" 
                 style={{ height: '80px', fontSize: '0.8rem' }}

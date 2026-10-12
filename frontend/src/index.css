@@ -22,6 +22,11 @@
   --info: #38BDF8;
   --info-glow: rgba(56, 189, 248, 0.15);
   
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --danger-text: #9F1D14;
+  --success-text: #065F46;
+  --warning-text: #92400E;
+  
   --text-main: #61210F;
   --text-muted: #7A4738;
   
@@ -74,6 +79,11 @@
   --warning-glow: rgba(245, 158, 11, 0.15);
   --info: #38BDF8;
   --info-glow: rgba(56, 189, 248, 0.15);
+  
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --danger-text: #FCA5A5;
+  --success-text: #34D399;
+  --warning-text: #FBBF24;
   
   --text-main: #FDF0D5;
   --text-muted: #C5BBA4;
@@ -518,9 +528,16 @@ select option:disabled {
   background: var(--badge-primary-bg);
   color: var(--badge-primary-text);
 }
-.badge-success { background: var(--success-glow); color: var(--success); }
-.badge-warning { background: var(--warning-glow); color: var(--warning); }
-.badge-danger { background: rgba(239, 68, 68, 0.15); color: #F87171; }
+.badge-success { background: var(--success-glow); color: var(--success-text); }
+.badge-warning { background: var(--warning-glow); color: var(--warning-text); }
+.badge-danger { background: var(--danger-bg); color: var(--danger-text); }
+
+.text-input:-webkit-autofill, .text-input:-webkit-autofill:hover, .text-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-main);
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-surface) inset;
+  caret-color: var(--text-main);
+  transition: background-color 9999s;
+}
 
 /* Custom Marketing/Onboarding Site Layout */
 .marketing-container {
