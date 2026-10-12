@@ -2,7 +2,7 @@
 
 /* global CustomEvent, Notification */
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { 
   ShoppingBag, 
   Home,
@@ -574,108 +574,46 @@ export default function App() {
     } catch (e) { }
   }, [theme]);
   
-  const isSwitching = useRef(false);
-  
-  const toggleTheme = async (e) => {
-    if (isSwitching.current) return;
+  const switchingRef = React.useRef(false);
+
+  const toggleTheme = (e) => {
+    if (switchingRef.current) return;
     const next = theme === 'light' ? 'dark' : 'light';
-    const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    
-    if (isReducedMotion) {
+    const applyTheme = () => {
+      document.documentElement.setAttribute('data-theme', next);
+      flushSync(() => setTheme(next));
+    };
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (typeof document.startViewTransition !== 'function' || reduced) {
       document.documentElement.classList.add('theme-switching');
-      setTheme(next);
-      setTimeout(() => {
-        document.documentElement.classList.remove('theme-switching');
-      }, 300);
+      applyTheme();
+      setTimeout(() => document.documentElement.classList.remove('theme-switching'), 320);
       return;
     }
 
-    isSwitching.current = true;
-    let overlay;
-    
-    // Safety fallback
-    const safetyTimeout = setTimeout(() => {
-      if (overlay && overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-      isSwitching.current = false;
-    }, 1500);
-    
-    try {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const tx = rect.left + rect.width / 2;
-      const ty = rect.top + rect.height / 2;
-      
-      const cx = tx < window.innerWidth / 2 ? 0 : window.innerWidth;
-      const cy = ty < window.innerHeight / 2 ? 0 : window.innerHeight;
-      
-      const R = Math.hypot(window.innerWidth, window.innerHeight) * 1.5;
-      
-      overlay = document.createElement('div');
-      overlay.className = 'theme-burn';
-      
-      overlay.style.width = `${2 * R}px`;
-      overlay.style.height = `${2 * R}px`;
-      overlay.style.left = `${cx - R}px`;
-      overlay.style.top = `${cy - R}px`;
-      
-      if (next === 'light') {
-        overlay.style.setProperty('--burn-core', '#FDF0D5');
-        overlay.style.setProperty('--burn-ring', 'rgba(97,33,15,0.55)');
-        overlay.style.setProperty('--burn-glow', 'rgba(97,33,15,0)');
-      } else {
-        overlay.style.setProperty('--burn-core', '#20201F');
-        overlay.style.setProperty('--burn-ring', 'rgba(238,110,77,0.6)');
-        overlay.style.setProperty('--burn-glow', 'rgba(238,110,77,0)');
-      }
-      
-      document.body.appendChild(overlay);
-      
-      const grow = overlay.animate(
-        [
-          { transform: 'scale(0)' },
-          { transform: 'scale(1)' }
-        ],
-        {
-          duration: 650,
-          easing: 'cubic-bezier(0.65, 0, 0.35, 1)',
-          fill: 'forwards'
-        }
+    switchingRef.current = true;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const w = window.innerWidth, h = window.innerHeight;
+    const x = rect.left + rect.width / 2 < w / 2 ? 0 : w;
+    const y = rect.top + rect.height / 2 < h / 2 ? 0 : h;
+    const r = Math.ceil(Math.hypot(w, h) / 0.5) + 2;
+    const size = [`0px 0px`, `${2 * r}px ${2 * r}px`];
+    const pos = [`${x}px ${y}px`, `${x - r}px ${y - r}px`];
+
+    const vt = document.startViewTransition(applyTheme);
+    vt.ready.then(() => {
+      document.documentElement.animate(
+        { maskSize: size, maskPosition: pos, webkitMaskSize: size, webkitMaskPosition: pos },
+        { duration: 2700, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards', pseudoElement: '::view-transition-new(root)' }
       );
-      
-      await new Promise(r => {
-        grow.onfinish = r;
-        setTimeout(r, 700); // fallback
+    }).catch(() => {});
+    vt.finished.catch(() => {}).finally(() => { 
+      switchingRef.current = false; 
+      document.getAnimations().forEach(a => {
+        if (a.effect?.pseudoElement?.startsWith('::view-transition')) a.cancel();
       });
-      
-      document.documentElement.setAttribute('data-theme', next);
-      setTheme(next);
-      
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      
-      const reveal = overlay.animate(
-        [
-          { opacity: 1 },
-          { opacity: 0 }
-        ],
-        {
-          duration: 350,
-          easing: 'ease-out'
-        }
-      );
-      
-      await new Promise(r => {
-        reveal.onfinish = r;
-        setTimeout(r, 400); // fallback
-      });
-      
-    } finally {
-      clearTimeout(safetyTimeout);
-      if (overlay && overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-      isSwitching.current = false;
-    }
+    });
   };
 
   function urlBase64ToUint8Array(base64String) {

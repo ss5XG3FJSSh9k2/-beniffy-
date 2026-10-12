@@ -1371,12 +1371,16 @@ input { color: var(--text-main); }
 
 
 
-.theme-burn {
-  position: fixed; z-index: 1500; pointer-events: none;
-  border-radius: 50%;
-  background: radial-gradient(circle,
-    var(--burn-core) 0%, var(--burn-core) 68%,
-    var(--burn-ring) 78%, var(--burn-glow) 100%);
-  transform: scale(0);
-  will-change: transform, opacity;
+
+
+::view-transition { pointer-events: none; }
+::view-transition-old(root),
+::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(root) {
+  mask-image: radial-gradient(closest-side, #000 0%, #000 50%, rgba(0,0,0,0.7) 64%, rgba(0,0,0,0.3) 80%, transparent 100%);
+  mask-repeat: no-repeat;
+  mask-size: 0px 0px;
+  -webkit-mask-image: radial-gradient(closest-side, #000 0%, #000 50%, rgba(0,0,0,0.7) 64%, rgba(0,0,0,0.3) 80%, transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: 0px 0px;
 }
