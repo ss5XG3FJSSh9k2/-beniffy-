@@ -47,6 +47,9 @@
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --scrim: rgba(32, 32, 31, 0.35);
+  --toggle-on: #047857;
+  --toggle-off: #B91C1C;
+  --toggle-label: #FFFFFF;
 }
 
 .theme-switching, .theme-switching * {
@@ -96,6 +99,9 @@
   --surface-overlay: rgba(255, 255, 255, 0.05);
   --surface-glass: rgba(42, 42, 41, 0.85);
   --scrim: rgba(0, 0, 0, 0.55);
+  --toggle-on: #047857;
+  --toggle-off: #B91C1C;
+  --toggle-label: #FFFFFF;
 }
 
 
@@ -1316,14 +1322,14 @@ body:has(.admin-container):has(.modal-overlay:not(:has(.toast-msg))) .toast-msg 
   transition: background 0.25s ease;
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.25);
 }
-.shop-toggle.is-open   { background: #065F46; justify-content: flex-start; }
-.shop-toggle.is-closed { background: #9F1D14; justify-content: flex-end; }
+.shop-toggle.is-open   { background: var(--toggle-on);  justify-content: flex-start; }
+.shop-toggle.is-closed { background: var(--toggle-off); justify-content: flex-end; }
 
 .shop-toggle-label {
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: #ffffff;
+  color: var(--toggle-label);
   padding: 0 0.5rem;
   flex: 1;
   text-align: center;
@@ -1336,7 +1342,7 @@ body:has(.admin-container):has(.modal-overlay:not(:has(.toast-msg))) .toast-msg 
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--bg-surface);
+  background: #FFFFFF;
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   flex-shrink: 0;
   margin: 0 3px;
