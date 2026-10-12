@@ -557,31 +557,52 @@ const FieldError = ({ error }) => {
   );
 };
 
-export default function App() {
-  const [theme, setTheme] = React.useState(() => {
-    try {
-      const storedTheme = window.localStorage.getItem('theme');
-      return storedTheme || 'light';
-    } catch (e) {
-      return 'light';
+const THEME_APPS = ['marketing', 'customer', 'stockist', 'admin', 'partner'];
+const THEME_KEY = 'fastnet.themes.v1';
+const loadThemes = () => {
+  const all = (v) => Object.fromEntries(THEME_APPS.map(a => [a, v]));
+  try {
+    const raw = window.localStorage.getItem(THEME_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw) || {};
+      return Object.fromEntries(THEME_APPS.map(a => [a, saved[a] === 'dark' ? 'dark' : 'light']));
     }
-  });
-  
-  React.useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    try {
-      window.localStorage.setItem('theme', theme);
-    } catch (e) { }
-  }, [theme]);
+    return all(window.localStorage.getItem('theme') === 'dark' ? 'dark' : 'light');
+  } catch (e) { return all('light'); }
+};
+
+const ThemeToggle = ({ theme, onToggle, appName }) => (
+  <button 
+    onClick={onToggle} 
+    aria-label={`Switch ${appName} to ${theme === 'light' ? 'dark' : 'light'} theme`}
+    style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.25rem 0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', minHeight: '36px' }}
+  >
+    {theme === 'light' ? (
+      <>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <span className="theme-toggle-text">Dark</span>
+      </>
+    ) : (
+      <>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <span className="theme-toggle-text">Light</span>
+      </>
+    )}
+  </button>
+);
+
+export default function App() {
+  const [themes, setThemes] = React.useState(loadThemes);
+  const vtRef = React.useRef(null);
   
   const switchingRef = React.useRef(false);
 
-  const toggleTheme = (e) => {
+  const toggleTheme = (app, e) => {
     if (switchingRef.current) return;
-    const next = theme === 'light' ? 'dark' : 'light';
+    const next = themes[app] === 'light' ? 'dark' : 'light';
     const applyTheme = () => {
       document.documentElement.setAttribute('data-theme', next);
-      flushSync(() => setTheme(next));
+      flushSync(() => setThemes(prev => ({ ...prev, [app]: next })));
     };
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -602,6 +623,7 @@ export default function App() {
     const pos = [`${x}px ${y}px`, `${x - r}px ${y - r}px`];
 
     const vt = document.startViewTransition(applyTheme);
+    vtRef.current = vt;
     vt.ready.then(() => {
       document.documentElement.animate(
         { maskSize: size, maskPosition: pos, webkitMaskSize: size, webkitMaskPosition: pos },
@@ -610,6 +632,7 @@ export default function App() {
     }).catch(() => {});
     vt.finished.catch(() => {}).finally(() => { 
       switchingRef.current = false; 
+      vtRef.current = null;
       document.getAnimations().forEach(a => {
         if (a.effect?.pseudoElement?.startsWith('::view-transition')) a.cancel();
       });
@@ -819,6 +842,15 @@ export default function App() {
 
   // Setup state (Round BF5d)
   const [needsSetup, setNeedsSetup] = useState(false);
+  const themeApp = needsSetup ? 'admin' : activeRole === 'db' ? 'admin' : activeRole;
+  const theme = themes[themeApp] || 'light';
+  React.useLayoutEffect(() => {
+    if (vtRef.current) { vtRef.current.skipTransition(); vtRef.current = null; }
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme, themeApp]);
+  React.useEffect(() => {
+    try { window.localStorage.setItem(THEME_KEY, JSON.stringify(themes)); } catch (e) { }
+  }, [themes]);
   const [setupName, setSetupName] = useState('');
   const [setupPhone, setSetupPhone] = useState('');
   const [adminSetupEmail, setAdminSetupEmail] = useState('');
@@ -7376,7 +7408,10 @@ export default function App() {
     }
 
     return (
-      <div className="card" style={{ maxWidth: '450px', margin: '2rem auto', padding: '1.5rem' }}>
+      <div className="card" style={{ maxWidth: '450px', margin: '2rem auto', padding: '1.5rem', position: 'relative' }}>
+        <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+          <ThemeToggle theme={themes.partner} appName="Partner App" onToggle={(e) => toggleTheme('partner', e)} />
+        </div>
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>Partner Login</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>FastNet Operator Hub</p>
@@ -7553,6 +7588,7 @@ export default function App() {
         {/* Perspective Banner */}
         <div className="perspective-banner">
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Partner Hub: {partnerData?.display_name || partnerData?.name || 'Partner Account'}</span>
+          <ThemeToggle theme={themes.partner} appName="Partner App" onToggle={(e) => toggleTheme('partner', e)} />
         </div>
 
         <div className="phone-mockup" style={{ maxWidth: '600px', width: '100%' }}>
@@ -8475,6 +8511,9 @@ export default function App() {
   const renderMarketingView = () => {
     return (
       <div className="marketing-container">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem 1rem 0' }}>
+          <ThemeToggle theme={themes.marketing} appName="B2B Site" onToggle={(e) => toggleTheme('marketing', e)} />
+        </div>
         <div className="marketing-hero">
           <div className="badge badge-primary" style={{ alignSelf: 'center', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
             Hyperlocal Supermarket Network
@@ -8802,6 +8841,7 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
         <div className="perspective-banner">
           <span><UserCheck size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> {t('Customer View', 'कस्टमर व्यू', 'গ্রাহক মোড')}: {isLoggedOut ? t('Not logged in', 'लॉग इन नहीं है', 'লগইন করা নেই') : `${currentUser.name} (${activeRegionName})`}</span>
+          <ThemeToggle theme={themes.customer} appName="Customer App" onToggle={(e) => toggleTheme('customer', e)} />
         </div>
         
         <div className="phone-mockup">
@@ -11228,6 +11268,7 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
         <div className="perspective-banner">
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> SHOPKEEPER VIEW (দোকানদার মোড): {isLoggedOut ? "Not logged in (লগইন করা নেই)" : `${stockistProfile?.name || currentUser.name} (${activeRegionName})`}</span>
+          <ThemeToggle theme={themes.stockist} appName="Stockist App" onToggle={(e) => toggleTheme('stockist', e)} />
         </div>
 
         <div className="phone-mockup">
@@ -12596,6 +12637,7 @@ export default function App() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
           <div className="perspective-banner">
             <span><Settings size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> OPERATOR PORTAL: FastNet Operations Dashboard</span>
+            <ThemeToggle theme={themes.admin} appName="Admin Portal" onToggle={(e) => toggleTheme('admin', e)} />
           </div>
           <div className="phone-mockup" style={{ maxWidth: '420px', width: '100%' }}>
             <div className="phone-notch"></div>
@@ -12616,6 +12658,7 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
         <div className="perspective-banner">
           <span><Settings size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> OPERATOR PORTAL: FastNet Operations Dashboard</span>
+          <ThemeToggle theme={themes.admin} appName="Admin Portal" onToggle={(e) => toggleTheme('admin', e)} />
         </div>
 
         <div className="admin-container">
@@ -16031,7 +16074,10 @@ export default function App() {
   if (needsSetup) {
     return (
       <div className="simulator-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: `calc(100vh / var(--ui-scale))`, padding: '1.5rem', background: 'var(--bg-main)' }}>
-        <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-elevated)', backdropFilter: 'blur(16px)' }}>
+        <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-elevated)', backdropFilter: 'blur(16px)', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+            <ThemeToggle theme={themes.admin} appName="Setup" onToggle={(e) => toggleTheme('admin', e)} />
+          </div>
           {setupSuccessAdmin ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}>
               <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--success-glow)', color: 'var(--success-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
@@ -16370,23 +16416,6 @@ export default function App() {
             <span style={{ fontSize: '0.65rem', display: 'block', color: 'var(--primary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Pilot Platform Simulator</span>
           
             </div>
-            <button 
-                onClick={toggleTheme} 
-                aria-label={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.25rem 0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
-              >
-                {theme === 'light' ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                    Dark
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                    Light
-                  </>
-                )}
-              </button>
           </div>
 
 

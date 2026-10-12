@@ -12,7 +12,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
       try {
-        var t = window.localStorage.getItem('theme') || 'light';
+        var raw = window.localStorage.getItem('fastnet.themes.v1');
+        var t = 'light';
+        if (raw) {
+          var saved = JSON.parse(raw);
+          t = saved['marketing'] === 'dark' ? 'dark' : 'light';
+        } else {
+          t = window.localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
+        }
         document.documentElement.setAttribute('data-theme', t);
       } catch (e) {
         document.documentElement.setAttribute('data-theme', 'light');

@@ -892,9 +892,15 @@ select option:disabled {
   text-align: center;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 0.5rem;
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 440px) {
+  .theme-toggle-text {
+    display: none;
+  }
 }
 
 
