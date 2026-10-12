@@ -613,6 +613,10 @@ const AppSplash = ({ theme, onDone, role }) => {
       lockupRefStyle.setProperty('--y0', `${y0}px`);
       lockupRefStyle.setProperty('--x1', `${x1}px`);
       lockupRefStyle.setProperty('--y1', `${y1}px`);
+      const dropx = lockupRef.current.querySelector('.cs-dropx');
+      if (dropx) dropx.style.transform = `translateX(${x0}px)`;
+      
+      console.log('AppSplash Layout:', { x0, y0, x1, y1, coinRect, lockRect });
     }
   }, [role]);
 
@@ -621,15 +625,16 @@ const AppSplash = ({ theme, onDone, role }) => {
     const dur = role ? 2300 : 1900;
     const animDur = reduced ? 700 : dur;
     
+    let t0;
     if (role && !reduced && lockupRef.current) {
-      setTimeout(() => {
+      t0 = setTimeout(() => {
         if (lockupRef.current) lockupRef.current.classList.add('cs-landed');
       }, 1560);
     }
     
     const t1 = setTimeout(() => setOut(true), animDur);
     const t2 = setTimeout(onDone, animDur + 300);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    return () => { clearTimeout(t0); clearTimeout(t1); clearTimeout(t2); };
   }, [role]); // Removing onDone to prevent timer reset if parent re-renders
 
   const skip = () => { setOut(true); setTimeout(onDone, 300); };
@@ -651,7 +656,7 @@ const AppSplash = ({ theme, onDone, role }) => {
         <div className="cs-lockup" ref={lockupRef}>
           {word}
           <div className="cs-role" ref={roleRef}>{role}</div>
-          <div className="cs-dropx" style={{ transform: 'translateX(var(--x0))' }}><div className="cs-dropy"></div></div>
+          <div className="cs-dropx"><div className="cs-dropy"></div></div>
           <div className="cs-splat"></div>
         </div>
       ) : (

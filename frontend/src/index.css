@@ -363,6 +363,28 @@ h1, h2, h3, h4, h5, h6 {
   .cs-ring { display: none; }
 }
 
+.cs-lockup { position: relative; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.cs-role { font-size: 15px; font-weight: 800; letter-spacing: 0.34em; margin-right: -0.34em; line-height: 1; color: var(--text-main); clip-path: inset(0 50% 0 50%); opacity: 0; animation: cs-reveal 460ms 1560ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+.cs-dropx { position: absolute; left: 0; top: 0; width: 0; height: 0; animation: cs-drift-x 420ms 1120ms linear forwards; }
+.cs-dropy { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #EE6E4D; opacity: 0; animation: cs-fall-y 420ms 1120ms forwards; }
+.cs-landed .cs-dropy { opacity: 0 !important; }
+.cs-splat { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #EE6E4D; box-sizing: border-box; opacity: 0; animation: cs-splat 520ms 1540ms ease-out forwards; }
+@keyframes cs-drift-x { from { transform: translateX(var(--x0)); } to { transform: translateX(var(--x1)); } }
+@keyframes cs-fall-y {
+  0% { opacity: 0; transform: translateY(var(--y0)) scale(0.4); animation-timing-function: cubic-bezier(0.5, 0, 1, 0.6); }
+  12% { opacity: 1; transform: translateY(var(--y0)) scale(1, 1.15); animation-timing-function: cubic-bezier(0.5, 0, 1, 0.6); }
+  100% { opacity: 1; transform: translateY(var(--y1)) scale(0.9, 1.25); }
+}
+@keyframes cs-splat {
+  0% { opacity: 0.9; transform: translateX(var(--x1)) translateY(var(--y1)) scale(1); }
+  100% { opacity: 0; transform: translateX(var(--x1)) translateY(var(--y1)) scale(5, 2.2); }
+}
+@keyframes cs-reveal { 0% { opacity: 1; clip-path: inset(0 50% 0 50%); } 100% { opacity: 1; clip-path: inset(0 0 0 0); } }
+@media (prefers-reduced-motion: reduce) {
+  .cs-role { opacity: 1; clip-path: none; animation: none; }
+  .cs-dropx, .cs-splat { display: none; }
+}
+
 .phone-header {
   height: 44px;
   background: var(--bg-surface-elevated);
