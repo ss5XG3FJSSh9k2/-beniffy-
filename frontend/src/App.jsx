@@ -181,7 +181,7 @@ class PanelErrorBoundary extends React.Component {
     if (this.state.hasError) {
       const t = this.props.t || ((en, hi, bn) => en);
       return (
-        <div style={{ padding: '2rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: '8px', color: 'var(--danger)', margin: '1rem 0' }}>
+        <div style={{ padding: '2rem', background: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: '8px', color: 'var(--danger)', margin: '1rem 0' }}>
           <h3 style={{ marginBottom: '0.5rem' }}>{t('Unable to load panel', 'पैनल लोड करने में असमर्थ', 'প্যানেল লোড করতে অক্ষম')}</h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
             {t('An unexpected error occurred while rendering this view', 'यह दृश्य प्रस्तुत करते समय एक अप्रत्याशित त्रुटि हुई', 'এই ভিউ রেন্ডার করার সময় একটি অপ্রত্যাশিত ত্রুটি ঘটেছে')} ({this.state.error?.message || t('Unknown error', 'अज्ञात त्रुटि', 'অজানা ত্রুটি')}).
@@ -454,7 +454,7 @@ const TimePicker = ({ value, onChange }) => {
         <div
           style={{
             position: 'fixed', inset: 0, zIndex: 'var(--z-modal)',
-            background: 'rgba(0,0,0,0.6)',
+            background: 'var(--bg-main)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '1rem'
           }}
@@ -6099,14 +6099,14 @@ export default function App() {
               />
             </div>
             {loginErrorMessage && (
-              <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginBottom: '0.75rem', background: 'rgba(239,68,68,0.1)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--danger)', lineHeight: 1.4 }}>
+              <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginBottom: '0.75rem', background: 'var(--danger)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--danger)', lineHeight: 1.4 }}>
                 {loginErrorMessage}
               </div>
             )}
             <button className="btn" onClick={handleSendOtp}>Send One-Time Password</button>
             
             {isDevMode && (
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px dashed var(--border-color)', color: 'var(--text-muted)' }}>
+              <div style={{ background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px dashed var(--border-color)', color: 'var(--text-muted)' }}>
                 <strong>Demo Phone Options:</strong>
                 {isCustomerApp && (
                   <>
@@ -6157,7 +6157,7 @@ export default function App() {
         ) : (isCustomerApp && showCustomerSignup) ? (
           /* Customer Sign Up Flow */
           <>
-            <div style={{ background: 'rgba(99,102,241,0.08)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(99,102,241,0.2)', fontSize: '0.75rem', textAlign: 'center' }}>
+            <div style={{ background: 'var(--primary-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(99,102,241,0.2)', fontSize: '0.75rem', textAlign: 'center' }}>
               <UserPlus size={14} style={{ color: 'var(--primary)', marginRight: '0.35rem', verticalAlign: 'middle' }} />
               {t('New Customer Registration', 'नया ग्राहक पंजीकरण', 'নতুন ক্রেতা নিবন্ধন')}: {loginPhone}
             </div>
@@ -6350,7 +6350,7 @@ export default function App() {
         ) : (isStockistApp && showStockistSignup) ? (
           /* Stockist Sign Up Flow */
           <>
-            <div style={{ background: 'rgba(245,158,11,0.08)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.2)', fontSize: '0.75rem', textAlign: 'center' }}>
+            <div style={{ background: 'var(--warning-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.2)', fontSize: '0.75rem', textAlign: 'center' }}>
               <Store size={14} style={{ color: 'var(--warning)', marginRight: '0.35rem', verticalAlign: 'middle' }} />
               {t('Register Local Shop (KYC Required)', 'स्थानीय दुकान पंजीकरण (KYC आवश्यक)', 'স্থানীয় দোকান নিবন্ধন (KYC প্রয়োজন)')}: {loginPhone}
             </div>
@@ -6433,7 +6433,7 @@ export default function App() {
               <label className="input-label">{t('Shop Address', 'दुकान का पता', 'দোকানের ঠিকানা')} *</label>
               <input type="text" placeholder="e.g. Shop 5, Market Road" className="text-input" value={regAddress} onChange={e => setRegAddress(e.target.value)} />
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--accent)', background: 'rgba(16,185,129,0.08)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.5rem', margin: '0.5rem 0' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent)', background: 'var(--success-glow)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.5rem', margin: '0.5rem 0' }}>
               {t(
                 'Please enter these details carefully. You cannot change them yourself later. To correct any detail, you\'ll need to contact FastNet support.',
                 'कृपया ये विवरण सावधानी से भरें। आप इन्हें बाद में स्वयं नहीं बदल सकते। किसी भी विवरण को ठीक करने के लिए आपको FastNet सहायता से संपर्क करना होगा।',
@@ -6457,7 +6457,7 @@ export default function App() {
           </>
         ) : (
           <>
-            <div className="input-group" style={{ background: 'rgba(99, 102, 241, 0.05)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.2)', fontSize: '0.75rem', textAlign: 'center' }}>
+            <div className="input-group" style={{ background: 'var(--primary-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.2)', fontSize: '0.75rem', textAlign: 'center' }}>
               OTP sent to <strong>{loginPhone}</strong>.{demoOtpMode && <span> Demo code: <strong>123456</strong></span>}
             </div>
             <div className="input-group">
@@ -7372,7 +7372,7 @@ export default function App() {
             </div>
 
             {showPartnerForgotForm && (
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px dashed var(--border-color)' }}>
+              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--surface-overlay)', borderRadius: '6px', border: '1px dashed var(--border-color)' }}>
                 <label className="input-label" style={{ fontSize: '0.75rem' }}>Registered Email</label>
                 <input type="email" placeholder="Enter email for reset link" className="text-input" style={{ fontSize: '0.75rem', margin: '0.35rem 0' }} value={partnerForgotEmail} onChange={e => setPartnerForgotEmail(e.target.value)} />
                 <button className="btn btn-secondary" style={{ width: '100%', fontSize: '0.75rem' }} onClick={handlePartnerForgotPassword}>
@@ -7419,7 +7419,7 @@ export default function App() {
         )}
 
         {showFirstTimeSetupFlow && (
-          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 'var(--z-modal)' }}>
+          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-main)', zIndex: 'var(--z-modal)' }}>
             <div className="modal-content FirstTimeSetupFlow" style={{ maxWidth: '450px', width: '90%', padding: '1.5rem', background: 'var(--card-bg, #1e1e2e)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
               <PanelErrorBoundary t={t}>
               <h3 style={{ marginTop: 0, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -7484,7 +7484,7 @@ export default function App() {
 
 
         {isDevMode && (
-          <div style={{ marginTop: '1rem', background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px dashed var(--border-color)', color: 'var(--text-muted)' }}>
+          <div style={{ marginTop: '1rem', background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px dashed var(--border-color)', color: 'var(--text-muted)' }}>
             <strong>Demo Partner Accounts:</strong>
             <div style={{ marginTop: '0.25rem' }}>• 9876500000 (Adhya Cable: Phone + OTP)</div>
             <div>• 9876500001 (Jio Broadband: Phone + OTP)</div>
@@ -7525,7 +7525,7 @@ export default function App() {
           <div className="phone-screen" style={{ minHeight: '550px', display: 'flex', flexDirection: 'column' }}>
             
             {/* Header */}
-            <div style={{ padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '0.75rem 1rem', background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '0.95rem', margin: 0 }}>Welcome, {partnerData?.display_name || partnerData?.name}</h3>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{partnerData?.contact_email || partnerData?.contact_phone}</span>
@@ -7612,7 +7612,7 @@ export default function App() {
 
                   {/* Empty State Banner if 0 waiting */}
                   {partnerQueueList.length === 0 && (
-                    <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', padding: '0.75rem', borderRadius: '6px', textAlign: 'center', fontSize: '0.8rem', color: '#4ade80' }}>
+                    <div style={{ background: 'var(--success-glow)', border: '1px solid rgba(34,197,94,0.3)', padding: '0.75rem', borderRadius: '6px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--success)' }}>
                       {t("Nothing waiting. You're up to date.", "कुछ भी लंबित नहीं है। आप अपडेट हैं।", "কোনো কিছু অপেক্ষায় নেই। আপনি আপ-টু-ডেট।")}
                     </div>
                   )}
@@ -7623,15 +7623,15 @@ export default function App() {
                       {t('This Month', 'इस महीने', 'এই মাসে')}
                     </span>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginTop: '0.35rem' }}>
-                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                      <div style={{ background: 'var(--surface-overlay)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
                         <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--success)' }}>{partnerDashData?.month?.fulfilled_count || 0}</div>
                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{t('Fulfilled this month', 'इस महीने पूरे किए गए', 'এই মাসে সম্পন্ন')}</div>
                       </div>
-                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                      <div style={{ background: 'var(--surface-overlay)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
                         <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary)' }}>₹{partnerDashData?.month?.face_value_total_rupees || 0}</div>
                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{t('Total face value', 'कुल अंकित मूल्य', 'মোট মূল্য')}</div>
                       </div>
-                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                      <div style={{ background: 'var(--surface-overlay)', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
                         <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--accent)' }}>₹{partnerDashData?.month?.expected_payout_rupees || 0}</div>
                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{t("You'll receive", "आप पाएंगे", "আপনি পাবেন")}</div>
                       </div>
@@ -7642,7 +7642,7 @@ export default function App() {
                   {(partnerDashData?.disputes?.open_count || 0) > 0 && (
                     <div 
                       onClick={() => { setPartnerAppTab('queue'); setPartnerQueueSubTab('disputes'); }}
-                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', padding: '0.75rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                      style={{ background: 'var(--danger)', border: '1px solid rgba(239,68,68,0.3)', padding: '0.75rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                     >
                       <div>
                         <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--danger)' }}>{t('Open Disputes', 'खुले विवाद', 'খোলা বিরোধ')}</div>
@@ -7716,7 +7716,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div>
-                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.75rem', borderRadius: '4px', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                      <div style={{ background: 'var(--surface-overlay)', padding: '0.5rem 0.75rem', borderRadius: '4px', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                         <em>{t('Waiting on admin to resolve dispute', 'विवाद समाधान के लिए एडमिन की प्रतीक्षा में', 'বিরোধ সমাধানের জন্য অ্যাডমিনের অপেক্ষায়')}</em>
                       </div>
                       <div className="table-scroll">
@@ -7945,7 +7945,7 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <h4 style={{ margin: 0, fontSize: '0.9rem' }}>{t('Partner Profile', 'साझेदार प्रोफ़ाइल', 'পার্টনার প্রোফাইল')}</h4>
 
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.75rem' }}>
+                  <div style={{ background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.75rem' }}>
                     <div><strong>{t('Legal Name', 'कानूनी नाम', 'আইনি নাম')}:</strong> {partnerData?.legal_name || '-'}</div>
                     <div><strong>{t('GST Number', 'जीएसटी नंबर', 'জিএসটি নম্বর')}:</strong> {partnerData?.gst_number || 'N/A'}</div>
                     <div><strong>{t('Services Offered', 'पेश की जाने वाली सेवाएं', 'প্রদত্ত সেবা সমূহ')}:</strong> {(partnerData?.service_types || []).join(', ')}</div>
@@ -8007,7 +8007,7 @@ export default function App() {
                   </div>
 
                   {/* Counts Panel */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '6px', border: '1px dashed var(--border-color)', textAlign: 'center' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '6px', border: '1px dashed var(--border-color)', textAlign: 'center' }}>
                     <div>
                       <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>{pProfCounts?.bound_customers || 0}</div>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Bound Customers</div>
@@ -8029,7 +8029,7 @@ export default function App() {
                         Change Password
                       </button>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '6px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '6px' }}>
                         <h5 style={{ margin: 0 }}>Change Password</h5>
                         <div className="input-group">
                           <label className="input-label">Current Password</label>
@@ -8417,7 +8417,7 @@ export default function App() {
                 <div><strong>Category:</strong> <span className="badge badge-secondary">{selectedFeedbackDetail.category}</span></div>
                 <div><strong>Status:</strong> <span className={`badge ${selectedFeedbackDetail.status === 'RESOLVED' ? 'badge-success' : 'badge-warning'}`}>{selectedFeedbackDetail.status}</span></div>
                 <div><strong>Description:</strong></div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>{selectedFeedbackDetail.description}</div>
+                <div style={{ background: 'var(--surface-overlay)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>{selectedFeedbackDetail.description}</div>
                 {selectedFeedbackDetail.admin_notes && (
                   <>
                     <div><strong>Admin Notes:</strong></div>
@@ -8710,7 +8710,7 @@ export default function App() {
     if (alts.length === 0) return null;
 
     return (
-      <div style={{ marginTop: '0.4rem', fontSize: '0.65rem', background: 'rgba(245,158,11,0.08)', border: '1px dashed var(--warning)', borderRadius: '6px', padding: '0.35rem', width: '100%' }}>
+      <div style={{ marginTop: '0.4rem', fontSize: '0.65rem', background: 'var(--warning-glow)', border: '1px dashed var(--warning)', borderRadius: '6px', padding: '0.35rem', width: '100%' }}>
         <span style={{ color: 'var(--warning)', fontWeight: 'bold' }}>Also available at:</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.2rem' }}>
           {alts.map(alt => (
@@ -8774,7 +8774,7 @@ export default function App() {
           <div className="phone-notch"></div>
           <div className="phone-screen">
             {/* Language Selector Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.75rem', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.7rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.75rem', background: 'var(--surface-overlay)', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.7rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)' }}>
                 <Languages size={12} />
                 <span>Language:</span>
@@ -8822,9 +8822,9 @@ export default function App() {
                 </div>
 
                 {checkoutResult && (
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.97)', zIndex: 100, display: 'flex', flexDirection: 'column', padding: '1.25rem', overflowY: 'auto' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 100, display: 'flex', flexDirection: 'column', padding: '1.25rem', overflowY: 'auto' }}>
                     <div style={{ textAlign: 'center', marginBottom: '1rem', marginTop: '1rem' }}>
-                      <div style={{ display: 'inline-flex', padding: '0.5rem', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--accent)', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'inline-flex', padding: '0.5rem', borderRadius: '50%', background: 'var(--success-glow)', color: 'var(--accent)', marginBottom: '0.5rem' }}>
                         <CheckCircle2 size={36} />
                       </div>
                       <h3 style={{ fontSize: '1.25rem', color: 'var(--text-main)' }}>{t('Order Placed', 'ऑर्डर सफल हुआ', 'অর্ডার সফল হয়েছে')}</h3>
@@ -8854,11 +8854,11 @@ export default function App() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{t('Status: Take Away (Pickup)', 'स्थिति: टेक अवे (पिकअप)', 'অবস্থা: টেক অ্যাওয়ে (পিকআপ)')}</span>
                                 </div>
-                                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.25rem', marginBottom: '0.25rem' }}>
+                                <div style={{ background: 'var(--surface-overlay)', padding: '0.5rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.25rem', marginBottom: '0.25rem' }}>
                                   <span style={{ color: 'var(--text-muted)' }}>{t('Scheduled Pickup Slot:', 'निर्धारित पिकअप स्लॉट:', 'নির্ধারিত পিকআপ স্লট:')} </span>
                                   <strong style={{ color: 'var(--text-main)' }}>{formatPickupSlotDisplay(o.pickup_slot) || t('Not set', 'निर्धारित नहीं', 'নির্ধারিত নেই')}</strong>
                                 </div>
-                                <div style={{ background: 'rgba(99, 102, 241, 0.08)', border: '1px dashed var(--primary)', borderRadius: '6px', padding: '0.4rem', marginTop: '0.4rem', textAlign: 'center' }}>
+                                <div style={{ background: 'var(--primary-glow)', border: '1px dashed var(--primary)', borderRadius: '6px', padding: '0.4rem', marginTop: '0.4rem', textAlign: 'center' }}>
                                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}><Key size={10} style={{ display: 'inline', marginRight: '0.2rem', verticalAlign: 'middle' }} /> {t('Verification PIN:', 'सत्यापन पिन:', 'পিকআপ কোড:')}</span>
                                   <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)', letterSpacing: '0.15em' }}>{o.pickup_pin || '1234'}</div>
                                 </div>
@@ -8902,7 +8902,7 @@ export default function App() {
                             <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               <button 
                                 className="btn btn-secondary" 
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontSize: '0.65rem', padding: '0.35rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontSize: '0.65rem', padding: '0.35rem', background: 'var(--surface-overlay)', border: '1px solid rgba(255,255,255,0.05)' }}
                                 onClick={() => toggleBreakdown(o.id)}
                               >
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -8913,7 +8913,7 @@ export default function App() {
                               </button>
                               
                               {expandedBreakdownOrders.has(o.id) && (
-                                <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.15rem' }}>
+                                <div style={{ padding: '0.5rem', background: 'var(--surface-overlay)', borderRadius: '6px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.15rem' }}>
                                   <div style={{ fontWeight: 'bold', color: 'var(--accent)' }}>
                                     {t('Point Breakdown', 'पॉइंट्स विवरण', 'পয়েন্ট হিসাব')}
                                   </div>
@@ -8942,7 +8942,7 @@ export default function App() {
                             {/* WhatsApp Notification Share Trigger (§B1) */}
                             <button 
                               className="btn btn-secondary" 
-                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.35rem', background: 'rgba(37,211,102,0.1)', color: '#25D366', border: '1px solid rgba(37,211,102,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}
+                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.35rem', background: 'rgba(37,211,102,0.1)', color: 'var(--success)', border: '1px solid rgba(37,211,102,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}
                               onClick={() => {
                                 setSimulatedWaMessage({
                                   orderId: o.id,
@@ -8972,16 +8972,16 @@ export default function App() {
 
                 {/* Simulated WhatsApp Mockup Overlay */}
                 {simulatedWaMessage && (
-                  <div style={{ position: 'absolute', inset: 0, background: '#0b141a', zIndex: 110, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column' }}>
                     {/* WhatsApp Header */}
-                    <div style={{ background: '#128c7e', padding: '0.75rem 0.5rem 0.5rem 0.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ background: 'var(--primary)', padding: '0.75rem 0.5rem 0.5rem 0.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <button 
                         style={{ background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
                         onClick={() => setSimulatedWaMessage(null)}
                       >
                         <ArrowLeft size={16} />
                       </button>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#128c7e', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.75rem' }}>
                         FN
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -8991,14 +8991,14 @@ export default function App() {
                     </div>
 
                     {/* Chat Body */}
-                    <div style={{ flex: 1, padding: '1rem 0.75rem', overflowY: 'auto', background: '#0b141a', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div style={{ alignSelf: 'center', background: '#182229', color: '#8696a0', padding: '0.2' + 'rem 0.4' + 'rem', borderRadius: '4px', fontSize: '0.55rem', textTransform: 'uppercase' }}>
+                    <div style={{ flex: 1, padding: '1rem 0.75rem', overflowY: 'auto', background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ alignSelf: 'center', background: 'var(--text-main)', color: 'var(--text-muted)', padding: '0.2' + 'rem 0.4' + 'rem', borderRadius: '4px', fontSize: '0.55rem', textTransform: 'uppercase' }}>
                         Today
                       </div>
                       
                       {/* Message Bubble */}
-                      <div style={{ alignSelf: 'flex-start', background: '#202c33', color: '#e9edef', padding: '0.5rem 0.75rem', borderRadius: '0 8px 8px 8px', maxWidth: '85%', fontSize: '0.7rem', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                        <span style={{ color: '#25d366', fontWeight: 'bold', fontSize: '0.65rem' }}>FastNet Supermarket</span>
+                      <div style={{ alignSelf: 'flex-start', background: 'var(--bg-surface-elevated)', color: 'var(--text-main)', padding: '0.5rem 0.75rem', borderRadius: '0 8px 8px 8px', maxWidth: '85%', fontSize: '0.7rem', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <span style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '0.65rem' }}>FastNet Supermarket</span>
                         <p style={{ margin: 0, whiteSpace: 'pre-line' }}>
                           {`Hello ${simulatedWaMessage.customerName || 'Valued Customer'}!\n\nYour FastNet Supermarket order is confirmed at *${simulatedWaMessage.stockistName}*.\n\n*Order ID:* #${simulatedWaMessage.orderId.substring(2).toUpperCase()}\n*Total Price:* ₹${simulatedWaMessage.totalPrice}\n*Subtotal:* ₹${simulatedWaMessage.subtotal}\n*Rewards Earned:* +${simulatedWaMessage.points} pts\n\n${
                             simulatedWaMessage.fulfillmentType === 'PICKUP'
@@ -9006,12 +9006,12 @@ export default function App() {
                               : `*Fulfillment:* Home Delivery\n\nYour order will be delivered to your registered address shortly.`
                           }\n\nThank you for choosing FastNet!`}
                         </p>
-                        <span style={{ alignSelf: 'flex-end', fontSize: '0.5rem', color: '#8696a0', marginTop: '0.2rem' }}>{phoneClock} <CheckCheck size={10} style={{ display: 'inline', color: '#53bdeb' }} /></span>
+                        <span style={{ alignSelf: 'flex-end', fontSize: '0.5rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{phoneClock} <CheckCheck size={10} style={{ display: 'inline', color: 'var(--accent)' }} /></span>
                       </div>
                     </div>
 
                     {/* Action Bar */}
-                    <div style={{ padding: '0.5rem 0.75rem', background: '#1f2c34', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-surface)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <button 
                         className="btn btn-secondary" 
                         style={{ width: '100%', padding: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}
@@ -9025,7 +9025,7 @@ export default function App() {
 
                 {/* §H: One-way delivery switch confirmation overlay */}
                 {deliverySwitchConfirm && (
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning)' }}>
                         <AlertTriangle size={20} />
@@ -9050,7 +9050,7 @@ export default function App() {
 
                 {/* §F19: No-show Alert overlay */}
                 {noShowAlert && (
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning)' }}>
                         <AlertTriangle size={20} />
@@ -9163,7 +9163,7 @@ export default function App() {
 
                                       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                         {s.rating ? (
-                                          <span style={{ fontSize: '0.65rem', color: '#fbbf24', fontWeight: 'bold' }}>
+                                          <span style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 'bold' }}>
                                             ⭐ {s.rating} ({s.ratings_count || 0})
                                           </span>
                                         ) : null}
@@ -9292,7 +9292,7 @@ export default function App() {
                                     </div>
                                     <button 
                                       className="btn btn-accent" 
-                                      style={{ padding: '0.3rem 0.5rem', fontSize: '0.7rem', height: '28px', background: isOutOfStock ? 'rgba(255,255,255,0.05)' : '', color: isOutOfStock ? 'var(--text-muted)' : '', border: isOutOfStock ? '1px solid rgba(255,255,255,0.05)' : '' }}
+                                      style={{ padding: '0.3rem 0.5rem', fontSize: '0.7rem', height: '28px', background: isOutOfStock ? 'var(--surface-overlay)' : '', color: isOutOfStock ? 'var(--text-muted)' : '', border: isOutOfStock ? '1px solid rgba(255,255,255,0.05)' : '' }}
                                       disabled={isOutOfStock}
                                       onClick={() => addToCart(p)}
                                     >
@@ -9335,7 +9335,7 @@ export default function App() {
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '1rem' }}>
                           {/* Segment Picker for Pickup/Delivery */}
-                          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.2rem', gap: '0.2rem' }}>
+                          <div style={{ display: 'flex', background: 'var(--surface-overlay)', borderRadius: '8px', padding: '0.2rem', gap: '0.2rem' }}>
                             <button
                               type="button"
                               onClick={() => setCartFulfillment('PICKUP')}
@@ -9382,7 +9382,7 @@ export default function App() {
                                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{item.stockistName}</span>
                                   <span style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 'bold' }}>₹{item.product.price}</span>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', padding: '0.25rem 0.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--surface-overlay)', borderRadius: '6px', padding: '0.25rem 0.5rem' }}>
                                   <button onClick={() => updateCartQty(item.product.id, item.stockistId, -1)} style={{ background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}><Minus size={14} /></button>
                                   <span style={{ fontWeight: 'bold', fontSize: '0.9rem', width: '20px', textAlign: 'center' }}>{item.quantity}</span>
                                   <button onClick={() => updateCartQty(item.product.id, item.stockistId, 1)} style={{ background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}><Plus size={14} /></button>
@@ -9444,7 +9444,7 @@ export default function App() {
                                 </h3>
                                 <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
                                   {suggestions.map(p => (
-                                    <div key={p.id} style={{ minWidth: '110px', flexShrink: 0, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem' }}>
+                                    <div key={p.id} style={{ minWidth: '110px', flexShrink: 0, background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem' }}>
                                       <div style={{ width: '100%', aspectRatio: '1', backgroundColor: 'var(--surface-overlay)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <img src={p.image_url ? (p.image_url.startsWith('http') || p.image_url.startsWith('data:') ? p.image_url : `${API_BASE}${p.image_url}`) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"; }} />
                                       </div>
@@ -9607,7 +9607,7 @@ export default function App() {
                                           display: 'flex', 
                                           alignItems: 'stretch',
                                           borderRadius: '8px',
-                                          background: isApplied ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.03)',
+                                          background: isApplied ? 'var(--success-glow)' : 'var(--surface-overlay)',
                                           border: isApplied ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)',
                                           opacity: (isLocked && !isApplied) || coupon.is_active === false ? 0.55 : 1,
                                           overflow: 'hidden'
@@ -9615,7 +9615,7 @@ export default function App() {
                                       >
                                         <div style={{ 
                                           minWidth: '64px', 
-                                          background: 'rgba(16,185,129,0.10)', 
+                                          background: 'var(--success-glow)', 
                                           display: 'flex', 
                                           alignItems: 'center', 
                                           justifyContent: 'center', 
@@ -9827,7 +9827,7 @@ export default function App() {
                                 </div>
 
                                 {emptyReason ? (
-                                  <div style={{ padding: '0.85rem', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.08)', fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.4, marginBottom: items.length > 0 ? '0.75rem' : '0' }}>
+                                  <div style={{ padding: '0.85rem', borderRadius: '10px', background: 'var(--surface-overlay)', border: '1px dashed rgba(255,255,255,0.08)', fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.4, marginBottom: items.length > 0 ? '0.75rem' : '0' }}>
                                     {emptyReason === 'no_binding' && (
                                       <span>
                                         {t(
@@ -9934,7 +9934,7 @@ export default function App() {
                                             padding: '0.65rem 0.75rem',
                                             borderRadius: '10px',
                                             background: canAfford ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.01)',
-                                            border: `1px solid ${canAfford ? color + '33' : 'rgba(255,255,255,0.05)'}`,
+                                            border: `1px solid ${canAfford ? color + '33' : 'var(--surface-overlay)'}`,
                                             opacity: canAfford ? 1 : 0.55,
                                             transition: 'all 0.2s'
                                           }}
@@ -9954,7 +9954,7 @@ export default function App() {
                                             {pkg.description && (
                                               <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{pkg.description}</div>
                                             )}
-                                            <div style={{ fontSize: '0.6rem', color: '#818cf8', marginTop: '0.15rem' }}>
+                                            <div style={{ fontSize: '0.6rem', color: 'var(--secondary)', marginTop: '0.15rem' }}>
                                               {t(`from ${partner.display_name}`, `प्रदाता: ${partner.display_name}`, `প্রদানকারী: ${partner.display_name}`)}
                                             </div>
                                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.2rem' }}>
@@ -9965,7 +9965,7 @@ export default function App() {
                                               {bottomText}
                                             </div>
                                             {isLocked && (
-                                              <div style={{ fontSize: '0.65rem', color: '#f59e0b', marginTop: '0.2rem' }}>
+                                              <div style={{ fontSize: '0.65rem', color: 'var(--accent)', marginTop: '0.2rem' }}>
                                                 {lockMessage}
                                               </div>
                                             )}
@@ -9983,7 +9983,7 @@ export default function App() {
                                               borderRadius: '8px',
                                               border: 'none',
                                               cursor: (!canAfford || isLocked || emptyReason === 'no_binding') ? 'not-allowed' : 'pointer',
-                                              background: (!canAfford || isLocked || emptyReason === 'no_binding') ? 'rgba(255,255,255,0.1)' : color,
+                                              background: (!canAfford || isLocked || emptyReason === 'no_binding') ? 'var(--border-color)' : color,
                                               color: (!canAfford || isLocked || emptyReason === 'no_binding') ? 'var(--text-muted)' : 'white',
                                               transition: 'all 0.2s'
                                             }}
@@ -10005,13 +10005,13 @@ export default function App() {
                               <div style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, var(--primary-glow) 100%)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '14px', padding: '1rem', textAlign: 'center' }}>
                                 <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{t('Your Balance', 'आपका बैलेंस', 'আপনার ব্যালেন্স')}</div>
                                 <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1 }}>{formatPoints(customerBalance)}</div>
-                                <div style={{ fontSize: '0.6rem', color: '#818cf8', marginTop: '0.35rem' }}>{t('Redeemable across FastNet broadband, wifi, and cable TV plans', 'फास्टनेट ब्रॉडबैंड, वाईफाई और केबल टीवी प्लान में रिडीम करने योग्य', 'ফাস্টনেট ব্রডব্যান্ড, ওয়াইফাই এবং কেবল টিভি প্ল্যানে রিডিম করার যোগ্য')}</div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--secondary)', marginTop: '0.35rem' }}>{t('Redeemable across FastNet broadband, wifi, and cable TV plans', 'फास्टनेट ब्रॉडबैंड, वाईफाई और केबल टीवी प्लान में रिडीम करने योग्य', 'ফাস্টনেট ব্রডব্যান্ড, ওয়াইফাই এবং কেবল টিভি প্ল্যানে রিডিম করার যোগ্য')}</div>
                               </div>
 
                               {/* Refer a friend Tile */}
                               <div className="referral-tile" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.05) 100%)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '12px', padding: '0.85rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                                  <Share2 size={16} style={{ color: '#22c55e' }} />
+                                  <Share2 size={16} style={{ color: 'var(--success)' }} />
                                   <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                                     {t('Refer a friend', 'रेफर करें और कमाएं', 'বন্ধুকে রেফার করুন')}
                                   </span>
@@ -10023,10 +10023,10 @@ export default function App() {
                                     'বন্ধুদের সাথে আপনার কোড শেয়ার করুন। তাদের প্রথম অর্ডার সম্পন্ন হলে আপনারা দুজনই +৫০ পয়েন্ট পাবেন!'
                                   )}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.3)', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px dashed rgba(34,197,94,0.4)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-overlay)', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px dashed rgba(34,197,94,0.4)' }}>
                                   <div>
                                     <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('Your Referral Code', 'आपका रेफरल कोड', 'আপনার রেফারেল কোড')}</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', letterSpacing: '0.1em', color: '#4ade80' }}>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', letterSpacing: '0.1em', color: 'var(--success)' }}>
                                       {currentUser?.referral_code || '------'}
                                     </div>
                                   </div>
@@ -10066,13 +10066,13 @@ export default function App() {
                               {/* My Redemptions Section */}
                               <div style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
-                                  <div style={{ width: '3px', height: '14px', borderRadius: '2px', background: '#a855f7' }} />
+                                  <div style={{ width: '3px', height: '14px', borderRadius: '2px', background: 'var(--primary)' }} />
                                   <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                                     {t('My Redemptions', 'मेरे रिडेम्पशन', 'আমার রিডেম্পশন')}
                                   </span>
                                 </div>
                                 {customerRedemptions.length === 0 ? (
-                                  <div style={{ padding: '1rem', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.08)', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                  <div style={{ padding: '1rem', borderRadius: '10px', background: 'var(--surface-overlay)', border: '1px dashed rgba(255,255,255,0.08)', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                                     {t("You haven't redeemed any rewards yet.", "आपने अभी तक कोई इनाम भुनाया नहीं है।", "আপনি এখনও কোনো পুরষ্কার রিডিম করেননি।")}
                                   </div>
                                 ) : (
@@ -10295,7 +10295,7 @@ export default function App() {
                               )}
 
                               {o.status !== 'DELIVERED' && o.status !== 'CANCELLED' && (
-                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.35rem', borderRadius: '4px', border: '1px dashed rgba(255,255,255,0.05)', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <div style={{ background: 'var(--surface-overlay)', padding: '0.35rem', borderRadius: '4px', border: '1px dashed rgba(255,255,255,0.05)', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                   <Key size={12} style={{ color: 'var(--primary)' }} />
                                   <span>{o.fulfillment_type === 'DELIVERY' ? t('Delivery PIN:', 'डिलीवरी पिन:', 'ডেলিভারি পিন:') : t('Pickup PIN:', 'पिकअप पिन:', 'পিকআপ কোড:')} <strong style={{ color: 'var(--text-main)', letterSpacing: '0.05em' }}>{o.pickup_pin || '1234'}</strong></span>
                                 </div>
@@ -10372,7 +10372,7 @@ export default function App() {
 
                                   <button 
                                     className="badge badge-success" 
-                                    style={{ border: 'none', cursor: 'pointer', background: 'rgba(37,211,102,0.1)', color: '#25D366', padding: '0.2rem 0.4rem', fontSize: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.15rem' }}
+                                    style={{ border: 'none', cursor: 'pointer', background: 'rgba(37,211,102,0.1)', color: 'var(--success)', padding: '0.2rem 0.4rem', fontSize: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.15rem' }}
                                     onClick={() => setSimulatedWaMessage({
                                       orderId: o.id,
                                       customerName: currentUser.name,
@@ -10418,7 +10418,7 @@ export default function App() {
 
                   {/* Customer Rating Modal Overlay */}
                   {submittingFeedbackOrder && submittingFeedbackOrder.customer_id === currentUser.id && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>Rate Grocery Store (§11)</h3>
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Rate service quality at {submittingFeedbackOrder.stockist_name}</p>
@@ -10460,7 +10460,7 @@ export default function App() {
 
                   {/* Customer Redemption Success Modal Overlay */}
                   {redemptionSuccessModal && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center', alignItems: 'center' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center', alignItems: 'center' }}>
                       <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '300px' }}>
                         <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(16,185,129,0.2)', border: '2px solid var(--accent)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
                           <Check size={28} />
@@ -10499,7 +10499,7 @@ export default function App() {
                         return (
                           <>
                             {isCableInactive && (
-                              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#fca5a5', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem' }}>
+                              <div style={{ background: 'var(--danger)', border: '1px solid #ef4444', color: 'var(--danger)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem' }}>
                                 {t(
                                   'Your cable provider is currently inactive. Please choose a different provider or wait for their status to update.',
                                   'आपका केबल प्रदाता वर्तमान में निष्क्रिय है। कृपया एक अलग प्रदाता चुनें या उनकी स्थिति अपडेट होने की प्रतीक्षा करें।',
@@ -10508,7 +10508,7 @@ export default function App() {
                               </div>
                             )}
                             {isBroadbandInactive && (
-                              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#fca5a5', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem' }}>
+                              <div style={{ background: 'var(--danger)', border: '1px solid #ef4444', color: 'var(--danger)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem' }}>
                                 {t(
                                   'Your broadband provider is currently inactive. Please choose a different provider or wait for their status to update.',
                                   'आपका ब्रॉडबैंड प्रदाता वर्तमान में निष्क्रिय है। कृपया एक अलग प्रदाता चुनें या उनकी स्थिति अपडेट होने की प्रतीक्षा करें।',
@@ -10797,7 +10797,7 @@ export default function App() {
                                   <button
                                     key={o.id}
                                     style={{
-                                      background: trackingOrder.id === o.id ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
+                                      background: trackingOrder.id === o.id ? 'var(--accent)' : 'var(--border-color)',
                                       color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', border: 'none', borderRadius: '20px', padding: '0.3rem 0.6rem',
                                       fontSize: '0.7rem', cursor: 'pointer', whiteSpace: 'nowrap'
                                     }}
@@ -10813,7 +10813,7 @@ export default function App() {
                         })()}
 
                         {/* TODO: Google Maps here once API key is configured. Pass stockist lat/long */}
-                        <div style={{ height: '180px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px dashed var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.25rem' }}>
+                        <div style={{ height: '180px', borderRadius: '10px', background: 'var(--surface-overlay)', border: '1px dashed var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.25rem' }}>
                           <MapPin size={24} style={{ color: 'var(--text-muted)' }} />
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('Live map coming soon','लाइव मैप जल्द','লাইভ ম্যাপ শীঘ্রই')}</span>
                         </div>
@@ -10836,7 +10836,7 @@ export default function App() {
                               const isCompleted = currentIdx >= stepIdx;
                               const isActive = currentIdx === stepIdx || (liveOrder.status === 'PENDING' && step.key === 'CONFIRMING');
                               
-                              let dotColor = 'rgba(255,255,255,0.2)';
+                              let dotColor = 'var(--border-color)';
                               if (isActive) dotColor = 'var(--accent)';
                               else if (isCompleted) dotColor = 'var(--success)';
 
@@ -10865,7 +10865,7 @@ export default function App() {
                               </div>
                               <div style={{ 
                                 padding: '0.75rem 1rem', 
-                                background: 'rgba(16,185,129,0.08)', 
+                                background: 'var(--success-glow)', 
                                 border: '1px solid rgba(16,185,129,0.25)', 
                                 borderRadius: '10px',
                                 display: 'flex',
@@ -10917,7 +10917,7 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,153,0,0.1)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,153,0,0.2)', marginTop: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--warning-glow)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,153,0,0.2)', marginTop: '0.5rem' }}>
                             <Sparkles size={16} style={{ color: 'var(--warning)' }} />
                             <div style={{ fontSize: '0.75rem' }}>
                               <strong style={{ color: 'var(--warning)' }}>+{formatPoints(liveOrder.points_credited || liveOrder.estimated_points_credit || 0)}</strong>
@@ -11074,7 +11074,7 @@ export default function App() {
             {/* Carts Sheet (Zomato-style) */}
             {showCartsSheet && (
               <div 
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 'var(--z-modal)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'var(--bg-main)', zIndex: 'var(--z-modal)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
                 onClick={() => setShowCartsSheet(false)}
               >
                 <div 
@@ -11086,7 +11086,7 @@ export default function App() {
                     if (dy > 40) setShowCartsSheet(false);
                   }}
                 >
-                  <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px', margin: '0 auto 1rem' }}></div>
+                  <div style={{ width: '40px', height: '4px', background: 'var(--border-color)', borderRadius: '2px', margin: '0 auto 1rem' }}></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <strong style={{ fontSize: '1.1rem' }}>{t('Your Carts', 'आपके कार्ट', 'আপনার কার্ট')} ({Object.keys(customerCarts).length})</strong>
                     {Object.keys(customerCarts).length > 0 && (
@@ -11278,11 +11278,11 @@ export default function App() {
                       {rejectedBillCount > 0 && (
                         <div 
                           style={{ 
-                            background: 'rgba(239, 68, 68, 0.1)', 
+                            background: 'var(--danger)', 
                             border: '1px solid var(--danger)', 
                             borderRadius: '8px', 
                             padding: '0.75rem', 
-                            color: '#F87171', 
+                            color: 'var(--danger)', 
                             fontSize: '0.8rem',
                             display: 'flex',
                             alignItems: 'center',
@@ -11422,7 +11422,7 @@ export default function App() {
                               </div>
 
                               {/* Basic Customer Context */}
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', background: 'rgba(255, 255, 255, 0.02)', padding: '0.45rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', background: 'var(--surface-overlay)', padding: '0.45rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                   <span style={{ fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                     <UserCheck size={12} style={{ color: 'var(--primary)' }} /> {o.customer_name}
@@ -11440,7 +11440,7 @@ export default function App() {
                               {renderOrderProgressBar(o.status, o.fulfillment_type)}
 
                               {/* Order Items List */}
-                              <div style={{ background: 'rgba(0,0,0,0.15)', padding: '0.4rem 0.5rem', borderRadius: '4px' }}>
+                              <div style={{ background: 'var(--surface-overlay)', padding: '0.4rem 0.5rem', borderRadius: '4px' }}>
                                 <div style={{ fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '0.25rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.2rem' }}>{t("ITEMS TO PACK:", "पैकिंग के लिए आइटम:", "প্যাকিং এর জিনিসপত্র:")}</div>
                                 {o.items && o.items.map(item => (
                                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-main)', fontSize: '0.7rem' }}>
@@ -11451,7 +11451,7 @@ export default function App() {
                               </div>
 
                               {/* Split Payout Breakdown */}
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.5rem', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '6px', border: '1px dashed rgba(99, 102, 241, 0.2)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.5rem', background: 'var(--primary-glow)', borderRadius: '6px', border: '1px dashed rgba(99, 102, 241, 0.2)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
                                   <span>Split Settlements (প্রাপ্য কমিশন ভাগ):</span>
                                 </div>
@@ -11523,7 +11523,7 @@ export default function App() {
 
                       {/* Order History */}
                       <div style={{ marginTop: '1.5rem' }}>
-                        <details style={{ background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        <details style={{ background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                           <summary style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-muted)', cursor: 'pointer', outline: 'none' }}>
                             {t('Order History', 'ऑर्डर इतिहास', 'অর্ডার ইতিহাস')}
                           </summary>
@@ -11621,7 +11621,7 @@ export default function App() {
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', background: 'var(--surface-overlay)', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
                         <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{t("Low Stock Threshold:", "कम स्टॉक सीमा:", "কম স্টক থ্রেশহোল্ড:")}</span>
                               <NumberStepper value={lowStockThreshold} onChange={v => setLowStockThreshold(parseInt(v, 10))} min={0} step={1} decimals={0} size="sm" />
                       </div>
@@ -11653,7 +11653,7 @@ export default function App() {
                                   <div style={{ fontWeight: '600', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     {p.name}
                                     {p.bill_status === 'PENDING' && (
-                                      <span style={{ fontSize: '0.65rem', background: 'var(--warning)', color: '#000', padding: '2px 6px', borderRadius: 10 }}>
+                                      <span style={{ fontSize: '0.65rem', background: 'var(--warning)', color: 'var(--bg-main)', padding: '2px 6px', borderRadius: 10 }}>
                                         {t('Awaiting bill check', 'बिल की जांच की प्रतीक्षा', 'বিলের চেকের অপেক্ষায়')}
                                       </span>
                                     )}
@@ -11668,7 +11668,7 @@ export default function App() {
                                       </span>
                                     )}
                                     {p.is_sellable === false && (
-                                      <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid var(--danger)', padding: '0.2rem 0.5rem', borderRadius: '4px', marginTop: '0.25rem', color: 'var(--danger)', fontSize: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                      <div style={{ background: 'var(--danger)', border: '1px solid var(--danger)', padding: '0.2rem 0.5rem', borderRadius: '4px', marginTop: '0.25rem', color: 'var(--danger)', fontSize: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                           <AlertTriangle size={12} />
                                           <strong>{t("Not selling. Bill rejected", "बिक्री बंद. बिल अस्वीकृत", "বিক্রি বন্ধ. বিল প্রত্যাখ্যাত")}</strong>
@@ -11786,7 +11786,7 @@ export default function App() {
                               <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 {analyticsRange === 'weekly' ? t('7-Day Sales Trend (₹)', '7-दिवसीय बिक्री रुझान (₹)', '৭-দিনের সেলস ট্রেন্ড (₹)') : t('4-Week Sales Trend (₹)', '4-सप्ताह बिक्री रुझान (₹)', '৪-সপ্তাহের সেলস ট্রেন্ড (₹)')}
                               </span>
-                              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '0.1rem' }}>
+                              <div style={{ display: 'flex', background: 'var(--surface-overlay)', borderRadius: '4px', padding: '0.1rem' }}>
                                 <button
                                   type="button"
                                   onClick={() => setAnalyticsRange('weekly')}
@@ -11824,7 +11824,7 @@ export default function App() {
                             <div style={{ height: 130, width: '100%', marginTop: '0.5rem' }}>
                               <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={analyticsRange === 'weekly' ? stockistAnalytics.weekly_data : (stockistAnalytics.monthly_data || [])} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                  <CartesianGrid strokeDasharray="3 3" stroke='var(--surface-overlay)' />
                                   <XAxis dataKey="day" stroke="var(--text-muted)" fontSize={8} tickLine={false} />
                                   <YAxis stroke="var(--text-muted)" fontSize={8} tickLine={false} />
                                   <Tooltip 
@@ -11844,14 +11844,14 @@ export default function App() {
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}><CheckCircle2 size={10} style={{ color: 'var(--accent)' }} /> Fulfilled: <strong>{stockistAnalytics.total_fulfilled}</strong></span>
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}><AlertCircle size={10} style={{ color: 'var(--danger)' }} /> Cancelled: <strong>{stockistAnalytics.total_cancelled}</strong></span>
                                 </div>
-                                <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+                                <div style={{ height: '6px', background: 'var(--surface-overlay)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
                                   {stockistAnalytics.total_fulfilled + stockistAnalytics.total_cancelled > 0 ? (
                                     <>
                                       <div style={{ width: `${(stockistAnalytics.total_fulfilled / (stockistAnalytics.total_fulfilled + stockistAnalytics.total_cancelled)) * 100}%`, background: 'var(--accent)' }} />
                                       <div style={{ width: `${(stockistAnalytics.total_cancelled / (stockistAnalytics.total_fulfilled + stockistAnalytics.total_cancelled)) * 100}%`, background: 'var(--danger)' }} />
                                     </>
                                   ) : (
-                                    <div style={{ width: '100%', background: 'rgba(255,255,255,0.1)' }} />
+                                    <div style={{ width: '100%', background: 'var(--border-color)' }} />
                                   )}
                                 </div>
                               </div>
@@ -11885,7 +11885,7 @@ export default function App() {
 
                   {/* Stockist-Side Rate Customer Modal Overlay */}
                   {submittingFeedbackOrder && currentUser.role === 'STOCKIST' && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <UserCheck size={16} style={{ color: 'var(--accent)' }} />
@@ -11943,7 +11943,7 @@ export default function App() {
                   )}
 
                   {showAddProductModal && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1rem', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1rem', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                         <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <Package size={16} style={{ color: 'var(--accent)' }} />
@@ -12097,7 +12097,7 @@ export default function App() {
                   )}
 
                   {editingProduct && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1rem', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1rem', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                         <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <Edit size={16} style={{ color: 'var(--accent)' }} />
@@ -12105,7 +12105,7 @@ export default function App() {
                         </h3>
 
                         {(Math.abs(parseFloat(editProdPrice || 0) - editingProduct.price) > 0.001 || Math.abs(parseFloat(editProdCostPrice || 0) - editingProduct.cost_price) > 0.001) && (
-                          <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', padding: '0.5rem', borderRadius: '6px', fontSize: '0.75rem', color: '#fca5a5' }}>
+                          <div style={{ background: 'var(--danger)', border: '1px solid var(--danger)', padding: '0.5rem', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--danger)' }}>
                             ⚠️ Price change detected. A new bill is required.
                           </div>
                         )}
@@ -12439,8 +12439,8 @@ export default function App() {
                         </div>
 
                         {showPersonalDetails && createPortal(
-                          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(2px)', zIndex: 'var(--z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setShowPersonalDetails(false)}>
-                            <div style={{ width: '100%', maxWidth: '360px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: '#161a24', border: '1px solid var(--border-color)', borderRadius: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxHeight: `calc(85vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                          <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-main)', backdropFilter: 'blur(2px)', zIndex: 'var(--z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setShowPersonalDetails(false)}>
+                            <div style={{ width: '100%', maxWidth: '360px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxHeight: `calc(85vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                               <h4 style={{ margin: 0, color: 'var(--text-main)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>{t('Personal Details', 'व्यक्तिगत विवरण', 'ব্যক্তিগত বিবরণ')}</h4>
                               <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 <div><span style={{color:'var(--text-muted)'}}>{t('Name','नाम','নাম')}: </span><strong>{stockistProfile.personal_name || stockistProfile.name}</strong></div>
@@ -12793,7 +12793,7 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
                 <div 
                   onClick={() => { setAdminTab('redemptions'); fetchRedemptionApprovals(); }}
-                  style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
+                  style={{ background: 'var(--warning-glow)', border: '1px solid rgba(245,158,11,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
                 >
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
                     {t('Redemptions Pending Admin Approval', 'प्रशासक अनुमोदन लंबित रिडीम', 'অ্যাডমিন অনুমোদনের অপেক্ষায় রিডিম')}
@@ -12808,7 +12808,7 @@ export default function App() {
 
                 <div 
                   onClick={() => { setAdminTab('analytics'); fetchAnalytics(); }}
-                  style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
+                  style={{ background: 'var(--primary-glow)', border: '1px solid rgba(99,102,241,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
                 >
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
                     {t('Orders In Progress Today', 'आज प्रगति में ऑर्डर', 'আজকের প্রসেসিংয়ে থাকা অর্ডার')}
@@ -12820,19 +12820,19 @@ export default function App() {
 
                 <div 
                   onClick={() => { setAdminTab('analytics'); fetchAnalytics(); }}
-                  style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
+                  style={{ background: 'var(--success-glow)', border: '1px solid rgba(34,197,94,0.2)', padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
                 >
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
                     {t('Revenue This Week', 'इस सप्ताह का राजस्व', 'এই সপ্তাহের মোট রাজস্ব')}
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#4ade80', marginTop: '0.35rem' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success)', marginTop: '0.35rem' }}>
                     {analyticsData ? `₹${analyticsData?.orders?.revenue_this_week_rupees ?? 0}` : '-'}
                   </div>
                 </div>
                 <div 
                   onClick={() => goToAdminTab('transactions')}
                   style={{ 
-                    background: UNPAID > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(34,197,94,0.08)', 
+                    background: UNPAID > 0 ? 'var(--warning-glow)' : 'var(--success-glow)', 
                     border: UNPAID > 0 ? '1px solid rgba(245,158,11,0.2)' : '1px solid rgba(34,197,94,0.2)', 
                     padding: '0.85rem', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s',
                     display: 'flex', flexDirection: 'column', gap: '0.5rem'
@@ -12850,7 +12850,7 @@ export default function App() {
                     ₹{payoutsDue.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2)}
                   </div>
                   
-                  <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '0.25rem 0' }}></div>
+                  <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.25rem 0' }}></div>
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
@@ -12864,7 +12864,7 @@ export default function App() {
                     ₹{commissionOwed.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2)}
                   </div>
                   
-                  <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '0.25rem 0' }}></div>
+                  <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.25rem 0' }}></div>
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
@@ -12893,7 +12893,7 @@ export default function App() {
                 if (allComplete) return null;
 
                 return (
-                  <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.25rem', border: '1px solid rgba(99, 102, 241, 0.3)', background: 'rgba(99, 102, 241, 0.05)' }}>
+                  <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.25rem', border: '1px solid rgba(99, 102, 241, 0.3)', background: 'var(--primary-glow)' }}>
                     <h3 style={{ fontSize: '1rem', margin: 0, marginBottom: '0.35rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <Sparkles size={16} /> {t('Getting Started: Initial Platform Setup', 'आरंभ करना: प्रारंभिक प्लेटफ़ॉर्म सेटअप', 'শুরু করুন: প্রাথমিক প্ল্যাটফর্ম সেটআপ')}
                     </h3>
@@ -12908,13 +12908,13 @@ export default function App() {
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '0.65rem 0.85rem', borderRadius: '8px',
-                          background: step1Done ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)',
+                          background: step1Done ? 'rgba(34,197,94,0.1)' : 'var(--surface-overlay)',
                           border: step1Done ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border-color)',
                           cursor: 'pointer'
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          {step1Done ? <CheckCircle2 size={16} style={{ color: '#4ade80' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>1</span>}
+                          {step1Done ? <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>1</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step1Done ? '#4ade80' : 'white' }}>
                               1. {t('Create your first service region', 'अपना पहला सेवा क्षेत्र बनाएं', 'আপনার প্রথম পরিষেবা অঞ্চল তৈরি করুন')}
@@ -12931,14 +12931,14 @@ export default function App() {
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '0.65rem 0.85rem', borderRadius: '8px',
-                          background: step2Done ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)',
+                          background: step2Done ? 'rgba(34,197,94,0.1)' : 'var(--surface-overlay)',
                           border: step2Done ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border-color)',
                           opacity: step1Done ? 1 : 0.4,
                           cursor: step1Done ? 'pointer' : 'not-allowed'
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          {step2Done ? <CheckCircle2 size={16} style={{ color: '#4ade80' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>2</span>}
+                          {step2Done ? <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>2</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step2Done ? '#4ade80' : (step1Done ? 'white' : 'var(--text-muted)') }}>
                               2. {t('Register a wholesaler for that region', 'उस क्षेत्र के लिए थोक विक्रेता पंजीकृत करें', 'সেই অঞ্চলের জন্য একজন পাইকারী বিক্রেতা রেজিস্টার করুন')}
@@ -12957,14 +12957,14 @@ export default function App() {
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '0.65rem 0.85rem', borderRadius: '8px',
-                          background: step3Done ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)',
+                          background: step3Done ? 'rgba(34,197,94,0.1)' : 'var(--surface-overlay)',
                           border: step3Done ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border-color)',
                           opacity: step2Done ? 1 : 0.4,
                           cursor: step2Done ? 'pointer' : 'not-allowed'
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          {step3Done ? <CheckCircle2 size={16} style={{ color: '#4ade80' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>3</span>}
+                          {step3Done ? <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>3</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step3Done ? '#4ade80' : (step2Done ? 'white' : 'var(--text-muted)') }}>
                               3. {t('Wait for a shopkeeper to register, then approve them', 'दुकानदार के पंजीकरण की प्रतीक्षा करें, फिर उन्हें स्वीकृत करें', 'দোকানদারের নিবন্ধনের জন্য অপেক্ষা করুন, তারপর তাদের অনুমোদন করুন')}
@@ -12983,14 +12983,14 @@ export default function App() {
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '0.65rem 0.85rem', borderRadius: '8px',
-                          background: step4Done ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)',
+                          background: step4Done ? 'rgba(34,197,94,0.1)' : 'var(--surface-overlay)',
                           border: step4Done ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border-color)',
                           opacity: step3Done ? 1 : 0.4,
                           cursor: step3Done ? 'pointer' : 'not-allowed'
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          {step4Done ? <CheckCircle2 size={16} style={{ color: '#4ade80' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>4</span>}
+                          {step4Done ? <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>4</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step4Done ? '#4ade80' : (step3Done ? 'white' : 'var(--text-muted)') }}>
                               4. {t('Invite customers to sign up', 'ग्राहकों को साइन अप करने के लिए आमंत्रित करें', 'গ্রাহকদের সাইন আপ করতে আমন্ত্রণ জানান')}
@@ -13036,33 +13036,33 @@ export default function App() {
                       <div>
                         <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>Users Overview</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Customers</div>
                             <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{analyticsData.users?.total_customers || 0}</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Approved Stockists</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#4ade80' }}>{analyticsData.users?.total_stockists_approved || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success)' }}>{analyticsData.users?.total_stockists_approved || 0}</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Active Partners</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#818cf8' }}>{analyticsData.users?.total_partners_active || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--secondary)' }}>{analyticsData.users?.total_partners_active || 0}</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>DAU / WAU / MAU</div>
                             <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                               {analyticsData.users?.dau_customers || 0} / {analyticsData.users?.wau_customers || 0} / {analyticsData.users?.mau_customers || 0}
                             </div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>New Customers (Week / Month)</div>
                             <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                               {analyticsData.users?.new_customers_this_week || 0} / {analyticsData.users?.new_customers_this_month || 0}
                             </div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Customers With Bindings</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#f472b6' }}>{analyticsData.users?.customers_with_bindings || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--secondary)' }}>{analyticsData.users?.customers_with_bindings || 0}</div>
                           </div>
                         </div>
                       </div>
@@ -13071,21 +13071,21 @@ export default function App() {
                       <div>
                         <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>Orders & Revenue</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Orders All-time</div>
                             <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{analyticsData.orders?.total_all_time || 0}</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Revenue Today / Week / Month</div>
-                            <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#4ade80' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--success)' }}>
                               ₹{analyticsData.orders?.revenue_today_rupees || 0} / ₹{analyticsData.orders?.revenue_this_week_rupees || 0} / ₹{analyticsData.orders?.revenue_this_month_rupees || 0}
                             </div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Average Order Value (Month)</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#38bdf8' }}>₹{analyticsData.orders?.average_order_value_this_month || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--primary)' }}>₹{analyticsData.orders?.average_order_value_this_month || 0}</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Orders Status Breakdown</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-main)', marginTop: '0.2rem' }}>
                               Pending: <strong>{analyticsData.orders?.orders_pending || 0}</strong> | Ready: <strong>{analyticsData.orders?.orders_ready || 0}</strong> | Delivered Week: <strong>{analyticsData.orders?.orders_delivered_this_week || 0}</strong>
@@ -13098,21 +13098,21 @@ export default function App() {
                       <div>
                         <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>Redemptions & Partner Payouts</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Approvals All-time</div>
                             <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{analyticsData.redemptions?.total_approvals_all_time || 0}</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Pending Admin Approval</div>
                             <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--warning)' }}>{analyticsData.redemptions?.pending_approvals || 0}</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Points Redeemed (Month)</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#c084fc' }}>{analyticsData.redemptions?.total_points_redeemed_this_month || 0} pts</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--accent)' }}>{analyticsData.redemptions?.total_points_redeemed_this_month || 0} pts</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Partner Payout Owed (Month 88%)</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#4ade80' }}>₹{analyticsData.redemptions?.total_partner_payout_owed_this_month || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success)' }}>₹{analyticsData.redemptions?.total_partner_payout_owed_this_month || 0}</div>
                           </div>
                         </div>
                       </div>
@@ -13121,21 +13121,21 @@ export default function App() {
                       <div>
                         <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>Points Ledger Breakdown</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Points Issued All-time</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#4ade80' }}>{analyticsData.points?.total_points_issued_all_time || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--success)' }}>{analyticsData.points?.total_points_issued_all_time || 0}</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Points Redeemed All-time</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#f43f5e' }}>{analyticsData.points?.total_points_redeemed_all_time || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--danger)' }}>{analyticsData.points?.total_points_redeemed_all_time || 0}</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Points Outstanding</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#fbbf24' }}>{analyticsData.points?.total_points_outstanding || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--accent)' }}>{analyticsData.points?.total_points_outstanding || 0}</div>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                          <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Referral Bonuses Paid</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#818cf8' }}>{analyticsData.points?.total_referral_bonuses_paid || 0} pts</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--secondary)' }}>{analyticsData.points?.total_referral_bonuses_paid || 0} pts</div>
                           </div>
                         </div>
                       </div>
@@ -13158,7 +13158,7 @@ export default function App() {
                                 <tr key={idx} style={{ borderBottom: '1px dashed var(--border-color)' }}>
                                   <td style={{ padding: '0.35rem', fontWeight: 'bold' }}>{s.name}</td>
                                   <td style={{ padding: '0.35rem', color: 'var(--text-muted)' }}>{s.region}</td>
-                                  <td style={{ padding: '0.35rem', color: '#4ade80', fontWeight: 'bold' }}>₹{s.gmv}</td>
+                                  <td style={{ padding: '0.35rem', color: 'var(--success)', fontWeight: 'bold' }}>₹{s.gmv}</td>
                                 </tr>
                               ))}
                               {(analyticsData.stockists?.top_5_by_gmv_this_month || []).length === 0 && (
@@ -13183,7 +13183,7 @@ export default function App() {
                               {(analyticsData.partners?.top_5_by_redemptions_this_month || []).map((p, idx) => (
                                 <tr key={idx} style={{ borderBottom: '1px dashed var(--border-color)' }}>
                                   <td style={{ padding: '0.35rem', fontWeight: 'bold' }}>{p.name}</td>
-                                  <td style={{ padding: '0.35rem', color: '#818cf8', fontWeight: 'bold' }}>{p.count}</td>
+                                  <td style={{ padding: '0.35rem', color: 'var(--secondary)', fontWeight: 'bold' }}>{p.count}</td>
                                 </tr>
                               ))}
                               {(analyticsData.partners?.top_5_by_redemptions_this_month || []).length === 0 && (
@@ -13245,7 +13245,7 @@ export default function App() {
                         .filter(c => adminIncludeInactiveCustomers ? true : c.is_active !== false)
                         .filter(c => (c.name || '').toLowerCase().includes(adminCustomerSearch.toLowerCase()) || (c.phone || '').includes(adminCustomerSearch))
                         .map(c => (
-                          <tr key={c.id} style={c.is_active === false ? { opacity: 0.6, background: 'rgba(255,255,255,0.02)' } : {}}>
+                          <tr key={c.id} style={c.is_active === false ? { opacity: 0.6, background: 'var(--surface-overlay)' } : {}}>
                             <td style={{ fontWeight: 'bold' }}>{c.name}</td>
                             <td>{c.phone}</td>
                             <td>{regions.find(r => r.id === c.region_id)?.name || c.region_id}</td>
@@ -13472,7 +13472,7 @@ export default function App() {
                           return filteredList.map(s => {
                             const vName = vendors.find(v => v.id === s.vendor_id)?.name || s.vendor_id || 'N/A';
                             return (
-                              <tr key={s.id} style={s.is_active === false || s.kyc_status === 'DEACTIVATED' ? { opacity: 0.6, background: 'rgba(255,255,255,0.02)' } : {}}>
+                              <tr key={s.id} style={s.is_active === false || s.kyc_status === 'DEACTIVATED' ? { opacity: 0.6, background: 'var(--surface-overlay)' } : {}}>
                                 <td>
                                   <div style={{ fontWeight: 'bold' }}>{s.name}</div>
                                   <div style={{ fontSize: '0.85em', fontWeight: 'normal', opacity: 0.8 }}>
@@ -13581,7 +13581,7 @@ export default function App() {
                         marginBottom: '1.5rem',
                         padding: '0.85rem 1.25rem',
                         borderColor: 'rgba(239, 68, 68, 0.5)',
-                        background: 'rgba(239, 68, 68, 0.1)',
+                        background: 'var(--danger)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -13869,7 +13869,7 @@ export default function App() {
                             .filter(p => partnerServiceFilter === 'ALL' || (p.service_types || []).includes(partnerServiceFilter))
                             .filter(p => partnerActiveFilter === 'ALL' ? true : partnerActiveFilter === 'ACTIVE' ? p.is_active !== false : p.is_active === false)
                             .map(p => (
-                              <tr key={p.id} style={p.is_active === false ? { opacity: 0.6, background: 'rgba(255,255,255,0.02)' } : {}}>
+                              <tr key={p.id} style={p.is_active === false ? { opacity: 0.6, background: 'var(--surface-overlay)' } : {}}>
                                 <td style={{ fontWeight: 'bold' }}>{p.display_name} <br/><span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.legal_name}</span></td>
                                 <td>{p.contact_phone}</td>
                                 <td>{(p.service_types || []).map(st => getServiceTypeLabel(st)).join(', ')}</td>
@@ -14377,7 +14377,7 @@ export default function App() {
                       </thead>
                       <tbody>
                         {adminRedemptionApprovals.filter(r => r.status === 'DISPUTED').map(r => (
-                          <tr key={r.id} style={{ background: 'rgba(234, 179, 8, 0.08)' }}>
+                          <tr key={r.id} style={{ background: 'var(--warning-glow)' }}>
                             <td style={{ fontSize: '0.7rem' }}>{new Date(r.updated_at || r.created_at).toLocaleString()}</td>
                             <td>{r.customer_name}</td>
                             <td>{r.partner_name}</td>
@@ -14749,7 +14749,7 @@ export default function App() {
                     Configure profit-sharing reinvestment ratios, customer points percentages, and partner redemption cuts across global defaults and store overrides.
                   </p>
 
-                  <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', borderColor: 'rgba(234, 179, 8, 0.4)', background: 'rgba(234, 179, 8, 0.08)' }}>
+                  <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', borderColor: 'rgba(234, 179, 8, 0.4)', background: 'var(--warning-glow)' }}>
                     <p style={{ fontSize: '0.75rem', color: 'var(--warning)', margin: 0 }}>
                       Legacy per-order commission rates are no longer used for new orders. Historical orders retain their original math.
                     </p>
@@ -14832,7 +14832,7 @@ export default function App() {
                         const partnerPayout = Math.round((sampleRedemption - platformCut) * 100) / 100;
 
                         return (
-                          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(15, 23, 42, 0.6)' }}>
+                          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--bg-surface)' }}>
                             <h4 style={{ fontSize: '0.9rem', color: 'var(--accent)', margin: 0 }}>Live Worked Example Calculation</h4>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                               <p style={{ margin: '0 0 0.4rem 0', fontWeight: 'bold', color: 'var(--text-main)' }}>For ₹100 sale with ₹80 cost (₹20 profit margin):</p>
@@ -15013,7 +15013,7 @@ export default function App() {
                                 {'★'.repeat(fb.rating)}{'☆'.repeat(5 - fb.rating)}
                               </span>
                               {fb.report_flag && (
-                                <span className="badge badge-danger" style={{ fontSize: '0.55rem', padding: '0.1rem 0.25rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem', background: 'rgba(239,68,68,0.15)', color: 'var(--danger)' }}>
+                                <span className="badge badge-danger" style={{ fontSize: '0.55rem', padding: '0.1rem 0.25rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem', background: 'var(--danger)', color: 'var(--danger)' }}>
                                   <AlertTriangle size={10} /> VIOLATION
                                 </span>
                               )}
@@ -15102,7 +15102,7 @@ export default function App() {
                           {selectedPartnerFeedback.partner_name} &bull; {new Date(selectedPartnerFeedback.created_at).toLocaleString()}
                         </div>
                         
-                        <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '8px', marginBottom: '1.25rem' }}>
+                        <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '8px', marginBottom: '1.25rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                 <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{selectedPartnerFeedback.subject}</h4>
                                 <span className="badge badge-primary" style={{ fontSize: '0.65rem' }}>{selectedPartnerFeedback.category}</span>
@@ -15555,7 +15555,7 @@ export default function App() {
                               </td>
                               <td>
                                 {v.is_active === false ? (
-                                  <span className="badge" style={{ background: '#6b7280', color: 'var(--text-main)' }}>INACTIVE</span>
+                                  <span className="badge" style={{ background: 'var(--text-muted)', color: 'var(--text-main)' }}>INACTIVE</span>
                                 ) : (
                                   <span className="badge badge-success">ACTIVE</span>
                                 )}
@@ -15835,7 +15835,7 @@ export default function App() {
                         const isPaid = correspondingPayout?.is_paid;
                         
                         return (
-                          <tr key={o.id} style={isRefundDue ? { background: 'rgba(239, 68, 68, 0.08)', borderLeft: '3px solid var(--danger)' } : {}}>
+                          <tr key={o.id} style={isRefundDue ? { background: 'var(--danger)', borderLeft: '3px solid var(--danger)' } : {}}>
                             <td style={{ fontFamily: 'monospace' }}>#{o.id.substring(2).toUpperCase()}</td>
                             <td>{o.stockist_name}</td>
                             <td><span className="badge badge-primary" style={{ fontSize: '0.65rem' }}>{formatOrderStatusDisplay(o.status, o.fulfillment_type)}</span></td>
@@ -15979,9 +15979,9 @@ export default function App() {
           <button className={`role-tab ${dbTab === 'anomaly_logs' ? 'active' : ''}`} onClick={() => setDbTab('anomaly_logs')} style={{ borderRadius: '4px' }}>anomaly_logs</button>
         </div>
 
-        <div className="glass-card" style={{ background: '#080A0E', padding: '1.5rem', minHeight: '300px', overflowX: 'auto' }}>
+        <div className="glass-card" style={{ background: 'var(--bg-surface)', padding: '1.5rem', minHeight: '300px', overflowX: 'auto' }}>
           {tableData && tableData.length > 0 ? (
-            <pre style={{ color: '#38BDF8', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+            <pre style={{ color: 'var(--primary)', fontSize: '0.8rem', fontFamily: 'monospace' }}>
               {JSON.stringify(tableData, null, 2)}
             </pre>
           ) : (
@@ -15996,11 +15996,11 @@ export default function App() {
 
   if (needsSetup) {
     return (
-      <div className="simulator-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: `calc(100vh / var(--ui-scale))`, padding: '1.5rem', background: '#0f172a' }}>
-        <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'rgba(30, 41, 59, 0.7)', backdropFilter: 'blur(16px)' }}>
+      <div className="simulator-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: `calc(100vh / var(--ui-scale))`, padding: '1.5rem', background: 'var(--bg-main)' }}>
+        <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-elevated)', backdropFilter: 'blur(16px)' }}>
           {setupSuccessAdmin ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--success-glow)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
                 <CheckCircle2 size={32} />
               </div>
               <div>
@@ -16041,7 +16041,7 @@ export default function App() {
               </div>
 
               {setupError && (
-                <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ background: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.4)', color: 'var(--danger)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <AlertCircle size={16} />
                   <span>{setupError}</span>
                 </div>
@@ -16167,7 +16167,7 @@ export default function App() {
             left: 0,
             width: `calc(100vw / var(--ui-scale))`,
             height: `calc(100vh / var(--ui-scale))`,
-            background: 'rgba(0, 0, 0, 0.7)',
+            background: 'var(--bg-main)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -16184,7 +16184,7 @@ export default function App() {
               display: 'flex',
               flexDirection: 'column',
               gap: '1rem',
-              background: '#1a1f2c',
+              background: 'var(--bg-surface)',
               border: '1px solid rgba(255, 255, 255, 0.08)',
               borderRadius: '12px',
               boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.57)',
@@ -16232,7 +16232,7 @@ export default function App() {
             left: 0,
             width: `calc(100vw / var(--ui-scale))`,
             height: `calc(100vh / var(--ui-scale))`,
-            background: 'rgba(0, 0, 0, 0.75)',
+            background: 'var(--bg-main)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -16251,7 +16251,7 @@ export default function App() {
               alignItems: 'center',
               textAlign: 'center',
               gap: '1rem',
-              background: '#1a1f2c',
+              background: 'var(--bg-surface)',
               border: '1px solid var(--accent)',
               borderRadius: '16px',
               boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.6)',
@@ -16381,7 +16381,7 @@ export default function App() {
           {currentUser && currentUser.email && currentUser.email.includes('fastnet.invalid') ? (
             <PanelErrorBoundary key="add-email" t={t}>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', width: '100%', padding: '2rem' }}>
-                <div className="glass-card" style={{ width: '450px', maxWidth: '100%', borderRadius: '16px', overflow: 'hidden', background: '#1a1f2c' }}>
+                <div className="glass-card" style={{ width: '450px', maxWidth: '100%', borderRadius: '16px', overflow: 'hidden', background: 'var(--bg-surface)' }}>
                   {renderAddEmailScreen()}
                 </div>
               </div>
@@ -16436,14 +16436,14 @@ export default function App() {
                       {log.method} {log.status}
                     </span>
                   </div>
-                  <div style={{ color: '#E2E8F0', wordBreak: 'break-all' }}>{log.url}</div>
+                  <div style={{ color: 'var(--text-main)', wordBreak: 'break-all' }}>{log.url}</div>
                   {log.payload && (
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginTop: '0.1rem' }}>
-                      Payload: <span style={{ color: '#F472B6' }}>{log.payload}</span>
+                      Payload: <span style={{ color: 'var(--secondary)' }}>{log.payload}</span>
                     </div>
                   )}
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>
-                    Resp: <span style={{ color: '#6EE7B7' }}>{log.response}</span>
+                    Resp: <span style={{ color: 'var(--success)' }}>{log.response}</span>
                   </div>
                 </div>
               ))}
@@ -17333,7 +17333,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="input-group" style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+              <div className="input-group" style={{ padding: '0.75rem', background: 'var(--surface-overlay)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                 <label className="input-label">{t('Commission Rate (Versioned)', 'कमीशन दर (संस्करणित)', 'কমিশন হার (সংস্করণযুক্ত)')}</label>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '1rem', color: 'var(--primary)', fontWeight: 'bold' }}>{selectedStockistDetail?.stockist?.commission_rate ?? selectedStockistDetail?.commission_rate ?? 10}%</span>
@@ -17343,7 +17343,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ padding: '0.75rem', background: 'rgba(255,0,0,0.02)', borderRadius: '6px', border: '1px solid rgba(255,0,0,0.1)', marginTop: '0.5rem' }}>
+              <div style={{ padding: '0.75rem', background: 'var(--surface-overlay)', borderRadius: '6px', border: '1px solid rgba(255,0,0,0.1)', marginTop: '0.5rem' }}>
                 <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   <ShieldAlert size={14} /> {t('Identity / KYC (Changes are logged)', 'पहचान / KYC (परिवर्तन लॉग किए जाते हैं)', 'পরিচয় / KYC (পরিবর্তন লগ করা হয়)')}
                 </h4>
@@ -17412,7 +17412,7 @@ export default function App() {
               </button>
 
               {commissionRatePreview && (
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.75rem', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.75rem', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                   {Number(commissionRatePreview.orders_count ?? commissionRatePreview.ordersCount ?? 0) === 0 ? (
                     <>
                       <div style={{ color: 'var(--text-muted)' }}>No delivered orders in the last 30 days</div>
@@ -17513,7 +17513,7 @@ export default function App() {
             <h4 style={{ fontSize: '0.9rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.3rem', marginBottom: '0.5rem' }}>Internal Notes</h4>
             <div style={{ maxHeight: '150px', overflowY: 'auto', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               {selectedLeadDetail.notes?.map((n, idx) => (
-                <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', padding: '0.4rem', borderRadius: '4px', fontSize: '0.75rem' }}>
+                <div key={idx} style={{ background: 'var(--surface-overlay)', padding: '0.4rem', borderRadius: '4px', fontSize: '0.75rem' }}>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>{n.admin_user_id || 'Admin'} at {new Date(n.timestamp).toLocaleString()}</div>
                   <div>{n.text}</div>
                 </div>
@@ -17551,7 +17551,7 @@ export default function App() {
               <div>Linked Entity: <strong>{selectedFraudReportDetail.linked_entity_type || 'None'}: {selectedFraudReportDetail.linked_entity_id || 'N/A'}</strong></div>
             </div>
 
-            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.8rem' }}>
+            <div style={{ background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.8rem' }}>
               <strong>Description:</strong>
               <p style={{ margin: '0.35rem 0 0 0', color: 'var(--text-main)' }}>{selectedFraudReportDetail.description}</p>
             </div>
@@ -18591,7 +18591,7 @@ export default function App() {
             <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               <strong>{selectedKycDocument.idType}:</strong> {selectedKycDocument.idNumber ? formatAadhaar(selectedKycDocument.idNumber) : 'N/A'}
             </div>
-            <div style={{ textAlign: 'center', background: '#000', padding: '1rem', borderRadius: '8px', maxHeight: `calc(60vh / var(--ui-scale))`, overflow: 'auto' }}>
+            <div style={{ textAlign: 'center', background: 'var(--bg-main)', padding: '1rem', borderRadius: '8px', maxHeight: `calc(60vh / var(--ui-scale))`, overflow: 'auto' }}>
               <img 
                 src={selectedKycDocument.url} 
                 alt="KYC Document" 
@@ -18616,9 +18616,9 @@ export default function App() {
         </div>
       )}
       {stockistListModal && createPortal(
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 'var(--z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
              onClick={() => setStockistListModal(null)}>
-          <div style={{ background: '#161a24', border: '1px solid var(--border-color)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 420, maxHeight: `calc(80vh / var(--ui-scale))`, display: 'flex', flexDirection: 'column' }}
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 420, maxHeight: `calc(80vh / var(--ui-scale))`, display: 'flex', flexDirection: 'column' }}
                onClick={e => e.stopPropagation()}>
             <h4 style={{ margin: '0 0 0.25rem' }}>{t('Stockists for','स्टॉकिस्ट','স্টকিস্ট')} {stockistListModal.vendorName}</h4>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '0 0 0.75rem' }}>{stockistListModal.stockists.length} {t('assigned','सौंपे गए','নিযুক্ত')}</p>
@@ -18629,7 +18629,7 @@ export default function App() {
               {stockistListModal.stockists
                 .filter(s => (s.shop_name || s.name || '').toLowerCase().includes(stockistModalSearch.toLowerCase()))
                 .map(s => (
-                  <div key={s.id} style={{ padding: '0.4rem 0.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: 6, fontSize: '0.85rem' }}>
+                  <div key={s.id} style={{ padding: '0.4rem 0.5rem', background: 'var(--surface-overlay)', borderRadius: 6, fontSize: '0.85rem' }}>
                     {s.shop_name || s.name}
                   </div>
                 ))}

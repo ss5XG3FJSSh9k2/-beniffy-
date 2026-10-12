@@ -11,11 +11,16 @@
   --primary-glow: rgba(97, 33, 15, 0.12);
   --secondary: #61210F;
   --secondary-glow: rgba(97, 33, 15, 0.12);
-  --accent: #10B981;
-  --accent-glow: rgba(16, 185, 129, 0.15);
+  --accent: #61210F;
+  --accent-glow: rgba(97, 33, 15, 0.15);
   --danger: #EF4444;
   --danger-color: #EF4444;
   --success: #10B981;
+  --success-glow: rgba(16, 185, 129, 0.15);
+  --warning: #FBBF24;
+  --warning-glow: rgba(245, 158, 11, 0.15);
+  --info: #38BDF8;
+  --info-glow: rgba(56, 189, 248, 0.15);
   
   --text-main: #61210F;
   --text-muted: #7A4738;
@@ -59,11 +64,16 @@
   --primary-glow: rgba(238, 110, 77, 0.15);
   --secondary: #EE6E4D;
   --secondary-glow: rgba(238, 110, 77, 0.15);
-  --accent: #10B981;
-  --accent-glow: rgba(16, 185, 129, 0.15);
+  --accent: #EE6E4D;
+  --accent-glow: rgba(238, 110, 77, 0.15);
   --danger: #EF4444;
   --danger-color: #EF4444;
   --success: #10B981;
+  --success-glow: rgba(16, 185, 129, 0.15);
+  --warning: #FBBF24;
+  --warning-glow: rgba(245, 158, 11, 0.15);
+  --info: #38BDF8;
+  --info-glow: rgba(56, 189, 248, 0.15);
   
   --text-main: #FDF0D5;
   --text-muted: #C5BBA4;
@@ -294,7 +304,7 @@ h1, h2, h3, h4, h5, h6 {
 .phone-mockup {
   width: 380px;
   height: 760px;
-  background: #000;
+  background: var(--bg-main);
   border-radius: 40px;
   border: 12px solid #1E2330;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--border-color);
@@ -384,7 +394,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .glass-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(99, 102, 241, 0.4);
+  border-color: var(--primary);
   box-shadow: 0 8px 24px var(--border-color);
 }
 
@@ -427,7 +437,7 @@ select option {
 
 select option:checked {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 select option:disabled {
@@ -451,7 +461,7 @@ select option:disabled {
 }
 
 .btn:hover {
-  background: #4F46E5;
+  background: var(--primary);
   transform: translateY(-1px);
 }
 
@@ -480,14 +490,14 @@ select option:disabled {
   background: var(--accent);
 }
 .btn-accent:hover {
-  background: #059669;
+  background: var(--success);
 }
 
 .btn-danger {
   background: var(--danger);
 }
 .btn-danger:hover {
-  background: #DC2626;
+  background: var(--danger);
 }
 
 /* Badge System */
@@ -508,8 +518,8 @@ select option:disabled {
   background: var(--badge-primary-bg);
   color: var(--badge-primary-text);
 }
-.badge-success { background: rgba(16, 185, 129, 0.15); color: #34D399; }
-.badge-warning { background: rgba(245, 158, 11, 0.15); color: #FBBF24; }
+.badge-success { background: var(--success-glow); color: var(--success); }
+.badge-warning { background: var(--warning-glow); color: var(--warning); }
 .badge-danger { background: rgba(239, 68, 68, 0.15); color: #F87171; }
 
 /* Custom Marketing/Onboarding Site Layout */
@@ -629,7 +639,7 @@ select option:disabled {
 }
 
 .admin-nav-item:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-overlay);
   color: var(--text-main);
 }
 
@@ -690,7 +700,7 @@ select option:disabled {
   padding: 1rem;
   font-family: monospace;
   font-size: 0.75rem;
-  background: #080A0E;
+  background: var(--bg-surface);
 }
 
 .db-row {
@@ -721,7 +731,7 @@ select option:disabled {
 }
 
 .net-badge {
-  background: #E50914; /* Netflix Red */
+  background: var(--danger); /* Netflix Red */
   color: var(--on-primary);
   padding: 0.2rem 0.5rem;
   font-size: 0.6rem;
@@ -745,12 +755,12 @@ select option:disabled {
 }
 
 .net-btn-dark {
-  background: rgba(128, 128, 128, 0.4);
+  background: var(--border-color);
   color: var(--on-primary);
 }
 
 .net-btn-dark:hover {
-  background: rgba(128, 128, 128, 0.6);
+  background: var(--text-muted);
 }
 
 .points-glow-box {
@@ -783,7 +793,7 @@ select option:disabled {
 }
 
 .admin-table tr:hover td {
-  background: rgba(255, 255, 255, 0.01);
+  background: var(--surface-overlay);
 }
 
 /* Notification Popups */
@@ -844,7 +854,7 @@ select option:disabled {
   transform: translateX(-50%);
   width: 120px;
   height: 20px;
-  background: #000000;
+  background: var(--bg-main);
   border-radius: 10px;
   z-index: 50;
   box-shadow: inset 0 1px 2px var(--border-color);
@@ -854,14 +864,14 @@ select option:disabled {
 /* Perspective Banner (Who Sees What) */
 .perspective-banner {
   width: 100%;
-  background: rgba(30, 41, 59, 0.7);
+  background: var(--bg-surface-elevated);
   border: 1px solid var(--surface-overlay);
   border-radius: 8px;
   padding: 0.6rem 1rem;
   margin-bottom: 1rem;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #E2E8F0;
+  color: var(--text-main);
   text-align: center;
   display: flex;
   align-items: center;
@@ -904,7 +914,7 @@ select option:disabled {
 /* Pulsing animation for new incoming orders */
 @keyframes pulse-new-order {
   0% {
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: var(--border-color);
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
   }
   50% {
@@ -912,7 +922,7 @@ select option:disabled {
     box-shadow: 0 0 10px 2px rgba(99, 102, 241, 0.6);
   }
   100% {
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: var(--border-color);
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
   }
 }
@@ -920,7 +930,7 @@ select option:disabled {
 .new-order-card {
   animation: pulse-new-order 2s infinite !important;
   border: 1px solid var(--primary) !important;
-  background: rgba(99, 102, 241, 0.05) !important;
+  background: var(--primary-glow) !important;
 }
 
 /* Order step progress bar */
@@ -1047,7 +1057,7 @@ select option:disabled {
 
 .shop-discovery-card.selected {
   border-color: var(--accent);
-  background: rgba(16, 185, 129, 0.04);
+  background: var(--success-glow);
 }
 
 /* Star rating selector (§11) */
@@ -1097,7 +1107,7 @@ select option:disabled {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--bg-main);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -1205,7 +1215,7 @@ body:has(.admin-container):has(.modal-overlay) .toast-msg {
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: #fff;
+  color: var(--on-primary);
   padding: 0 0.5rem;
   flex: 1;
   text-align: center;
@@ -1218,7 +1228,7 @@ body:has(.admin-container):has(.modal-overlay) .toast-msg {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--bg-surface);
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   flex-shrink: 0;
   margin: 0 3px;
@@ -1339,3 +1349,6 @@ input[type="number"] { -moz-appearance: textfield; }
 .admin-table td { overflow-wrap: anywhere; }
 .admin-table th:last-child, .admin-table td:last-child { background-color: var(--bg-surface); z-index: 1; }
 .admin-table.stockist-table th, .admin-table.stockist-table td { padding: 0.75rem 0.5rem; }
+
+input { color: var(--text-main); }
+
