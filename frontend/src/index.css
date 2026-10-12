@@ -46,6 +46,7 @@
   
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --scrim: rgba(32, 32, 31, 0.35);
 }
 
 .theme-switching, .theme-switching * {
@@ -94,6 +95,7 @@
   
   --surface-overlay: rgba(255, 255, 255, 0.05);
   --surface-glass: rgba(42, 42, 41, 0.85);
+  --scrim: rgba(0, 0, 0, 0.55);
 }
 
 
@@ -1177,8 +1179,7 @@ select option:disabled {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: var(--bg-main);
-  backdrop-filter: blur(4px);
+  background: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1189,16 +1190,29 @@ select option:disabled {
 }
 
 .modal-content {
-  background: var(--bg-elevated, #1a1d24);
-  color: var(--text-primary, #fff);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
   border-radius: 12px;
   padding: 1.5rem;
   width: 100%;
   max-width: 500px;
   max-height: calc(90vh / var(--ui-scale));
   overflow-y: auto;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
   animation: modal-slide-in 0.2s ease-out;
+}
+
+.phone-mockup .modal-overlay {
+  position: absolute;
+  inset: 0;
+  padding: 1rem;
+}
+
+.phone-mockup .modal-content {
+  max-width: 100%;
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
 }
 
 @keyframes modal-fade-in {
@@ -1212,12 +1226,12 @@ select option:disabled {
 }
 
 /* Prevent scroll on body when a modal is open - small quality improvement */
-body:has(.modal-overlay) {
+body:has(.modal-overlay:not(:has(.toast-msg))) {
   overflow: hidden;
 }
 
 /* Toast position logic: move to top center when a modal is open in the admin view */
-body:has(.admin-container):has(.modal-overlay) .toast-msg {
+body:has(.admin-container):has(.modal-overlay:not(:has(.toast-msg))) .toast-msg {
   bottom: auto !important;
   top: 20px !important;
   left: 50% !important;

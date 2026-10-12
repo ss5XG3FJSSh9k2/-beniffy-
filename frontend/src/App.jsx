@@ -382,6 +382,15 @@ const NumberStepper = ({ id, value, onChange, min, max, step, decimals = 0, suff
   );
 };
 
+let _globalPhoneRef = { current: null };
+let _globalActiveRole = 'marketing';
+
+const GlobalModalLayer = ({ children }) => {
+  const inPhone = ['customer', 'stockist', 'partner'].includes(_globalActiveRole) && _globalPhoneRef.current;
+  return inPhone ? createPortal(children, _globalPhoneRef.current) : children;
+};
+const ModalLayer = GlobalModalLayer;
+
 const TimePicker = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState({ hour12: '12', minute: '00', meridiem: 'AM' });
@@ -451,23 +460,19 @@ const TimePicker = ({ value, onChange }) => {
       </div>
       
       {isOpen && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, zIndex: 'var(--z-modal)',
-            background: 'var(--bg-main)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '1rem'
-          }}
-          onClick={() => setIsOpen(false)}
-        >
+        <ModalLayer>
           <div
-            className="glass-card"
-            style={{
-              width: '300px', maxWidth: `calc(90vw / var(--ui-scale))`,
-              padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem'
-            }}
-            onClick={e => e.stopPropagation()}
+            className="modal-overlay"
+            onClick={() => setIsOpen(false)}
           >
+            <div
+              className="modal-content"
+              style={{
+                width: '300px',
+                padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', height: '180px' }}>
               <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 {hours.map(h => (
@@ -543,6 +548,7 @@ const TimePicker = ({ value, onChange }) => {
             </div>
           </div>
         </div>
+        </ModalLayer>
       )}
     </div>
   );
@@ -891,6 +897,14 @@ export default function App() {
     catch { return false; }
   });
   const [activeRole, setActiveRole] = useState('marketing');
+  const phoneRef = useRef(null);
+  _globalPhoneRef = phoneRef;
+  _globalActiveRole = activeRole;
+
+  const ModalLayer = ({ children }) => {
+    const inPhone = ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current;
+    return inPhone ? createPortal(children, phoneRef.current) : children;
+  };
   const [splash, setSplash] = useState({ app: null, key: 0 });
   const [dbState, setDbState] = useState(null);
   const [regions, setRegions] = useState([]);
@@ -2057,11 +2071,11 @@ export default function App() {
         setFlagClearNote('');
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Failed to clear flag');
+        showToast(data.error || 'Failed to clear flag', 'error');
       }
     } catch (e) {
       console.error(e);
-      alert('Error clearing flag');
+      showToast('Error clearing flag', 'error');
     }
   };
 
@@ -7690,9 +7704,10 @@ export default function App() {
         )}
 
         {showFirstTimeSetupFlow && (
-          <div data-theme={resolve(themes.partner)} style={{ color: 'var(--text-main)' }}>
-          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-main)', zIndex: 'var(--z-modal)' }}>
-            <div className="modal-content FirstTimeSetupFlow" style={{ maxWidth: '450px', width: '90%', padding: '1.5rem', background: 'var(--card-bg, #1e1e2e)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <ModalLayer>
+            <div data-theme={resolve(themes.partner)} style={{ color: 'var(--text-main)' }}>
+              <div className="modal-overlay">
+                <div className="modal-content FirstTimeSetupFlow" style={{ maxWidth: '450px', width: '90%', padding: '1.5rem', borderRadius: '8px' }}>
               <PanelErrorBoundary t={t}>
               <h3 style={{ marginTop: 0, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Key size={20} /> FirstTimeSetupFlow: Partner Account Setup
@@ -7753,6 +7768,7 @@ export default function App() {
             </div>
           </div>
           </div>
+          </ModalLayer>
         )}
 
 
@@ -7787,7 +7803,7 @@ export default function App() {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
           <div className="perspective-banner"><span>Partner Hub: Not logged in</span></div>
-          <div className="phone-mockup" data-theme={resolve(themes.partner)}>
+          <div className="phone-mockup" ref={phoneRef} data-theme={resolve(themes.partner)}>
             <div className="phone-notch"></div>
             <div className="phone-screen">
               {splash.app === 'partner' && <AppSplash theme={resolve(themes.partner)} key={splash.key} role="PARTNER" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
@@ -7805,7 +7821,7 @@ export default function App() {
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Partner Hub: {partnerData?.display_name || partnerData?.name || 'Partner Account'}</span>
         </div>
 
-        <div className="phone-mockup" data-theme={resolve(themes.partner)}>
+        <div className="phone-mockup" ref={phoneRef} data-theme={resolve(themes.partner)}>
           <div className="phone-notch"></div>
           <div className="phone-screen" style={{ minHeight: '550px', display: 'flex', flexDirection: 'column' }}>
             
@@ -8430,6 +8446,7 @@ export default function App() {
 
         {/* FULFILL MODAL */}
         {showFulfillModal && selectedFulfillItem && (
+          <ModalLayer>
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '400px' }}>
               <PanelErrorBoundary t={t}>
@@ -8452,10 +8469,12 @@ export default function App() {
               </PanelErrorBoundary>
             </div>
           </div>
+          </ModalLayer>
         )}
 
         {/* DISPUTE MODAL */}
         {showDisputeModal && selectedDisputeItem && (
+          <ModalLayer>
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '400px' }}>
               <PanelErrorBoundary t={t}>
@@ -8478,10 +8497,12 @@ export default function App() {
               </PanelErrorBoundary>
             </div>
           </div>
+          </ModalLayer>
         )}
 
         {/* PACKAGE MODAL */}
         {showPkgModal && (
+          <ModalLayer>
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '480px' }}>
               <PanelErrorBoundary t={t}>
@@ -8599,10 +8620,12 @@ export default function App() {
               </PanelErrorBoundary>
             </div>
           </div>
+          </ModalLayer>
         )}
 
         {/* ADD REGION MODAL */}
         {showAddRegionModal && (
+          <ModalLayer>
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '400px' }}>
               <PanelErrorBoundary t={t}>
@@ -8667,10 +8690,12 @@ export default function App() {
               </PanelErrorBoundary>
             </div>
           </div>
+          </ModalLayer>
         )}
 
         {/* REGION DEACTIVATION WARNING MODAL */}
         {deactWarnModal && (
+          <ModalLayer>
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '400px' }}>
               <PanelErrorBoundary t={t}>
@@ -8692,10 +8717,12 @@ export default function App() {
               </PanelErrorBoundary>
             </div>
           </div>
+          </ModalLayer>
         )}
 
         {/* NEW FEEDBACK MODAL */}
         {showNewFeedbackModal && (
+          <ModalLayer>
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '450px' }}>
               <PanelErrorBoundary t={t}>
@@ -8747,10 +8774,12 @@ export default function App() {
               </PanelErrorBoundary>
             </div>
           </div>
+          </ModalLayer>
         )}
 
         {/* FEEDBACK DETAIL MODAL */}
         {showFeedbackDetailModal && selectedFeedbackDetail && (
+          <ModalLayer>
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '450px' }}>
               <PanelErrorBoundary t={t}>
@@ -8772,6 +8801,7 @@ export default function App() {
               </PanelErrorBoundary>
             </div>
           </div>
+          </ModalLayer>
         )}
 
       </div>
@@ -9116,7 +9146,7 @@ export default function App() {
           <span><UserCheck size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> {t('Customer View', 'कस्टमर व्यू', 'গ্রাহক মোড')}: {isLoggedOut ? t('Not logged in', 'लॉग इन नहीं है', 'লগইন করা নেই') : `${currentUser.name} (${activeRegionName})`}</span>
         </div>
         
-        <div className="phone-mockup" data-theme={resolve(themes.customer)}>
+        <div className="phone-mockup" ref={phoneRef} data-theme={resolve(themes.customer)}>
           <div className="phone-notch"></div>
           <div className="phone-screen">
             {splash.app === 'customer' && <AppSplash theme={resolve(themes.customer)} key={splash.key} role={null} onDone={() => setSplash(s => ({ ...s, app: null }))} />}
@@ -11600,7 +11630,7 @@ export default function App() {
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> SHOPKEEPER VIEW (দোকানদার মোড): {isLoggedOut ? "Not logged in (লগইন করা নেই)" : `${stockistProfile?.name || currentUser.name} (${activeRegionName})`}</span>
         </div>
 
-        <div className="phone-mockup" data-theme={resolve(themes.stockist)}>
+        <div className="phone-mockup" ref={phoneRef} data-theme={resolve(themes.stockist)}>
           <div className="phone-notch"></div>
           <div className="phone-screen">
             {splash.app === 'stockist' && <AppSplash theme={resolve(themes.stockist)} key={splash.key} role="STOCKIST" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
@@ -12900,10 +12930,11 @@ export default function App() {
                           </button>
                         </div>
 
-                        {showPersonalDetails && createPortal(
-                          <div data-theme={resolve(themes.stockist)} style={{ color: 'var(--text-main)' }}>
-                          <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-main)', backdropFilter: 'blur(2px)', zIndex: 'var(--z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setShowPersonalDetails(false)}>
-                            <div style={{ width: '100%', maxWidth: '360px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxHeight: `calc(85vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                        {showPersonalDetails && (
+                          <ModalLayer>
+                            <div data-theme={resolve(themes.stockist)} style={{ color: 'var(--text-main)' }}>
+                              <div className="modal-overlay" onClick={() => setShowPersonalDetails(false)}>
+                                <div className="modal-content" style={{ maxWidth: '360px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }} onClick={e => e.stopPropagation()}>
                               <h4 style={{ margin: 0, color: 'var(--text-main)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>{t('Personal Details', 'व्यक्तिगत विवरण', 'ব্যক্তিগত বিবরণ')}</h4>
                               <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 <div><span style={{color:'var(--text-muted)'}}>{t('Name','नाम','নাম')}: </span><strong>{stockistProfile.personal_name || stockistProfile.name}</strong></div>
@@ -12924,8 +12955,8 @@ export default function App() {
                               <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setShowPersonalDetails(false)}>{t('Close','बंद करें','বন্ধ করুন')}</button>
                             </div>
                           </div>
-                          </div>,
-                          document.body
+                          </div>
+                          </ModalLayer>
                         )}
 
                         {showDevSettings && (
@@ -15554,6 +15585,7 @@ export default function App() {
 </div>
 
                   {showPartnerFeedbackModal && selectedPartnerFeedback && (
+                    <ModalLayer>
                     <div className="modal-overlay">
                       <div className="modal-content glass-card" style={{ maxWidth: '520px', width: `calc(90vw / var(--ui-scale))`, maxHeight: `calc(85vh / var(--ui-scale))`, overflowY: 'auto' }}>
                         <PanelErrorBoundary t={t}>
@@ -15660,6 +15692,7 @@ export default function App() {
                         </PanelErrorBoundary>
                       </div>
                     </div>
+                    </ModalLayer>
                   )}
                   </>
                   )}
@@ -16045,6 +16078,7 @@ export default function App() {
 </div>
                       
                       {editingVendor && (
+                        <ModalLayer>
                         <div className="modal-overlay">
                           <div className="modal-content" style={{ maxWidth: '400px' }}>
                             <PanelErrorBoundary t={t}>
@@ -16071,6 +16105,7 @@ export default function App() {
                             </PanelErrorBoundary>
                           </div>
                         </div>
+                        </ModalLayer>
                       )}
                     </div>
                   </div>
@@ -16164,6 +16199,7 @@ export default function App() {
               {adminTab === 'transactions' && (
                 <div>
                   {(paymentRefModalOpen || markingPartnerId) && (
+                    <ModalLayer>
                     <div className="modal-overlay">
                       <div className="modal-content glass-card" style={{ maxWidth: '400px' }}>
                         <PanelErrorBoundary t={t}>
@@ -16188,6 +16224,7 @@ export default function App() {
                         </PanelErrorBoundary>
                       </div>
                     </div>
+                    </ModalLayer>
                   )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -16604,60 +16641,61 @@ export default function App() {
       
       {/* Toast popup */}
       {toast && (
-        <div 
-          className="toast-msg" 
-          role={toast.type === 'error' ? 'alert' : 'status'}
-          aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
-          onMouseEnter={handleToastMouseEnter}
-          onMouseLeave={handleToastMouseLeave}
-          style={{ borderLeft: `4px solid ${toast.type === 'error' ? 'var(--danger)' : 'var(--accent)'}`, position: 'fixed', bottom: '20px', right: '20px', zIndex: 'var(--z-toast)', width: 'auto', background: 'var(--bg-surface)', backdropFilter: 'blur(10px)' }}>
-          <CheckCircle2 size={16} style={{ color: toast.type === 'error' ? 'var(--danger)' : 'var(--accent)' }} />
-          <span>{toast.message}</span>
-          {toast.action && (
-            <button 
-              onClick={(e) => { e.stopPropagation(); toast.action.onClick(); setToast(null); }} 
-              className="btn-accent" 
-              style={{ marginLeft: '10px', padding: '4px 8px', fontSize: '0.8em', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-            >
-              {toast.action.label}
-            </button>
-          )}
-        </div>
+        <ModalLayer>
+          <div className="modal-overlay" style={{ background: 'transparent', pointerEvents: 'none', padding: 0 }}>
+            <div 
+              className="toast-msg" 
+              role={toast.type === 'error' ? 'alert' : 'status'}
+              aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+              onMouseEnter={handleToastMouseEnter}
+              onMouseLeave={handleToastMouseLeave}
+              style={{
+                pointerEvents: 'auto',
+                borderLeft: `4px solid ${toast.type === 'error' ? 'var(--danger)' : 'var(--accent)'}`,
+                position: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'absolute' : 'fixed',
+                bottom: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? '72px' : '20px',
+                left: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? '50%' : 'auto',
+                transform: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'translateX(-50%)' : 'none',
+                maxWidth: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'calc(100% - 2rem)' : 'none',
+                width: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'max-content' : 'auto',
+                right: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'auto' : '20px',
+                zIndex: 'var(--z-toast)',
+                background: 'var(--bg-surface)',
+              }}>
+              <CheckCircle2 size={16} style={{ color: toast.type === 'error' ? 'var(--danger)' : 'var(--accent)' }} />
+              <span>{toast.message}</span>
+              {toast.action && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); toast.action.onClick(); setToast(null); }} 
+                  className="btn-accent" 
+                  style={{ marginLeft: '10px', padding: '4px 8px', fontSize: '0.8em', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  {toast.action.label}
+                </button>
+              )}
+            </div>
+          </div>
+        </ModalLayer>
       )}
       {/* Global Confirm Modal */}
       {confirmModal && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: `calc(100vw / var(--ui-scale))`,
-            height: `calc(100vh / var(--ui-scale))`,
-            background: 'var(--bg-main)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 'var(--z-modal)',
-          }}
-          onClick={() => setConfirmModal(null)}
-        >
+        <ModalLayer>
           <div 
-            className="glass-card" 
-            style={{
-              width: '90%',
-              maxWidth: '450px',
-              padding: '1.5rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-              background: 'var(--bg-surface)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '12px',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.57)',
-              color: 'var(--text-main)',
-            }}
-            onClick={(e) => e.stopPropagation()}
+            className="modal-overlay"
+            onClick={() => setConfirmModal(null)}
           >
+            <div 
+              className="modal-content" 
+              style={{
+                width: '90%',
+                maxWidth: '450px',
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
             <h3 style={{ fontSize: '1.2rem', color: 'var(--text-main)', margin: 0 }}>
               {confirmModal.title}
             </h3>
@@ -16687,44 +16725,32 @@ export default function App() {
             </div>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Delivered Celebratory Popup (Swiggy Pattern) */}
       {deliveredModalOrder && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: `calc(100vw / var(--ui-scale))`,
-            height: `calc(100vh / var(--ui-scale))`,
-            background: 'var(--bg-main)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 'var(--z-modal)',
-          }}
-          onClick={() => setDeliveredModalOrder(null)}
-        >
+        <ModalLayer>
           <div 
-            className="glass-card" 
-            style={{
-              width: '90%',
-              maxWidth: '400px',
-              padding: '1.5rem',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              textAlign: 'center',
-              gap: '1rem',
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--accent)',
-              borderRadius: '16px',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.6)',
-              color: 'var(--text-main)',
-            }}
-            onClick={(e) => e.stopPropagation()}
+            className="modal-overlay"
+            onClick={() => setDeliveredModalOrder(null)}
           >
+            <div 
+              className="modal-content" 
+              style={{
+                width: '90%',
+                maxWidth: '400px',
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '1rem',
+                border: '1px solid var(--accent)',
+                borderRadius: '16px',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
             <div style={{ padding: '0.75rem', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent)' }}>
               <CheckCircle2 size={48} />
             </div>
@@ -16791,6 +16817,7 @@ export default function App() {
             </div>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Simulator Workspace Header */}
@@ -16858,6 +16885,7 @@ export default function App() {
 
           {/* Redemption Detail Modal Overlay */}
           {selectedRedemptionDetail && (
+            <ModalLayer>
             <div className="modal-overlay">
               <div className="modal-content glass-card" style={{ maxWidth: '500px' }}>
                 <PanelErrorBoundary t={t}>
@@ -16865,6 +16893,7 @@ export default function App() {
                 </PanelErrorBoundary>
               </div>
             </div>
+            </ModalLayer>
           )}
         </main>
 
@@ -16918,6 +16947,7 @@ export default function App() {
 
       {/* R3 Confirmation Modal */}
       {showRedeemConfirmModal && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '400px' }}>
             <PanelErrorBoundary t={t}>
@@ -16932,10 +16962,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Generic Reward Modal */}
       {showGenericRewardModal && (
+        <ModalLayer>
         <div className="modal-overlay" onClick={(e) => {
           if (e.target.className === 'modal-overlay') {
             // Esc closes it, but clicking overlay does not
@@ -17289,11 +17321,13 @@ export default function App() {
             </form>
           </div>
         </div>
+        </ModalLayer>
       )}
 
 
       {/* R3 Success Modal */}
       {redeemSuccessModal && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '400px', textAlign: 'center' }}>
             <PanelErrorBoundary t={t}>
@@ -17317,10 +17351,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R4 Customer Fraud Report Modal */}
       {showFraudReportModal && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
@@ -17382,10 +17418,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R5 Edit Customer Contact Modal */}
       {showEditCustomerModal && selectedCustomerDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '400px' }}>
             <PanelErrorBoundary t={t}>
@@ -17407,10 +17445,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R5 Change Customer Phone Modal */}
       {showChangePhoneModal && selectedCustomerDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '400px' }}>
             <PanelErrorBoundary t={t}>
@@ -17460,10 +17500,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* BF5b Add/Edit Region Modal */}
       {showRegionModal && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px', width: '100%' }}>
             <PanelErrorBoundary t={t}>
@@ -17546,10 +17588,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R5 Manual Points Credit Modal */}
       {showPointsCreditModal && selectedCustomerDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '400px' }}>
             <PanelErrorBoundary t={t}>
@@ -17572,10 +17616,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R5 Customer Detail Modal */}
       {showCustomerDetailModal && selectedCustomerDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '600px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
             <PanelErrorBoundary t={t}>
@@ -17616,10 +17662,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R6 Create Stockist Modal */}
       {showCreateStockistModal && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
@@ -17688,10 +17736,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R6 Edit Stockist Details Modal */}
       {showEditStockistModal && selectedStockistDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '720px', width: `calc(90vw / var(--ui-scale))`, maxHeight: `calc(85vh / var(--ui-scale))`, overflowY: 'auto', overflowX: 'hidden' }}>
             <PanelErrorBoundary t={t}>
@@ -17847,10 +17897,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R6 Commission Rate Change Modal with 30d Preview & CONFIRM Requirement */}
       {showCommissionRateModal && selectedStockistDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
@@ -17917,10 +17969,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R6 Change Stockist Region Modal with Binding Count Warning */}
       {showStockistRegionModal && selectedStockistDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '420px' }}>
             <PanelErrorBoundary t={t}>
@@ -17951,10 +18005,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R7 Partner Lead Detail & Notes Modal */}
       {selectedLeadDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '500px' }}>
             <PanelErrorBoundary t={t}>
@@ -17992,10 +18048,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* R8 Fraud Report Admin Review Modal */}
       {selectedFraudReportDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '600px', maxHeight: `calc(85vh / var(--ui-scale))`, overflowY: 'auto' }}>
             <PanelErrorBoundary t={t}>
@@ -18043,10 +18101,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Round S Store Override Modal */}
       {showStoreOverrideModal && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="glass-card" style={{ width: '420px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -18085,10 +18145,12 @@ export default function App() {
             </div>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Round S Remove Override Confirmation Modal */}
       {showRemoveOverrideConfirmModal && overrideToDelete && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="glass-card" style={{ width: '380px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h3 style={{ fontSize: '1.1rem', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', margin: 0 }}>Remove Store Override</h3>
@@ -18105,10 +18167,12 @@ export default function App() {
             </div>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* P2 Promote Lead to Partner Modal */}
       {showPromoteLeadModal && selectedLeadToPromote && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
@@ -18160,9 +18224,11 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {showRejectLeadModal && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '400px' }}>
             <PanelErrorBoundary t={t}>
@@ -18192,10 +18258,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* P2 Approve Redemption Modal */}
       {showApproveRedemptionModal && selectedRedemptionToApprove && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
@@ -18220,10 +18288,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* P2 Reject Redemption Modal */}
       {showRejectRedemptionModal && selectedRedemptionToReject && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
@@ -18245,10 +18315,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* P2 Resolve Dispute Modal */}
       {showResolveDisputeModal && selectedRedemptionToResolve && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
@@ -18277,10 +18349,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* P2 Onboarded Partner Detail Modal */}
       {selectedPartnerDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '600px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
             <PanelErrorBoundary t={t}>
@@ -18324,10 +18398,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Redemption Detail Modal Overlay */}
       {selectedRedemptionDetail && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '500px' }}>
             <PanelErrorBoundary t={t}>
@@ -18357,6 +18433,7 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Developer Settings Toggle Switcher Footer */}
@@ -18376,6 +18453,7 @@ export default function App() {
 
       {/* Bill History Modal */}
       {showBillHistoryModal && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '550px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
             <PanelErrorBoundary t={t}>
@@ -18426,9 +18504,11 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
       {/* Viewing Bill Image Modal */}
       {viewingBillModal && (
+        <ModalLayer>
         <div className="modal-overlay" onClick={() => setViewingBillModal(null)}>
           <div className="modal-content glass-card" style={{ maxWidth: '600px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
@@ -18448,10 +18528,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Reject Bill Modal */}
       {showRejectBillModal && rejectingBill && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '400px' }}>
             <PanelErrorBoundary t={t}>
@@ -18475,6 +18557,7 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Stockist Detail Modal Overlay */}
@@ -18518,6 +18601,7 @@ export default function App() {
         const docUrl = kyc.document_photo_url || '';
 
         return (
+          <ModalLayer>
           <div className="modal-overlay">
             <div className="modal-content glass-card" style={{ maxWidth: '550px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
               <PanelErrorBoundary t={t}>
@@ -18580,11 +18664,13 @@ export default function App() {
               </PanelErrorBoundary>
             </div>
           </div>
+          </ModalLayer>
         );
       })()}
 
       {/* Self-Service Phone Change Modal Overlay */}
       {showSelfServicePhoneModal && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '400px' }}>
             <PanelErrorBoundary t={t}>
@@ -18687,6 +18773,7 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Cookie Consent Banner (Part 2 Item 9) */}
@@ -18741,6 +18828,7 @@ export default function App() {
 
       {/* Privacy Policy Modal (Part 2 Item 6) */}
       {showPrivacyPolicyModal && (
+        <ModalLayer>
         <div className="modal-overlay" role="dialog" aria-labelledby="privacy-modal-title">
           <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
             <PanelErrorBoundary t={t}>
@@ -18760,10 +18848,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Terms & Conditions Modal (Part 2 Item 7) */}
       {showTermsModal && (
+        <ModalLayer>
         <div className="modal-overlay" role="dialog" aria-labelledby="terms-modal-title">
           <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
             <PanelErrorBoundary t={t}>
@@ -18782,10 +18872,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Refund Policy Modal (Part 2 Item 8) */}
       {showRefundPolicyModal && (
+        <ModalLayer>
         <div className="modal-overlay" role="dialog" aria-labelledby="refund-modal-title">
           <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
             <PanelErrorBoundary t={t}>
@@ -18804,10 +18896,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* Cookies Policy Modal (Part 2 Item 9) */}
       {showCookiesPolicyModal && (
+        <ModalLayer>
         <div className="modal-overlay" role="dialog" aria-labelledby="cookies-modal-title">
           <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
             <PanelErrorBoundary t={t}>
@@ -18825,11 +18919,13 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       
       {/* KYC Approve Modal */}
       {showKycApproveModal && kycApproveUser && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
@@ -18902,11 +18998,13 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       
       {/* KYC Approve Modal */}
       {showKycApproveModal && kycApproveUser && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
@@ -18979,10 +19077,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* KYC Action Modal (Reject / Blacklist) */}
       {showKycActionModal && (
+        <ModalLayer>
         <div className="modal-overlay">
           <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
             <PanelErrorBoundary t={t}>
@@ -19035,10 +19135,12 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
 
       {/* KYC Document Viewing Modal */}
       {showKycDocumentModal && selectedKycDocument && (
+        <ModalLayer>
         <div className="modal-overlay" onClick={() => setShowKycDocumentModal(false)}>
           <div className="modal-content" style={{ maxWidth: '600px', width: '90%' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
@@ -19076,12 +19178,14 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
-      {stockistListModal && createPortal(
-        <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-             onClick={() => setStockistListModal(null)}>
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 420, maxHeight: `calc(80vh / var(--ui-scale))`, display: 'flex', flexDirection: 'column' }}
-               onClick={e => e.stopPropagation()}>
+      {stockistListModal && (
+        <ModalLayer>
+          <div className="modal-overlay"
+               onClick={() => setStockistListModal(null)}>
+            <div className="modal-content" style={{ maxWidth: 420, display: 'flex', flexDirection: 'column' }}
+                 onClick={e => e.stopPropagation()}>
             <h4 style={{ margin: '0 0 0.25rem' }}>{t('Stockists for','स्टॉकिस्ट','স্টকিস্ট')} {stockistListModal.vendorName}</h4>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '0 0 0.75rem' }}>{stockistListModal.stockists.length} {t('assigned','सौंपे गए','নিযুক্ত')}</p>
             <input type="text" className="text-input" placeholder={t('Search stockists','स्टॉकिस्ट खोजें','স্টকিস্ট খুঁজুন')}
@@ -19098,12 +19202,13 @@ export default function App() {
             </div>
             <button className="btn btn-secondary" style={{ marginTop: '0.75rem' }} onClick={() => setStockistListModal(null)}>{t('Close','बंद करें','বন্ধ করুন')}</button>
           </div>
-        </div>,
-        document.body
+        </div>
+        </ModalLayer>
       )}
 
       {/* Reject Order Modal */}
       {rejectOrderModal && (
+        <ModalLayer>
         <div className="modal-overlay" onClick={() => setRejectOrderModal(null)}>
           <div className="modal-content" style={{ maxWidth: '400px', width: '90%' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
@@ -19120,6 +19225,7 @@ export default function App() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ModalLayer>
       )}
     </div>
   );
