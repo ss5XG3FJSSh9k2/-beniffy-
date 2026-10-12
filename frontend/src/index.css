@@ -38,6 +38,17 @@
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.theme-switching, .theme-switching * {
+  transition: background-color 250ms ease, color 250ms ease, border-color 250ms ease, fill 250ms ease, stroke 250ms ease, box-shadow 250ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-switching, .theme-switching * {
+    transition: none !important;
+  }
+}
+
+
 [data-theme='dark'] {
   --bg-main: #20201F;
   --bg-surface: #2A2A29;
@@ -958,7 +969,7 @@ select option:disabled {
   border-radius: 50%;
   background: var(--bg-surface-elevated);
   border: 2px solid var(--border-color);
-  transition: all 0.3s ease;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .order-progress-step.active .order-progress-dot {
@@ -1016,7 +1027,7 @@ select option:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .point-shop-card:hover {
@@ -1031,7 +1042,7 @@ select option:disabled {
   border-radius: 8px;
   padding: 0.75rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .shop-discovery-card.selected {

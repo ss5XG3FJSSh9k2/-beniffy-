@@ -574,7 +574,13 @@ export default function App() {
     } catch (e) { }
   }, [theme]);
   
-  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  const toggleTheme = () => {
+    document.documentElement.classList.add('theme-switching');
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    setTimeout(() => {
+      document.documentElement.classList.remove('theme-switching');
+    }, 300);
+  };
 
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
