@@ -6227,8 +6227,8 @@ export default function App() {
                   style={{
                     flex: 1,
                     background: hasBroadbandAnswered && hasBroadband ? 'var(--success, #10b981)' : 'var(--bg-card, rgba(255,255,255,0.05))',
-                    color: 'white',
-                    border: '1px solid rgba(255,255,255,0.1)'
+                    color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                    border: '1px solid var(--border-color)'
                   }}
                   onClick={() => {
                     setHasBroadbandAnswered(true);
@@ -6243,8 +6243,8 @@ export default function App() {
                   style={{
                     flex: 1,
                     background: hasBroadbandAnswered && !hasBroadband ? 'var(--danger, #ef4444)' : 'var(--bg-card, rgba(255,255,255,0.05))',
-                    color: 'white',
-                    border: '1px solid rgba(255,255,255,0.1)'
+                    color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                    border: '1px solid var(--border-color)'
                   }}
                   onClick={() => {
                     setHasBroadbandAnswered(true);
@@ -6314,7 +6314,7 @@ export default function App() {
               <div style={{ flex: 2, position: 'relative' }}>
                 <button 
                   className="btn btn-accent" 
-                  style={{ width: '100%', height: '100%' }} 
+
                   onClick={() => {
                     if (!customerTermsAgreed) {
                       showToast(t('Please tick the box to agree to the Terms and Privacy Policy', 'कृपया नियम और गोपनीयता नीति से सहमत होने के लिए बॉक्स पर टिक करें', 'নিয়ম এবং গোপনীয়তা নীতিতে সম্মত হতে অনুগ্রহ করে বক্সে টিক দিন'), 'error');
@@ -6324,7 +6324,7 @@ export default function App() {
                     handleCustomerRegister();
                   }}
                   disabled={regions.length === 0 || !customerTermsAgreed}
-                  style={(!customerTermsAgreed || regions.length === 0) ? { opacity: 0.5 } : {}}
+                  style={(!customerTermsAgreed || regions.length === 0) ? { width: '100%', height: '100%', opacity: 0.5 } : { width: '100%', height: '100%' }}
                 >
                   {t('Create Account', 'खाता बनाएं', 'অ্যাকাউন্ট তৈরি')}
                 </button>
@@ -7529,7 +7529,7 @@ export default function App() {
                 <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowNotifDropdown(!showNotifDropdown)}>
                   <Bell size={20} style={{ color: unreadNotifCount > 0 ? 'var(--primary)' : 'var(--text-muted)' }} />
                   {unreadNotifCount > 0 && (
-                    <span style={{ position: 'absolute', top: '-4px', right: '-6px', background: 'var(--danger)', color: 'white', borderRadius: '50%', padding: '0.1rem 0.35rem', fontSize: '0.6rem', fontWeight: 'bold' }}>
+                    <span style={{ position: 'absolute', top: '-4px', right: '-6px', background: 'var(--danger)', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', borderRadius: '50%', padding: '0.1rem 0.35rem', fontSize: '0.6rem', fontWeight: 'bold' }}>
                       {unreadNotifCount}
                     </span>
                   )}
@@ -7596,7 +7596,7 @@ export default function App() {
                     <div style={{ fontSize: '2.2rem', fontWeight: 'bold', color: 'var(--primary)' }}>
                       {partnerQueueList.length}
                     </div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'white', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-main)', marginTop: '0.25rem' }}>
                       {t('redemptions waiting for activation', 'सक्रियकरण के लिए लंबित रिडीम', 'সক্রিয়করণের অপেক্ষায় থাকা রিডিম')}
                     </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
@@ -8329,7 +8329,7 @@ export default function App() {
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Deactivating this region will also deactivate or update the following active packages:
               </p>
-              <ul style={{ fontSize: '0.75rem', color: 'white', paddingLeft: '1.25rem' }}>
+              <ul style={{ fontSize: '0.75rem', color: 'var(--text-main)', paddingLeft: '1.25rem' }}>
                 {deactWarnPackages.map(p => <li key={p.id}>{p.name}</li>)}
               </ul>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
@@ -8415,7 +8415,7 @@ export default function App() {
                 {selectedFeedbackDetail.admin_notes && (
                   <>
                     <div><strong>Admin Notes:</strong></div>
-                    <div style={{ background: 'rgba(99,102,241,0.1)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--primary)' }}>{selectedFeedbackDetail.admin_notes}</div>
+                    <div style={{ background: 'var(--badge-primary-bg)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--primary)' }}>{selectedFeedbackDetail.admin_notes}</div>
                   </>
                 )}
               </div>
@@ -8484,11 +8484,11 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <Calculator size={22} style={{ color: 'var(--primary)' }} />
               <div style={{ textAlign: 'left' }}>
-                <h3 style={{ fontSize: '1.15rem', color: 'white', margin: 0 }}>Business Retention Calculator</h3>
+                <h3 style={{ fontSize: '1.15rem', color: 'var(--text-main)', margin: 0 }}>Business Retention Calculator</h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>Churn reduction & commission estimate tool for ISP Operators</p>
               </div>
             </div>
-            <button className="badge badge-primary" style={{ border: 'none', cursor: 'pointer', padding: '0.4rem 0.8rem', textTransform: 'none' }}>
+            <button className="badge badge-primary" style={{ border: 'none', cursor: 'pointer', padding: '0.4rem 0.8rem', textTransform: 'none', borderRadius: '8px' }}>
               {calculatorCollapsed ? "Expand Calculator +" : "Collapse Calculator -"}
             </button>
           </div>
@@ -8776,19 +8776,19 @@ export default function App() {
               <div style={{ display: 'flex', gap: '0.35rem' }}>
                 <button 
                   onClick={() => setLang('en')} 
-                  style={{ background: lang === 'en' ? 'var(--primary)' : 'none', border: 'none', color: 'white', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: lang === 'en' ? 'bold' : 'normal' }}
+                  style={{ background: lang === 'en' ? 'var(--primary)' : 'none', border: 'none', color: lang === 'en' ? 'var(--on-primary)' : 'var(--text-main)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: lang === 'en' ? 'bold' : 'normal' }}
                 >
                   English
                 </button>
                 <button 
                   onClick={() => setLang('hi')} 
-                  style={{ background: lang === 'hi' ? 'var(--primary)' : 'none', border: 'none', color: 'white', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: lang === 'hi' ? 'bold' : 'normal' }}
+                  style={{ background: lang === 'hi' ? 'var(--primary)' : 'none', border: 'none', color: lang === 'hi' ? 'var(--on-primary)' : 'var(--text-main)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: lang === 'hi' ? 'bold' : 'normal' }}
                 >
                   हिंदी
                 </button>
                 <button 
                   onClick={() => setLang('bn')} 
-                  style={{ background: lang === 'bn' ? 'var(--primary)' : 'none', border: 'none', color: 'white', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: lang === 'bn' ? 'bold' : 'normal' }}
+                  style={{ background: lang === 'bn' ? 'var(--primary)' : 'none', border: 'none', color: lang === 'bn' ? 'var(--on-primary)' : 'var(--text-main)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: lang === 'bn' ? 'bold' : 'normal' }}
                 >
                   বাংলা
                 </button>
@@ -8821,16 +8821,16 @@ export default function App() {
                       <div style={{ display: 'inline-flex', padding: '0.5rem', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--accent)', marginBottom: '0.5rem' }}>
                         <CheckCircle2 size={36} />
                       </div>
-                      <h3 style={{ fontSize: '1.25rem', color: 'white' }}>{t('Order Placed', 'ऑर्डर सफल हुआ', 'অর্ডার সফল হয়েছে')}</h3>
+                      <h3 style={{ fontSize: '1.25rem', color: 'var(--text-main)' }}>{t('Order Placed', 'ऑर्डर सफल हुआ', 'অর্ডার সফল হয়েছে')}</h3>
                     </div>
 
                     {/* Fulfillment Setup Block for placed orders */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                      <h4 style={{ fontSize: '0.8rem', color: 'white', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>{t('Fulfillment Settings', 'फ़ुलफ़िलमेंट सेटिंग्स', 'ফুলফিলমেন্ট সেটিংস')}</h4>
+                      <h4 style={{ fontSize: '0.8rem', color: 'var(--text-main)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>{t('Fulfillment Settings', 'फ़ुलफ़िलमेंट सेटिंग्स', 'ফুলফিলমেন্ট সেটিংস')}</h4>
                       {checkoutResult.orders.map(o => {
                         const isPrepElapsed = prepElapsedOrders.includes(o.id);
                         return (
-                          <div key={o.id} style={{ background: 'var(--bg-surface-elevated)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div key={o.id} style={{ background: 'var(--bg-surface)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '0.75rem' }}>
                               <span>{o.stockist_name}</span>
                               <span style={{ color: 'var(--accent)' }}>#{o.id.substring(2).toUpperCase()}</span>
@@ -8840,7 +8840,7 @@ export default function App() {
                               {parseFloat(o.delivery_fee) > 0 && ` | ${t('Delivery', 'डिलिवरी', 'ডেলিভারি')}: ₹${parseFloat(o.delivery_fee).toFixed(2)}`}
                               {parseFloat(o.coupon_discount || 0) > 0 && ` | ${t('Coupon', 'कूपन', 'কুপন')}: -₹${parseFloat(o.coupon_discount).toFixed(2)}`}
                               <br />
-                              <strong style={{ color: 'white' }}>{t('Paid', 'भुगतान किया', 'পরিশোধিত')}: ₹{parseFloat(o.amount_paid !== undefined && o.amount_paid !== null ? o.amount_paid : o.total_price).toFixed(2)}</strong>
+                              <strong style={{ color: 'var(--text-main)' }}>{t('Paid', 'भुगतान किया', 'পরিশোধিত')}: ₹{parseFloat(o.amount_paid !== undefined && o.amount_paid !== null ? o.amount_paid : o.total_price).toFixed(2)}</strong>
                             </div>
                             
                             {o.fulfillment_type === 'PICKUP' ? (
@@ -8850,7 +8850,7 @@ export default function App() {
                                 </div>
                                 <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.25rem', marginBottom: '0.25rem' }}>
                                   <span style={{ color: 'var(--text-muted)' }}>{t('Scheduled Pickup Slot:', 'निर्धारित पिकअप स्लॉट:', 'নির্ধারিত পিকআপ স্লট:')} </span>
-                                  <strong style={{ color: 'white' }}>{formatPickupSlotDisplay(o.pickup_slot) || t('Not set', 'निर्धारित नहीं', 'নির্ধারিত নেই')}</strong>
+                                  <strong style={{ color: 'var(--text-main)' }}>{formatPickupSlotDisplay(o.pickup_slot) || t('Not set', 'निर्धारित नहीं', 'নির্ধারিত নেই')}</strong>
                                 </div>
                                 <div style={{ background: 'rgba(99, 102, 241, 0.08)', border: '1px dashed var(--primary)', borderRadius: '6px', padding: '0.4rem', marginTop: '0.4rem', textAlign: 'center' }}>
                                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}><Key size={10} style={{ display: 'inline', marginRight: '0.2rem', verticalAlign: 'middle' }} /> {t('Verification PIN:', 'सत्यापन पिन:', 'পিকআপ কোড:')}</span>
@@ -8968,9 +8968,9 @@ export default function App() {
                 {simulatedWaMessage && (
                   <div style={{ position: 'absolute', inset: 0, background: '#0b141a', zIndex: 110, display: 'flex', flexDirection: 'column' }}>
                     {/* WhatsApp Header */}
-                    <div style={{ background: '#128c7e', padding: '0.75rem 0.5rem 0.5rem 0.5rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ background: '#128c7e', padding: '0.75rem 0.5rem 0.5rem 0.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <button 
-                        style={{ background: 'none', border: 'none', color: 'white', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                        style={{ background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
                         onClick={() => setSimulatedWaMessage(null)}
                       >
                         <ArrowLeft size={16} />
@@ -9023,7 +9023,7 @@ export default function App() {
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning)' }}>
                         <AlertTriangle size={20} />
-                        <h3 style={{ fontSize: '1rem', color: 'white', margin: 0 }}>{t('Switch to Home Delivery?', 'होम डिलीवरी पर स्विच?', 'হোম ডেলিভারিতে যাবেন?')}</h3>
+                        <h3 style={{ fontSize: '1rem', color: 'var(--text-main)', margin: 0 }}>{t('Switch to Home Delivery?', 'होम डिलीवरी पर स्विच?', 'হোম ডেলিভারিতে যাবেন?')}</h3>
                       </div>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                         {t('This is a one-way switch. Once switched to delivery, you cannot return to store pickup. Delivery fee will be added to your order.',
@@ -9048,7 +9048,7 @@ export default function App() {
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning)' }}>
                         <AlertTriangle size={20} />
-                        <h3 style={{ fontSize: '1rem', color: 'white', margin: 0 }}>{t('Missed Pickup?', 'पिकअप छूट गया?', 'পিকআপ মিস হয়েছে?')}</h3>
+                        <h3 style={{ fontSize: '1rem', color: 'var(--text-main)', margin: 0 }}>{t('Missed Pickup?', 'पिकअप छूट गया?', 'পিকআপ মিস হয়েছে?')}</h3>
                       </div>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                         {t('If you missed your pickup slot, you can reschedule once (free) or cancel for a refund.',
@@ -9091,9 +9091,9 @@ export default function App() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>DELIVERING TO (ডেলিভারি ঠিকানা)</p>
-                      <h4 style={{ fontSize: '0.85rem', color: 'white' }}>{currentUser.name} ({activeRegionName})</h4>
+                      <h4 style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{currentUser.name} ({activeRegionName})</h4>
                     </div>
-                    <button onClick={handleLogout} className="badge badge-danger" style={{ border: 'none', cursor: 'pointer' }}>Logout</button>
+                    <button onClick={handleLogout} className="badge badge-danger" style={{ border: 'none', cursor: 'pointer', borderRadius: '8px', padding: '0.25rem 0.5rem' }}>Logout</button>
                   </div>
 
                   {customerAppTab === 'store' && (
@@ -9149,7 +9149,7 @@ export default function App() {
                                   <div key={s.id} className="glass-card" style={{ padding: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ flex: 1, paddingRight: '0.5rem' }}>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <h4 style={{ fontSize: '0.85rem', color: 'white', margin: 0 }}>{s.name}</h4>
+                                        <h4 style={{ fontSize: '0.85rem', color: 'var(--text-main)', margin: 0 }}>{s.name}</h4>
                                         <span className={`badge ${isOpen ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.55rem', padding: '0.05rem 0.3rem' }}>
                                           {isOpen ? t('Open', 'खुला', 'খোলা') : t('Closed', 'बंद', 'বন্ধ')}
                                         </span>
@@ -9240,7 +9240,7 @@ export default function App() {
                             >
                               ← Other Shops
                             </button>
-                            <span style={{ fontSize: '0.8rem', color: 'white', fontWeight: 'bold' }}>{selectedStockist.name}</span>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: 'bold' }}>{selectedStockist.name}</span>
                           </div>
 
                           {/* Search bar for customer app catalog */}
@@ -9267,7 +9267,7 @@ export default function App() {
                                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%' }}>
                                     <img src={p.image_url ? (p.image_url.startsWith('http') || p.image_url.startsWith('data:') ? p.image_url : `${API_BASE}${p.image_url}`) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"} alt={p.name} style={{ width: '56px', height: '56px', borderRadius: '6px', objectFit: 'cover' }} onError={(e) => { e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"; }} />
                                     <div style={{ flex: 1 }}>
-                                      <h4 style={{ fontSize: '0.75rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <h4 style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                           {p.name}
                                         </h4>
                                       {p.description && <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.description}</div>}
@@ -9313,7 +9313,7 @@ export default function App() {
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '0.75rem', position: 'relative' }}>
                       {/* Cart Header */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                        <button onClick={() => setCustomerAppTab('store')} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+                        <button onClick={() => setCustomerAppTab('store')} style={{ background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', cursor: 'pointer' }}>
                           <ArrowLeft size={20} />
                         </button>
                         <h2 style={{ fontSize: '1.1rem', margin: 0 }}>{t('Your Cart', 'आपका कार्ट', 'আপনার কার্ট')}</h2>
@@ -9335,7 +9335,7 @@ export default function App() {
                               onClick={() => setCartFulfillment('PICKUP')}
                               style={{
                                 flex: 1, padding: '0.6rem', fontSize: '0.8rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                                background: cartFulfillment === 'PICKUP' ? 'var(--primary)' : 'transparent', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem'
+                                background: cartFulfillment === 'PICKUP' ? 'var(--primary)' : 'transparent', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem'
                               }}
                             >
                               <Key size={16} />
@@ -9356,7 +9356,7 @@ export default function App() {
                                   style={{
                                     flex: 1, padding: '0.6rem', fontSize: '0.8rem', fontWeight: 'bold', borderRadius: '6px', border: 'none',
                                     cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.4 : 1,
-                                    background: cartFulfillment === 'DELIVERY' ? 'var(--primary)' : 'transparent', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem'
+                                    background: cartFulfillment === 'DELIVERY' ? 'var(--primary)' : 'transparent', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem'
                                   }}
                                 >
                                   <Truck size={16} />
@@ -9377,9 +9377,9 @@ export default function App() {
                                   <span style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 'bold' }}>₹{item.product.price}</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', padding: '0.25rem 0.5rem' }}>
-                                  <button onClick={() => updateCartQty(item.product.id, item.stockistId, -1)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0.25rem' }}><Minus size={14} /></button>
+                                  <button onClick={() => updateCartQty(item.product.id, item.stockistId, -1)} style={{ background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}><Minus size={14} /></button>
                                   <span style={{ fontWeight: 'bold', fontSize: '0.9rem', width: '20px', textAlign: 'center' }}>{item.quantity}</span>
-                                  <button onClick={() => updateCartQty(item.product.id, item.stockistId, 1)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0.25rem' }}><Plus size={14} /></button>
+                                  <button onClick={() => updateCartQty(item.product.id, item.stockistId, 1)} style={{ background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}><Plus size={14} /></button>
                                 </div>
                               </div>
                             ))}
@@ -9392,7 +9392,7 @@ export default function App() {
                             currentCart.forEach(item => { if (!groups[item.stockistId]) groups[item.stockistId] = item.stockistName; });
                             const groupEntries = Object.entries(groups);
                             return (
-                              <div className="pickup-slot-picker-block" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', border: slotError ? '1px solid var(--danger)' : '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                              <div className="pickup-slot-picker-block" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', border: slotError ? '1px solid var(--danger)' : '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '1rem', backgroundColor: 'var(--surface-overlay)' }}>
                                 <div className="pickup-slot-label" style={{ fontSize: '0.9rem', color: slotError ? 'var(--danger)' : 'white', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold' }}>
                                   <Clock size={14} /> {t('Select Pickup Slot (Required)', 'पिकअप समय चुनें (आवश्यक)', 'পিকআপ সময় নির্বাচন করুন (প্রয়োজনীয়)')}
                                 </div>
@@ -9439,7 +9439,7 @@ export default function App() {
                                 <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
                                   {suggestions.map(p => (
                                     <div key={p.id} style={{ minWidth: '110px', flexShrink: 0, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem' }}>
-                                      <div style={{ width: '100%', aspectRatio: '1', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <div style={{ width: '100%', aspectRatio: '1', backgroundColor: 'var(--surface-overlay)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <img src={p.image_url ? (p.image_url.startsWith('http') || p.image_url.startsWith('data:') ? p.image_url : `${API_BASE}${p.image_url}`) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"; }} />
                                       </div>
                                       <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
@@ -9461,7 +9461,7 @@ export default function App() {
 
                           {/* Delivery Address (DELIVERY only) */}
                           {cartFulfillment === 'DELIVERY' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', backgroundColor: 'var(--surface-overlay)' }}>
                               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>
                                 {t('Delivery Address', 'डिलीवरी का पता', 'ডেলিভারি ঠিকানা')} <span style={{ color: 'var(--danger)' }}>*</span>
                               </label>
@@ -9619,7 +9619,7 @@ export default function App() {
                                           <span style={{ color: 'var(--accent)', fontWeight: 'bold', fontSize: '1.05rem' }}>−₹{coupon.value_rupees}</span>
                                         </div>
                                         <div style={{ flex: 1, padding: '0.6rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                          <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'white' }}>{coupon.name}</div>
+                                          <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{coupon.name}</div>
                                           <div style={{ fontSize: '0.7rem', color: 'var(--accent)' }}>
                                             {t('Uses ', 'उपयोग ', 'ব্যবহার ')}{formatPoints(coupon.point_cost)}
                                           </div>
@@ -9707,7 +9707,7 @@ export default function App() {
                               <span>{t('Est. Rewards', 'अनुमानित पुरस्कार', 'সম্ভাব‍্য পয়েন্ট')}</span>
                               <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>+{formatPoints(estimatedEarnPoints)} pts</span>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 'bold', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.5rem', marginTop: '0.25rem', color: 'white' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 'bold', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.5rem', marginTop: '0.25rem', color: 'var(--text-main)' }}>
                               <span>{t('Total', 'कुल', 'মোট')}</span>
                               <span>₹{cartTotal.toFixed(2)}</span>
                             </div>
@@ -9720,7 +9720,7 @@ export default function App() {
                       
                       {/* Fixed Place Order Button */}
                       {currentCart.length > 0 && (
-                        <div style={{ position: 'sticky', bottom: '-1rem', margin: '1rem -1rem -1rem -1rem', background: 'var(--bg-surface-elevated)', padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', zIndex: 100 }}>
+                        <div style={{ position: 'sticky', bottom: '-1rem', margin: '1rem -1rem -1rem -1rem', background: 'var(--bg-surface)', padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', zIndex: 100 }}>
                           {(() => {
                             const activeDeliveryAddr = (deliveryAddress !== undefined && deliveryAddress !== '' ? deliveryAddress : (profileAddress || currentUser?.address || '')).trim();
                             const isDeliveryDisabled = cartFulfillment === 'DELIVERY' && activeDeliveryAddr.length < 5;
@@ -9817,7 +9817,7 @@ export default function App() {
                               <div style={{ marginBottom: '1.25rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
                                   <div style={{ width: '3px', height: '14px', borderRadius: '2px', background: color }} />
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'white' }}>{title}</span>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{title}</span>
                                 </div>
 
                                 {emptyReason ? (
@@ -9937,7 +9937,7 @@ export default function App() {
                                             {isCable ? <Tv size={20} style={{ color }} /> : <Signal size={20} style={{ color }} />}
                                           </div>
                                           <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'white', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                            <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-main)', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                               <span>{pkg.name}</span>
                                               {isTimed && (
                                                 <span className="badge badge-primary" style={{ fontSize: '0.55rem', padding: '0.05rem 0.35rem' }}>
@@ -9998,7 +9998,7 @@ export default function App() {
                               {/* Header Hero */}
                               <div style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, var(--primary-glow) 100%)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '14px', padding: '1rem', textAlign: 'center' }}>
                                 <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{t('Your Balance', 'आपका बैलेंस', 'আপনার ব্যালেন্স')}</div>
-                                <div style={{ fontSize: '2rem', fontWeight: '800', color: 'white', lineHeight: 1 }}>{formatPoints(customerBalance)}</div>
+                                <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1 }}>{formatPoints(customerBalance)}</div>
                                 <div style={{ fontSize: '0.6rem', color: '#818cf8', marginTop: '0.35rem' }}>{t('Redeemable across FastNet broadband, wifi, and cable TV plans', 'फास्टनेट ब्रॉडबैंड, वाईफाई और केबल टीवी प्लान में रिडीम करने योग्य', 'ফাস্টনেট ব্রডব্যান্ড, ওয়াইফাই এবং কেবল টিভি প্ল্যানে রিডিম করার যোগ্য')}</div>
                               </div>
 
@@ -10006,7 +10006,7 @@ export default function App() {
                               <div className="referral-tile" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.05) 100%)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '12px', padding: '0.85rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
                                   <Share2 size={16} style={{ color: '#22c55e' }} />
-                                  <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'white' }}>
+                                  <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                                     {t('Refer a friend', 'रेफर करें और कमाएं', 'বন্ধুকে রেফার করুন')}
                                   </span>
                                 </div>
@@ -10031,7 +10031,7 @@ export default function App() {
                                         showToast(t('Referral code copied!', 'रेफरल कोड कॉपी हो गया!', 'রেফারেল কোড কপি হয়েছে!'));
                                       }
                                     }}
-                                    style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid #22c55e', color: 'white', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: '600' }}
+                                    style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid #22c55e', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: '600' }}
                                   >
                                     {t('Copy Code', 'कोड कॉपी करें', 'কোড কপি করুন')}
                                   </button>
@@ -10061,7 +10061,7 @@ export default function App() {
                               <div style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
                                   <div style={{ width: '3px', height: '14px', borderRadius: '2px', background: '#a855f7' }} />
-                                  <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'white' }}>
+                                  <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                                     {t('My Redemptions', 'मेरे रिडेम्पशन', 'আমার রিডেম্পশন')}
                                   </span>
                                 </div>
@@ -10099,7 +10099,7 @@ export default function App() {
                                       return (
                                         <div key={item.id} className="glass-card" style={{ padding: '0.75rem 0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                           <div>
-                                            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                                               <span>{item.package_name || 'Package'}</span>
                                               {item.partner_id !== 'GENERIC' && (
                                                 <span className="badge badge-primary" style={{ fontSize: '0.55rem', padding: '0.05rem 0.35rem' }}>
@@ -10147,7 +10147,7 @@ export default function App() {
                         <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           {t('ACCUMULATED LOYALTY POINTS', 'संचित लॉयल्टी पॉइंट्स', 'সঞ্চিত লয়্যালটি পয়েন্ট')}
                         </span>
-                        <h1 style={{ fontSize: '1.75rem', margin: '0.25rem 0', color: 'white', fontWeight: 'bold' }}>{formatPoints(customerBalance)}</h1>
+                        <h1 style={{ fontSize: '1.75rem', margin: '0.25rem 0', color: 'var(--text-main)', fontWeight: 'bold' }}>{formatPoints(customerBalance)}</h1>
                         {customerHeldBalance > 0 && (
                           <p style={{ fontSize: '0.65rem', color: 'var(--warning)', margin: '0.25rem 0 0' }}>
                             {formatPoints(customerHeldBalance)} {t('pending bill verification', 'बिल सत्यापन लंबित', 'বিল যাচাই মুলতুবি')}
@@ -10183,7 +10183,7 @@ export default function App() {
                         {customerLedger.filter(l => !(l.type === 'EARN_HELD' && l.billing_sync_status === 'RELEASED')).map(l => (
                           <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.45rem 0', borderBottom: '1px dashed rgba(255,255,255,0.05)', fontSize: '0.7rem' }}>
                             <div>
-                              <div style={{ fontWeight: '600', color: 'white' }}>{l.description}</div>
+                              <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{l.description}</div>
                               <div style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>{new Date(l.created_at).toLocaleDateString()}</div>
                             </div>
                             <div style={{ fontWeight: 'bold', color: ledgerAmountColor(l), fontSize: '0.8rem', textAlign: 'right' }}>
@@ -10250,7 +10250,7 @@ export default function App() {
                                 <div style={{ border: '1px dashed var(--border-color)', borderRadius: '6px', padding: '0.5rem', marginTop: '0.25rem', background: 'rgba(255,255,255,0.01)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                                      {t('Selected Slot:', 'चुना गया स्लॉट:', 'নির্ধারিত স্লট:')} <strong style={{ color: 'white' }}>{formatPickupSlotDisplay(o.pickup_slot) || t('None', 'कोई नहीं', 'কোনোটি না')}</strong>
+                                      {t('Selected Slot:', 'चुना गया स्लॉट:', 'নির্ধারিত স্লট:')} <strong style={{ color: 'var(--text-main)' }}>{formatPickupSlotDisplay(o.pickup_slot) || t('None', 'कोई नहीं', 'কোনোটি না')}</strong>
                                     </span>
                                     
                                     {!['READY', 'DELIVERED', 'CANCELLED'].includes(o.status) && (
@@ -10291,7 +10291,7 @@ export default function App() {
                               {o.status !== 'DELIVERED' && o.status !== 'CANCELLED' && (
                                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.35rem', borderRadius: '4px', border: '1px dashed rgba(255,255,255,0.05)', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                   <Key size={12} style={{ color: 'var(--primary)' }} />
-                                  <span>{o.fulfillment_type === 'DELIVERY' ? t('Delivery PIN:', 'डिलीवरी पिन:', 'ডেলিভারি পিন:') : t('Pickup PIN:', 'पिकअप पिन:', 'পিকআপ কোড:')} <strong style={{ color: 'white', letterSpacing: '0.05em' }}>{o.pickup_pin || '1234'}</strong></span>
+                                  <span>{o.fulfillment_type === 'DELIVERY' ? t('Delivery PIN:', 'डिलीवरी पिन:', 'ডেলিভারি পিন:') : t('Pickup PIN:', 'पिकअप पिन:', 'পিকআপ কোড:')} <strong style={{ color: 'var(--text-main)', letterSpacing: '0.05em' }}>{o.pickup_pin || '1234'}</strong></span>
                                 </div>
                               )}
 
@@ -10414,7 +10414,7 @@ export default function App() {
                   {submittingFeedbackOrder && submittingFeedbackOrder.customer_id === currentUser.id && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <h3 style={{ fontSize: '1.1rem', color: 'white' }}>Rate Grocery Store (§11)</h3>
+                        <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>Rate Grocery Store (§11)</h3>
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Rate service quality at {submittingFeedbackOrder.stockist_name}</p>
                         
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
@@ -10459,7 +10459,7 @@ export default function App() {
                         <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(16,185,129,0.2)', border: '2px solid var(--accent)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
                           <Check size={28} />
                         </div>
-                        <h3 style={{ fontSize: '1rem', color: 'white', margin: 0 }}>{t('Redemption Requested!', 'रिडेम्पशन का अनुरोध किया गया!', 'রিডিমশন অনুরোধ করা হয়েছে!')}</h3>
+                        <h3 style={{ fontSize: '1rem', color: 'var(--text-main)', margin: 0 }}>{t('Redemption Requested!', 'रिडेम्पशन का अनुरोध किया गया!', 'রিডিমশন অনুরোধ করা হয়েছে!')}</h3>
                         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
                           {t(
                             `Your partner ${redemptionSuccessModal.partnerName} will contact you soon to activate ${redemptionSuccessModal.pkgName}.`,
@@ -10476,7 +10476,7 @@ export default function App() {
 
                   {customerAppTab === 'profile' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: 'white' }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                         {t('My Profile', 'मेरा प्रोफाइल', 'আমার প্রোফাইল')}
                       </h3>
 
@@ -10638,8 +10638,8 @@ export default function App() {
                               style={{
                                 flex: 1,
                                 background: profileHasBroadband ? 'var(--success, #10b981)' : 'var(--bg-card, rgba(255,255,255,0.05))',
-                                color: 'white',
-                                border: '1px solid rgba(255,255,255,0.1)'
+                                color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                                border: '1px solid var(--border-color)'
                               }}
                               onClick={() => {
                                 setProfileHasBroadband(true);
@@ -10653,8 +10653,8 @@ export default function App() {
                               style={{
                                 flex: 1,
                                 background: !profileHasBroadband ? 'var(--danger, #ef4444)' : 'var(--bg-card, rgba(255,255,255,0.05))',
-                                color: 'white',
-                                border: '1px solid rgba(255,255,255,0.1)'
+                                color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                                border: '1px solid var(--border-color)'
                               }}
                               onClick={() => {
                                 setProfileHasBroadband(false);
@@ -10771,7 +10771,7 @@ export default function App() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <button onClick={() => setCustomerAppTab('orders')} style={{ background: 'none', border: 'none', color: 'white', padding: '0.25rem', cursor: 'pointer' }}>
+                          <button onClick={() => setCustomerAppTab('orders')} style={{ background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', padding: '0.25rem', cursor: 'pointer' }}>
                             <ArrowLeft size={20} />
                           </button>
                           <div>
@@ -10792,7 +10792,7 @@ export default function App() {
                                     key={o.id}
                                     style={{
                                       background: trackingOrder.id === o.id ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
-                                      color: 'white', border: 'none', borderRadius: '20px', padding: '0.3rem 0.6rem',
+                                      color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', border: 'none', borderRadius: '20px', padding: '0.3rem 0.6rem',
                                       fontSize: '0.7rem', cursor: 'pointer', whiteSpace: 'nowrap'
                                     }}
                                     onClick={() => setTrackingOrder(o)}
@@ -10930,7 +10930,7 @@ export default function App() {
                 {(currentCart.length > 0 || Object.keys(customerCarts).length > 0) && customerAppTab === 'store' && (
                   <div style={{ position: 'absolute', left: 0, right: 0, bottom: activeOrderList.length > 0 ? '110px' : '60px', padding: '0 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', zIndex: 60, transition: 'bottom 0.3s' }}>
                     {Object.keys(customerCarts).length > 0 && (
-                      <div style={{ alignSelf: 'center', background: 'var(--bg-surface-elevated)', color: 'var(--text)', padding: '0.35rem 0.75rem', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', border: '1px solid rgba(255,255,255,0.1)' }} onClick={() => setShowCartsSheet(true)}>
+                      <div style={{ alignSelf: 'center', background: 'var(--bg-surface)', color: 'var(--text)', padding: '0.35rem 0.75rem', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', border: '1px solid var(--border-color)' }} onClick={() => setShowCartsSheet(true)}>
                         <ShoppingBag size={12} />
                         {Object.keys(customerCarts).length} {t('Carts', 'कार्ट', 'কার্ট')}
                       </div>
@@ -10938,7 +10938,7 @@ export default function App() {
                     {currentCart.length > 0 && (
                       <div style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        background: 'var(--accent)', color: 'white', padding: '0.75rem 1rem',
+                        background: 'var(--accent)', color: 'var(--text-main)', padding: '0.75rem 1rem',
                         borderRadius: '10px', cursor: 'pointer', boxShadow: '0 -4px 12px rgba(0,0,0,0.4)'
                       }} onClick={() => setCustomerAppTab('cart')}>
                         <div>
@@ -10962,7 +10962,7 @@ export default function App() {
                     <div style={{ position: 'relative' }}>
                       {activeOrderList.length > 1 && (
                         <button
-                          style={{ position: 'absolute', left: '-5px', top: '50%', transform: 'translateY(-50%)', zIndex: 60, background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0.5rem' }}
+                          style={{ position: 'absolute', left: '-5px', top: '50%', transform: 'translateY(-50%)', zIndex: 60, background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', cursor: 'pointer', padding: '0.5rem' }}
                           onClick={() => stripScrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
                         >‹</button>
                       )}
@@ -10991,9 +10991,9 @@ export default function App() {
                             style={{
                               flex: '0 0 100%', scrollSnapAlign: 'center', boxSizing: 'border-box',
                               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                              background: 'var(--bg-surface-elevated)', color: 'var(--text)', padding: '0.75rem 1rem',
+                              background: 'var(--bg-surface)', color: 'var(--text)', padding: '0.75rem 1rem',
                               borderRadius: '10px', cursor: 'pointer', boxShadow: '0 -4px 12px rgba(0,0,0,0.4)',
-                              border: '1px solid rgba(255,255,255,0.1)'
+                              border: '1px solid var(--border-color)'
                             }}
                             onClick={() => { setTrackingOrder(order); setCustomerAppTab('track'); }}
                             onTouchStart={e => {
@@ -11024,7 +11024,7 @@ export default function App() {
                       </div>
                       {activeOrderList.length > 1 && (
                         <button
-                          style={{ position: 'absolute', right: '-5px', top: '50%', transform: 'translateY(-50%)', zIndex: 60, background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0.5rem' }}
+                          style={{ position: 'absolute', right: '-5px', top: '50%', transform: 'translateY(-50%)', zIndex: 60, background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', cursor: 'pointer', padding: '0.5rem' }}
                           onClick={() => stripScrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
                         >›</button>
                       )}
@@ -11072,7 +11072,7 @@ export default function App() {
                 onClick={() => setShowCartsSheet(false)}
               >
                 <div 
-                  style={{ background: 'var(--bg-surface-elevated)', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '1.25rem', paddingBottom: '2rem', animation: 'slideUp 0.3s ease-out' }}
+                  style={{ background: 'var(--bg-surface)', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '1.25rem', paddingBottom: '2rem', animation: 'slideUp 0.3s ease-out' }}
                   onClick={e => e.stopPropagation()}
                   onTouchStart={e => setSwipeStartY(e.touches[0].clientY)}
                   onTouchEnd={e => {
@@ -11248,7 +11248,7 @@ export default function App() {
                           {unacknowledgedOrders.length > 0 && (
                             <span style={{
                               position: 'absolute', top: -3, right: -3,
-                              background: 'var(--danger)', color: 'white',
+                              background: 'var(--danger)', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
                               borderRadius: '50%', minWidth: 17, height: 17,
                               fontSize: '0.62rem', fontWeight: 700,
                               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px'
@@ -11296,8 +11296,8 @@ export default function App() {
                       {/* Grid layout for Today's Earnings & COD Commission */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
                         {/* Today's Earnings Summary Widget */}
-                        <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-glow) 100%)', borderRadius: '12px', padding: '0.85rem 1rem', color: 'white', display: 'flex', flexDirection: 'column', gap: '0.15rem', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                          <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                        <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-glow) 100%)', borderRadius: '12px', padding: '0.85rem 1rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '0.15rem', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)', border: '1px solid var(--border-color)' }}>
+                          <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-main)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                             <Store size={10} /> {t("Today's Earnings", "आज की कमाई", "আজকের আয়")}
                           </span>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -11309,12 +11309,12 @@ export default function App() {
                                 <span style={{ color: 'var(--danger-color)', fontWeight: 'bold' }}>{t('Closed','बंद','বন্ধ')}</span>
                               )}
                               {!stockistProfile.is_shop_open && !stockistProfile.manual_closed && (
-                                <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)', display: 'block' }}>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-main)', display: 'block' }}>
                                   {t('Closed now (outside opening hours)', 'अभी बंद (खुलने के समय के बाहर)', 'এখন বন্ধ (খোলার সময়ের বাইরে)')}
                                 </span>
                               )}
                               {stockistProfile.manual_closed && (
-                                <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)', display: 'block' }}>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-main)', display: 'block' }}>
                                   {t('Manually closed', 'मैन्युअल रूप से बंद', 'ম্যানুয়ালি বন্ধ')}
                                 </span>
                               )}
@@ -11323,11 +11323,11 @@ export default function App() {
                           <span style={{ fontSize: '1.4rem', fontWeight: 'bold', fontFamily: 'var(--font-display)' }}>
                             ₹{todaysEarnings.toFixed(2)}
                           </span>
-                          <span style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.75)' }}>{t("Settlement to bank", "बैंक में निपटान", "ব্যাংক সেটেলমেন্ট")}</span>
+                          <span style={{ fontSize: '0.5rem', color: 'var(--text-main)' }}>{t("Settlement to bank", "बैंक में निपटान", "ব্যাংক সেটেলমেন্ট")}</span>
                         </div>
 
                         {/* COD Commission Owed Widget */}
-                        <div style={{ background: 'linear-gradient(135deg, var(--bg-surface-elevated) 0%, rgba(255,255,255,0.02) 100%)', borderRadius: '12px', padding: '0.85rem 1rem', color: 'white', display: 'flex', flexDirection: 'column', gap: '0.15rem', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                        <div style={{ background: 'linear-gradient(135deg, var(--bg-surface-elevated) 0%, rgba(255,255,255,0.02) 100%)', borderRadius: '12px', padding: '0.85rem 1rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '0.15rem', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                           <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                             <AlertCircle size={10} style={{ color: 'var(--warning)' }} /> {t("COD Commission Owed", "COD कमीशन देय", "COD কমিশন বকেয়া")}
                           </span>
@@ -11343,7 +11343,7 @@ export default function App() {
                         <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid var(--warning)', borderRadius: '6px', padding: '0.5rem 0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
                           <span><strong>{offlineQueue.length}</strong> {t("updates pending sync", "अपडेट सिंक लंबित", "আপডেট সিঙ্ক পেন্ডিং")}</span>
                           {!offlineMode && (
-                            <button className="badge badge-warning" style={{ border: 'none', cursor: 'pointer' }} onClick={handleSyncOfflineQueue}>
+                            <button className="badge badge-warning" style={{ border: 'none', cursor: 'pointer', borderRadius: '8px', padding: '0.25rem 0.5rem' }} onClick={handleSyncOfflineQueue}>
                               {t("Sync Now", "अभी सिंक करें", "এখনই সিঙ্ক করুন")}
                             </button>
                           )}
@@ -11353,7 +11353,7 @@ export default function App() {
                       {/* Offline toggle control */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                         <div>
-                          <h4 style={{ fontSize: '0.8rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <h4 style={{ fontSize: '0.8rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                             <Signal size={14} /> {t("Network Signal", "नेटवर्क सिग्नल", "নেটওয়ার্ক সিগন্যাল")}
                           </h4>
                           <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>{t("Test offline rural store state", "ऑफ़लाइन ग्रामीण स्टोर स्थिति का परीक्षण करें", "অফলাইন গ্রামীণ স্টোর পরীক্ষা")}</p>
@@ -11393,12 +11393,12 @@ export default function App() {
                             >
                               {/* Order Header / New Badge */}
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '0.75rem', color: 'white' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '0.75rem', color: 'var(--text-main)' }}>
                                   Order #{o.id.substring(2).toUpperCase()}
                                 </span>
                                 <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                                   {isNew && (
-                                    <span className="badge badge-primary" style={{ fontSize: '0.55rem', background: 'var(--primary)', color: 'white', padding: '0.15rem 0.35rem', animation: 'pulse 1s infinite', fontWeight: 'bold' }}>
+                                    <span className="badge badge-primary" style={{ fontSize: '0.55rem', background: 'var(--primary)', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', padding: '0.15rem 0.35rem', animation: 'pulse 1s infinite', fontWeight: 'bold' }}>
                                       NEW
                                     </span>
                                   )}
@@ -11418,7 +11418,7 @@ export default function App() {
                               {/* Basic Customer Context */}
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', background: 'rgba(255, 255, 255, 0.02)', padding: '0.45rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span style={{ fontWeight: 'bold', color: 'white', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <span style={{ fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                     <UserCheck size={12} style={{ color: 'var(--primary)' }} /> {o.customer_name}
                                   </span>
                                   <span style={{ fontSize: '0.65rem', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
@@ -11491,7 +11491,7 @@ export default function App() {
                                         placeholder={o.fulfillment_type === 'DELIVERY' ? t("Enter Delivery PIN", "डिलीवरी पिन दर्ज करें", "ডেলিভারি পিন লিখুন") : t("Enter PIN", "पिन दर्ज करें", "পিন লিখুন")} 
                                         title={t("Enter customer's PIN to confirm handoff", "हैंडऑफ की पुष्टि के लिए ग्राहक का पिन दर्ज करें", "হ্যান্ডঅফ নিশ্চিত করতে গ্রাহকের পিন লিখুন")}
                                         maxLength="4"
-                                        style={{ flex: 1, padding: '0.25rem', fontSize: '0.7rem', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-color)', color: 'white', borderRadius: '4px', textAlign: 'center' }}
+                                        style={{ flex: 1, padding: '0.25rem', fontSize: '0.7rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', textAlign: 'center' }}
                                         value={enteredPins[o.id] || ''}
                                         onChange={e => setEnteredPins(prev => ({ ...prev, [o.id]: e.target.value }))}
                                       />
@@ -11644,7 +11644,7 @@ export default function App() {
                             return (
                               <div key={p.id} ref={el => { if (el && p.id === highlightedProductId) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', background: p.id === highlightedProductId ? 'rgba(76, 175, 80, 0.2)' : 'var(--bg-surface)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: isLowStock ? '1px dashed var(--warning)' : '1px solid var(--border-color)', fontSize: '0.75rem', position: 'relative', transition: 'background-color 1s' }}>
                                 <div style={{ flex: 1 }}>
-                                  <div style={{ fontWeight: '600', color: 'white', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                  <div style={{ fontWeight: '600', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     {p.name}
                                     {p.bill_status === 'PENDING' && (
                                       <span style={{ fontSize: '0.65rem', background: 'var(--warning)', color: '#000', padding: '2px 6px', borderRadius: 10 }}>
@@ -11652,12 +11652,12 @@ export default function App() {
                                       </span>
                                     )}
                                     {p.bill_status === 'VERIFIED' && (
-                                      <span style={{ fontSize: '0.65rem', background: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>
+                                      <span style={{ fontSize: '0.65rem', background: 'var(--accent)', color: 'var(--text-main)', padding: '2px 6px', borderRadius: 10 }}>
                                         {t('Verified', 'सत्यापित', 'যাচাইকৃত')}
                                       </span>
                                     )}
                                     {p.bill_status === 'REJECTED' && (
-                                      <span style={{ fontSize: '0.65rem', background: 'var(--danger)', color: '#fff', padding: '2px 6px', borderRadius: 10 }} title={p.rejection_reason}>
+                                      <span style={{ fontSize: '0.65rem', background: 'var(--danger)', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', padding: '2px 6px', borderRadius: 10 }} title={p.rejection_reason}>
                                         {t('Rejected', 'अस्वीकृत', 'প্রত্যাখ্যাত')}{p.rejection_reason ? `: ${p.rejection_reason}` : ''}
                                       </span>
                                     )}
@@ -11668,7 +11668,7 @@ export default function App() {
                                           <strong>{t("Not selling. Bill rejected", "बिक्री बंद. बिल अस्वीकृत", "বিক্রি বন্ধ. বিল প্রত্যাখ্যাত")}</strong>
                                         </div>
                                         {p.rejection_reason && <div>{t("Reason:", "कारण:", "কারণ:")} {p.rejection_reason}</div>}
-                                        <button className="btn btn-secondary" style={{ fontSize: '0.6rem', padding: '0.15rem 0.4rem', alignSelf: 'flex-start', marginTop: '0.15rem', color: 'white', borderColor: 'var(--danger)' }} onClick={() => handleStartEditProduct(p)}>
+                                        <button className="btn btn-secondary" style={{ fontSize: '0.6rem', padding: '0.15rem 0.4rem', alignSelf: 'flex-start', marginTop: '0.15rem', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', borderColor: 'var(--danger)' }} onClick={() => handleStartEditProduct(p)}>
                                           {t("Re-upload Bill", "बिल फिर से अपलोड करें", "বিল পুনরায় আপলোড করুন")}
                                         </button>
                                       </div>
@@ -11728,7 +11728,7 @@ export default function App() {
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
                             <div className="glass-card" style={{ padding: '0.75rem', textAlign: 'center' }}>
                               <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t("Today's Sales", "आज की बिक्री", "আজকের বিক্রি")}</span>
-                              <h3 style={{ fontSize: '1.2rem', color: 'white', margin: '0.15rem 0' }}>₹{stockistAnalytics.today_earnings.toFixed(2)}</h3>
+                              <h3 style={{ fontSize: '1.2rem', color: 'var(--text-main)', margin: '0.15rem 0' }}>₹{stockistAnalytics.today_earnings.toFixed(2)}</h3>
                               <span style={{ fontSize: '0.55rem', color: 'var(--accent)', fontWeight: 'bold' }}>{stockistAnalytics.today_order_count} orders</span>
                               <button
                                 type="button"
@@ -11770,7 +11770,7 @@ export default function App() {
                             </div>
                             <div className="glass-card" style={{ padding: '0.75rem', textAlign: 'center' }}>
                               <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t("Avg Order Value", "औसत ऑर्डर मूल्य", "গড় অর্ডার মূল্য")}</span>
-                              <h3 style={{ fontSize: '1.2rem', color: 'white', margin: '0.15rem 0' }}>₹{stockistAnalytics.avg_order_value.toFixed(2)}</h3>
+                              <h3 style={{ fontSize: '1.2rem', color: 'var(--text-main)', margin: '0.15rem 0' }}>₹{stockistAnalytics.avg_order_value.toFixed(2)}</h3>
                               <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)' }}>{t("fulfilled orders", "पूरे किए गए ऑर्डर", "সম্পন্ন অর্ডার")}</span>
                             </div>
                           </div>
@@ -11791,7 +11791,7 @@ export default function App() {
                                     borderRadius: '3px',
                                     cursor: 'pointer',
                                     background: analyticsRange === 'weekly' ? 'var(--primary)' : 'transparent',
-                                    color: 'white',
+                                    color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
                                     fontWeight: 'bold'
                                   }}
                                 >
@@ -11807,7 +11807,7 @@ export default function App() {
                                     borderRadius: '3px',
                                     cursor: 'pointer',
                                     background: analyticsRange === 'monthly' ? 'var(--primary)' : 'transparent',
-                                    color: 'white',
+                                    color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
                                     fontWeight: 'bold'
                                   }}
                                 >
@@ -11857,7 +11857,7 @@ export default function App() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.5rem' }}>
                               {stockistAnalytics.top_products.map((p, idx) => (
                                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', paddingBottom: '0.2rem', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                                  <span style={{ color: 'white' }}>{idx + 1}. {p.name}</span>
+                                  <span style={{ color: 'var(--text-main)' }}>{idx + 1}. {p.name}</span>
                                   <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{p.qty} sold</span>
                                 </div>
                               ))}
@@ -11881,7 +11881,7 @@ export default function App() {
                   {submittingFeedbackOrder && currentUser.role === 'STOCKIST' && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <h3 style={{ fontSize: '1.1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <UserCheck size={16} style={{ color: 'var(--accent)' }} />
                           {t('Rate Customer', 'ग्राहक को रेट करें', 'ক্রেতাকে রেটিং দিন')}
                         </h3>
@@ -11939,7 +11939,7 @@ export default function App() {
                   {showAddProductModal && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1rem', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                        <h3 style={{ fontSize: '1.1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <Package size={16} style={{ color: 'var(--accent)' }} />
                           {t('Add New SKU', 'नया SKU जोड़ें', 'নতুন SKU যোগ করুন')}
                         </h3>
@@ -12093,7 +12093,7 @@ export default function App() {
                   {editingProduct && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,14,20,0.96)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1rem', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                        <h3 style={{ fontSize: '1.1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <Edit size={16} style={{ color: 'var(--accent)' }} />
                           {t('Edit SKU details', 'SKU विवरण संपादित करें', 'SKU বিবরণ সংশোধন করুন')}
                         </h3>
@@ -12202,7 +12202,7 @@ export default function App() {
                       {/* Manual Closure */}
                       <div className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', borderLeft: (isWithinOpeningHours(stockistProfile) && !stockistProfile.manual_closed) ? '3px solid var(--success-color)' : '3px solid var(--danger-color)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'white' }}>{t('Shop Status', 'दुकान की स्थिति', 'দোকানের অবস্থা')}: {!(isWithinOpeningHours(stockistProfile) && !stockistProfile.manual_closed) ? <span style={{color: 'var(--danger-color)'}}>{t('Closed','बंद','বন্ধ')}</span> : <span style={{color: 'var(--success-color)'}}>{t('Open','खुला','খোলা')}</span>}</h4>
+                          <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{t('Shop Status', 'दुकान की स्थिति', 'দোকানের অবস্থা')}: {!(isWithinOpeningHours(stockistProfile) && !stockistProfile.manual_closed) ? <span style={{color: 'var(--danger-color)'}}>{t('Closed','बंद','বন্ধ')}</span> : <span style={{color: 'var(--success-color)'}}>{t('Open','खुला','খোলা')}</span>}</h4>
                           <button
                             type="button"
                             className={`shop-toggle ${(isWithinOpeningHours(stockistProfile) && !stockistProfile.manual_closed) ? 'is-open' : 'is-closed'}`}
@@ -12311,7 +12311,7 @@ export default function App() {
                               )}
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-color)', padding: '0.75rem', borderRadius: '4px', color: 'white' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-color)', padding: '0.75rem', borderRadius: '4px', color: 'var(--text-main)' }}>
                               <div style={{ fontSize: '0.85rem' }}>
                                 <strong>{t('Selected:', 'चयनित:', 'নির্বাচিত:')} </strong>
                                 {(closedUntilDraft !== null ? closedUntilDraft : stockistProfile.closed_until) ? new Date(closedUntilDraft !== null ? closedUntilDraft : stockistProfile.closed_until).toLocaleString() : t('Reopens at next opening time', 'अगले खुलने के समय खुलेगा', 'পরবর্তী খোলার সময়ে পুনরায় খুলবে')}
@@ -12335,7 +12335,7 @@ export default function App() {
 
                       {/* Operational Settings */}
                       <div className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'white' }}>{t('Operational Settings', 'परिचालन सेटिंग', 'পরিচালন সেটিংস')}</h4>
+                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{t('Operational Settings', 'परिचालन सेटिंग', 'পরিচালন সেটিংস')}</h4>
                         
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                           <div className="input-group" style={{ margin: 0 }}>
@@ -12362,7 +12362,7 @@ export default function App() {
 
                       {/* Payout Details */}
                       <div className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'white' }}>{t('Payout Details', 'भुगतान विवरण', 'পেআউট বিবরণ')}</h4>
+                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{t('Payout Details', 'भुगतान विवरण', 'পেআউট বিবরণ')}</h4>
                         
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('UPI ID (Primary)', 'UPI आईडी (प्राथमिक)', 'UPI আইডি (প্রাথমিক)')}</label>
@@ -12387,7 +12387,7 @@ export default function App() {
 
                       {/* Read-Only Information */}
                       <div className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', opacity: 0.8 }}>
-                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'white' }}>{t('Account Information', 'खाता जानकारी', 'অ্যাকাউন্ট তথ্য')}</h4>
+                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{t('Account Information', 'खाता जानकारी', 'অ্যাকাউন্ট তথ্য')}</h4>
                         
                         <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           <div><span style={{color: 'var(--text-muted)'}}>{t('Region','क्षेत्र','অঞ্চল')}: </span><strong>{regions.find(r => r.id === stockistProfile.region_id)?.name || stockistProfile.region_id}</strong></div>
@@ -12402,7 +12402,7 @@ export default function App() {
 
                       {/* Consolidated App Preferences */}
                       <div className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'white' }}>{t('App Preferences', 'ऐप प्राथमिकताएं', 'অ্যাপ পছন্দসমূহ')}</h4>
+                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{t('App Preferences', 'ऐप प्राथमिकताएं', 'অ্যাপ পছন্দসমূহ')}</h4>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Order Alerts (Push)', 'ऑर्डर अलर्ट (पुश)', 'অর্ডার সতর্কতা (পুশ)')}</span>
                           <button type="button" className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem' }} onClick={enablePushAlerts}>
@@ -12435,7 +12435,7 @@ export default function App() {
                         {showPersonalDetails && createPortal(
                           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(2px)', zIndex: 'var(--z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setShowPersonalDetails(false)}>
                             <div style={{ width: '100%', maxWidth: '360px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: '#161a24', border: '1px solid var(--border-color)', borderRadius: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxHeight: `calc(85vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-                              <h4 style={{ margin: 0, color: 'white', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>{t('Personal Details', 'व्यक्तिगत विवरण', 'ব্যক্তিগত বিবরণ')}</h4>
+                              <h4 style={{ margin: 0, color: 'var(--text-main)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>{t('Personal Details', 'व्यक्तिगत विवरण', 'ব্যক্তিগত বিবরণ')}</h4>
                               <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 <div><span style={{color:'var(--text-muted)'}}>{t('Name','नाम','নাম')}: </span><strong>{stockistProfile.personal_name || stockistProfile.name}</strong></div>
                                 <div><span style={{color:'var(--text-muted)'}}>{t('Phone','फ़ोन','ফোন')}: </span><strong>{stockistProfile.phone || currentUser.phone}</strong></div>
@@ -13032,7 +13032,7 @@ export default function App() {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Customers</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'white' }}>{analyticsData.users?.total_customers || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{analyticsData.users?.total_customers || 0}</div>
                           </div>
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Approved Stockists</div>
@@ -13044,13 +13044,13 @@ export default function App() {
                           </div>
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>DAU / WAU / MAU</div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white' }}>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                               {analyticsData.users?.dau_customers || 0} / {analyticsData.users?.wau_customers || 0} / {analyticsData.users?.mau_customers || 0}
                             </div>
                           </div>
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>New Customers (Week / Month)</div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white' }}>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                               {analyticsData.users?.new_customers_this_week || 0} / {analyticsData.users?.new_customers_this_month || 0}
                             </div>
                           </div>
@@ -13067,7 +13067,7 @@ export default function App() {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Orders All-time</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'white' }}>{analyticsData.orders?.total_all_time || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{analyticsData.orders?.total_all_time || 0}</div>
                           </div>
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Revenue Today / Week / Month</div>
@@ -13081,7 +13081,7 @@ export default function App() {
                           </div>
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Orders Status Breakdown</div>
-                            <div style={{ fontSize: '0.75rem', color: 'white', marginTop: '0.2rem' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-main)', marginTop: '0.2rem' }}>
                               Pending: <strong>{analyticsData.orders?.orders_pending || 0}</strong> | Ready: <strong>{analyticsData.orders?.orders_ready || 0}</strong> | Delivered Week: <strong>{analyticsData.orders?.orders_delivered_this_week || 0}</strong>
                             </div>
                           </div>
@@ -13094,7 +13094,7 @@ export default function App() {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Approvals All-time</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'white' }}>{analyticsData.redemptions?.total_approvals_all_time || 0}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{analyticsData.redemptions?.total_approvals_all_time || 0}</div>
                           </div>
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Pending Admin Approval</div>
@@ -13583,7 +13583,7 @@ export default function App() {
                       }}
                       onClick={() => { setAdminTab('kyc'); fetchDbState(); }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 'bold', fontSize: '0.9rem' }}>
                         <span>⚠️ {pendingKyc.length} stockists awaiting KYC approval</span>
                       </div>
                       <button className="btn btn-danger" style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }} onClick={(e) => { e.stopPropagation(); setAdminTab('kyc'); fetchDbState(); }}>
@@ -14753,7 +14753,7 @@ export default function App() {
                     {/* LEFT COLUMN: GLOBAL DEFAULTS & LIVE WORKED EXAMPLE */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <h4 style={{ fontSize: '1rem', color: 'white', margin: 0 }}>Global Config Defaults</h4>
+                        <h4 style={{ fontSize: '1rem', color: 'var(--text-main)', margin: 0 }}>Global Config Defaults</h4>
                         
                         <div className="input-group">
                           <label className="input-label">Stockist reinvestment % (of profit)</label>
@@ -14829,14 +14829,14 @@ export default function App() {
                           <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(15, 23, 42, 0.6)' }}>
                             <h4 style={{ fontSize: '0.9rem', color: 'var(--accent)', margin: 0 }}>Live Worked Example Calculation</h4>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                              <p style={{ margin: '0 0 0.4rem 0', fontWeight: 'bold', color: 'white' }}>For ₹100 sale with ₹80 cost (₹20 profit margin):</p>
+                              <p style={{ margin: '0 0 0.4rem 0', fontWeight: 'bold', color: 'var(--text-main)' }}>For ₹100 sale with ₹80 cost (₹20 profit margin):</p>
                               <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
                                 <li>Stockist keeps: <strong>₹{stockistPayout}</strong> (Cost ₹80 + ₹{stockistReinvest} reinvest)</li>
                                 <li>Platform pot: <strong>₹{platformPot}</strong></li>
                                 <li>Customer points: <strong>₹{customerPoints}</strong> ({pPct}% of pot)</li>
                                 <li>Company commission: <strong>₹{companyCommission}</strong> ({100 - pPct}% of pot)</li>
                               </ul>
-                              <p style={{ margin: '0.6rem 0 0.4rem 0', fontWeight: 'bold', color: 'white' }}>For ₹250 partner reward redemption:</p>
+                              <p style={{ margin: '0.6rem 0 0.4rem 0', fontWeight: 'bold', color: 'var(--text-main)' }}>For ₹250 partner reward redemption:</p>
                               <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
                                 <li>Partner receives: <strong>₹{partnerPayout}</strong> ({100 - cPct}%)</li>
                                 <li>Platform keeps: <strong>₹{platformCut}</strong> ({cPct}%)</li>
@@ -14851,7 +14851,7 @@ export default function App() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <h4 style={{ fontSize: '1rem', color: 'white', margin: 0 }}>Per-Store Commission Overrides</h4>
+                          <h4 style={{ fontSize: '1rem', color: 'var(--text-main)', margin: 0 }}>Per-Store Commission Overrides</h4>
                           <button 
                             className="btn btn-secondary" 
                             style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
@@ -15540,7 +15540,7 @@ export default function App() {
                                       setStockistListModal({ vendorName: v.name, stockists: v.approved_stockists });
                                     }}
                                   >
-                                    <span className="badge" style={{ background: 'var(--accent)', color: 'white', borderRadius: '999px', padding: '0 0.4rem' }}>{v.approved_count}</span>
+                                    <span className="badge" style={{ background: 'var(--accent)', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', borderRadius: '999px', padding: '0 0.4rem' }}>{v.approved_count}</span>
                                     {t('View', 'देखें', 'দেখুন')}
                                   </button>
                                 ) : (
@@ -15549,7 +15549,7 @@ export default function App() {
                               </td>
                               <td>
                                 {v.is_active === false ? (
-                                  <span className="badge" style={{ background: '#6b7280', color: 'white' }}>INACTIVE</span>
+                                  <span className="badge" style={{ background: '#6b7280', color: 'var(--text-main)' }}>INACTIVE</span>
                                 ) : (
                                   <span className="badge badge-success">ACTIVE</span>
                                 )}
@@ -15991,14 +15991,14 @@ export default function App() {
   if (needsSetup) {
     return (
       <div className="simulator-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: `calc(100vh / var(--ui-scale))`, padding: '1.5rem', background: '#0f172a' }}>
-        <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(30, 41, 59, 0.7)', backdropFilter: 'blur(16px)' }}>
+        <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'rgba(30, 41, 59, 0.7)', backdropFilter: 'blur(16px)' }}>
           {setupSuccessAdmin ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center' }}>
               <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
                 <CheckCircle2 size={32} />
               </div>
               <div>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'white', margin: 0 }}>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>
                   {t('Administrator Account Created!', 'प्रशासक खाता बनाया गया!', 'অ্যাডমিনিস্ট্রেটর অ্যাকাউন্ট তৈরি করা হয়েছে!')}
                 </h2>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
@@ -16026,7 +16026,7 @@ export default function App() {
           ) : (
             <form onSubmit={handleCreateAdminSetup} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ textAlign: 'center' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', margin: 0, marginBottom: '0.35rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0, marginBottom: '0.35rem' }}>
                   Welcome to FastNet
                 </h2>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
@@ -16061,7 +16061,7 @@ export default function App() {
                 </label>
                 <input
                   type="tel" inputMode="numeric" maxLength={10} className="text-input" placeholder="9876543210" value={setupPhone} onChange={e => setSetupPhone(normalizeFrontendPhone(e.target.value))}
-                  maxLength={15}
+
                   style={{ width: '100%', padding: '0.65rem 0.85rem', fontSize: '0.85rem' }}
                 />
               </div>
@@ -16138,7 +16138,7 @@ export default function App() {
           aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
           onMouseEnter={handleToastMouseEnter}
           onMouseLeave={handleToastMouseLeave}
-          style={{ borderLeft: `4px solid ${toast.type === 'error' ? 'var(--danger)' : 'var(--accent)'}`, position: 'fixed', bottom: '20px', right: '20px', zIndex: 'var(--z-toast)', width: 'auto', background: '#131722', backdropFilter: 'blur(10px)' }}>
+          style={{ borderLeft: `4px solid ${toast.type === 'error' ? 'var(--danger)' : 'var(--accent)'}`, position: 'fixed', bottom: '20px', right: '20px', zIndex: 'var(--z-toast)', width: 'auto', background: 'var(--bg-surface)', backdropFilter: 'blur(10px)' }}>
           <CheckCircle2 size={16} style={{ color: toast.type === 'error' ? 'var(--danger)' : 'var(--accent)' }} />
           <span>{toast.message}</span>
           {toast.action && (
@@ -16186,7 +16186,7 @@ export default function App() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ fontSize: '1.2rem', color: 'white', margin: 0 }}>
+            <h3 style={{ fontSize: '1.2rem', color: 'var(--text-main)', margin: 0 }}>
               {confirmModal.title}
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.4' }}>
@@ -16256,7 +16256,7 @@ export default function App() {
             <div style={{ padding: '0.75rem', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent)' }}>
               <CheckCircle2 size={48} />
             </div>
-            <h3 style={{ fontSize: '1.3rem', color: 'white', margin: 0 }}>
+            <h3 style={{ fontSize: '1.3rem', color: 'var(--text-main)', margin: 0 }}>
               {t('Order Delivered!', 'ऑर्डर डिलीवर हो गया!', 'অর্ডার ডেলিভারড হয়েছে!')}
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
@@ -16266,7 +16266,7 @@ export default function App() {
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {t('Reward Points Earned', 'अर्जित रिवॉर्ड अंक', 'অর্জিত রিওয়ার্ড পয়েন্ট')}
               </span>
-              <h2 style={{ fontSize: '1.8rem', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0.25rem 0' }}>
+              <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0.25rem 0' }}>
                 <Sparkles size={20} style={{ color: 'var(--warning)' }} />
                 +{formatPoints(deliveredModalOrder.points_credited || 0)}
               </h2>
@@ -16407,7 +16407,7 @@ export default function App() {
         {showDevSettings && activeRole !== 'db' && (
           <aside className="inspector-panel">
             <div className="inspector-header">
-              <span style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Database size={14} style={{ color: 'var(--primary)' }} /> Live Gateway Request Logs
               </span>
               <button 
@@ -17585,7 +17585,7 @@ export default function App() {
         <div className="modal-overlay">
           <div className="glass-card" style={{ width: '420px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '1.1rem', color: 'white', margin: 0 }}>Configure Store Override</h3>
+              <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', margin: 0 }}>Configure Store Override</h3>
               <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setShowStoreOverrideModal(false)}><X size={14} /></button>
             </div>
 
@@ -17626,7 +17626,7 @@ export default function App() {
       {showRemoveOverrideConfirmModal && overrideToDelete && (
         <div className="modal-overlay">
           <div className="glass-card" style={{ width: '380px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h3 style={{ fontSize: '1.1rem', color: 'white', margin: 0 }}>Remove Store Override</h3>
+            <h3 style={{ fontSize: '1.1rem', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', margin: 0 }}>Remove Store Override</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
               This stockist will revert to global rates: 50/40/12.
             </p>
@@ -18246,9 +18246,9 @@ export default function App() {
       )}
 
       {/* Footer with Business Details (Part 2 Items 17, 18) */}
-      <footer style={{ background: '#131722', borderTop: '1px solid #262E42', padding: '1.5rem 1rem', marginTop: '2rem', textAlign: 'center', fontSize: '0.85rem', color: '#9CA3AF' }}>
+      <footer style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--border-color)', padding: '1.5rem 1rem', marginTop: '2rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center' }}>
-          <p style={{ fontWeight: 600, color: '#F3F4F6', fontSize: '1rem' }}>FastNet Loyalty Platform</p>
+          <p style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1rem' }}>FastNet Loyalty Platform</p>
           <p>Operated by FastNet Communications Pvt. Ltd. | CIN: U72900TG2024PTC189012</p>
           <p>Plot 42, Hitec City, Hyderabad, Telangana, India | Phone: +91-40-67890123 | Email: support@fastnetloyalty.com</p>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }}>
@@ -18265,7 +18265,7 @@ export default function App() {
               {t('Cookies Policy', 'Cookies Policy', 'Cookies Policy')}
             </button>
           </div>
-          <p style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '0.5rem' }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
             {t('Your data is encrypted. Points redeemable for WiFi and broadband services.', 'Your data is encrypted. Points redeemable for WiFi and broadband services.', 'Your data is encrypted. Points redeemable for WiFi and broadband services.')}
           </p>
         </div>
@@ -18280,7 +18280,7 @@ export default function App() {
               <h3 id="privacy-modal-title">{t('Privacy Policy', 'Privacy Policy', 'Privacy Policy')}</h3>
               <button className="btn btn-secondary btn-sm" aria-label="Close Privacy Policy" onClick={() => setShowPrivacyPolicyModal(false)}>Close</button>
             </div>
-            <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: '#D1D5DB' }}>
+            <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               <p><strong>{t('Data Collected:', 'Data Collected:', 'Data Collected:')}</strong> {t('Phone number, name, delivery address, order history, points ledger.', 'Phone number, name, delivery address, order history, points ledger.', 'Phone number, name, delivery address, order history, points ledger.')}</p>
               <p><strong>{t('Usage:', 'Usage:', 'Usage:')}</strong> {t('Order processing, telecom service activation, customer support, platform analytics.', 'Order processing, telecom service activation, customer support, platform analytics.', 'Order processing, telecom service activation, customer support, platform analytics.')}</p>
               <p><strong>{t('Data Retention:', 'Data Retention:', 'Data Retention:')}</strong> {t('Orders retained for 7 years for GST & tax compliance. Points stored until redemption.', 'Orders retained for 7 years for GST & tax compliance. Points stored until redemption.', 'Orders retained for 7 years for GST & tax compliance. Points stored until redemption.')}</p>
@@ -18303,7 +18303,7 @@ export default function App() {
               <h3 id="terms-modal-title">{t('Terms & Conditions', 'Terms & Conditions', 'Terms & Conditions')}</h3>
               <button className="btn btn-secondary btn-sm" aria-label="Close Terms" onClick={() => setShowTermsModal(false)}>Close</button>
             </div>
-            <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: '#D1D5DB' }}>
+            <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               <p><strong>{t('Eligibility:', 'Eligibility:', 'Eligibility:')}</strong> {t('18+ years, resident of India.', '18+ years, resident of India.', '18+ years, resident of India.')}</p>
               <p><strong>{t('User Responsibilities:', 'User Responsibilities:', 'User Responsibilities:')}</strong> {t('Provide accurate profile info, maintain account security, no fraudulent activities.', 'Provide accurate profile info, maintain account security, no fraudulent activities.', 'Provide accurate profile info, maintain account security, no fraudulent activities.')}</p>
               <p><strong>{t('Points & Loyalty:', 'Points & Loyalty:', 'Points & Loyalty:')}</strong> {t('Points earned only on DELIVERED orders. Non-transferable, non-cashable, redeemable only against platform ISP services.', 'Points earned only on DELIVERED orders. Non-transferable, non-cashable, redeemable only against platform ISP services.', 'Points earned only on DELIVERED orders. Non-transferable, non-cashable, redeemable only against platform ISP services.')}</p>
@@ -18325,7 +18325,7 @@ export default function App() {
               <h3 id="refund-modal-title">{t('Refund Policy', 'Refund Policy', 'Refund Policy')}</h3>
               <button className="btn btn-secondary btn-sm" aria-label="Close Refund Policy" onClick={() => setShowRefundPolicyModal(false)}>Close</button>
             </div>
-            <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: '#D1D5DB' }}>
+            <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               <p><strong>{t('Cancellation Window:', 'Cancellation Window:', 'Cancellation Window:')}</strong> {t('Orders can be cancelled within 1 minute of placement for a refund (minus platform commission fee).', 'ऑर्डर देने के 1 मिनट के भीतर रद्द किए जा सकते हैं, जिसमें से प्लेटफ़ॉर्म कमीशन शुल्क काटा जाएगा।', 'অর্ডার করার ১ মিনিটের মধ্যে বাতিল করা যেতে পারে (প্ল্যাটফর্ম কমিশন ফি কেটে নেওয়া হবে)।')}</p>
               <p><strong>{t('Non-Show / Delivery Issues:', 'Non-Show / Delivery Issues:', 'Non-Show / Delivery Issues:')}</strong> {t('If stockist or delivery fails, refund processed within 24 hours to original payment method.', 'If stockist or delivery fails, refund processed within 24 hours to original payment method.', 'If stockist or delivery fails, refund processed within 24 hours to original payment method.')}</p>
               <p><strong>{t('Support Contact:', 'Support Contact:', 'Support Contact:')}</strong> {t('Email support@fastnetloyalty.com for refund assistance.', 'Email support@fastnetloyalty.com for refund assistance.', 'Email support@fastnetloyalty.com for refund assistance.')}</p>
@@ -18347,7 +18347,7 @@ export default function App() {
               <h3 id="cookies-modal-title">{t('Cookies Policy', 'Cookies Policy', 'Cookies Policy')}</h3>
               <button className="btn btn-secondary btn-sm" aria-label="Close Cookies Policy" onClick={() => setShowCookiesPolicyModal(false)}>Close</button>
             </div>
-            <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: '#D1D5DB' }}>
+            <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               <p><strong>{t('What Cookies Are Used:', 'What Cookies Are Used:', 'What Cookies Are Used:')}</strong> {t('Session security cookies (httpOnly, Secure), analytics preferences, and regional settings.', 'Session security cookies (httpOnly, Secure), analytics preferences, and regional settings.', 'Session security cookies (httpOnly, Secure), analytics preferences, and regional settings.')}</p>
               <p><strong>{t('Control:', 'Control:', 'Control:')}</strong> {t('You can manage or decline non-essential cookies via browser settings or the consent banner.', 'You can manage or decline non-essential cookies via browser settings or the consent banner.', 'You can manage or decline non-essential cookies via browser settings or the consent banner.')}</p>
             </div>
