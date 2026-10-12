@@ -591,6 +591,30 @@ const ThemeToggle = ({ theme, onToggle, appName }) => (
   </button>
 );
 
+const CustomerSplash = ({ onDone }) => {
+  const [out, setOut] = React.useState(false);
+  React.useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const t1 = setTimeout(() => setOut(true), reduced ? 700 : 1900);
+    const t2 = setTimeout(onDone, (reduced ? 700 : 1900) + 300);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+  const skip = () => { setOut(true); setTimeout(onDone, 300); };
+  const letters = ['b', 'e', 'n', null, 'f', 'f', 'y'];
+  return (
+    <div className={`cs-splash ${out ? 'cs-out' : ''}`} onClick={skip} role="presentation" aria-hidden="true">
+      <div className="cs-word">
+        {letters.map((ch, i) => ch ? (
+          <span key={i} className="cs-ch" style={{ '--i': i }}>{ch}</span>
+        ) : (
+          <span key={i} className="cs-ch cs-i" style={{ '--i': i }}>ı<span className="cs-ring"></span><span className="cs-coin"></span></span>
+        ))}
+      </div>
+      <div className="cs-tag">Shop local. Pay less for everything else.</div>
+    </div>
+  );
+};
+
 export default function App() {
   const [themes, setThemes] = React.useState(loadThemes);
   const vtRef = React.useRef(null);
@@ -747,6 +771,8 @@ export default function App() {
     catch { return false; }
   });
   const [activeRole, setActiveRole] = useState('marketing');
+  const [customerSplashKey, setCustomerSplashKey] = useState(0);
+  const [showCustomerSplash, setShowCustomerSplash] = useState(false);
   const [dbState, setDbState] = useState(null);
   const [regions, setRegions] = useState([]);
   const [selectedRegionId, setSelectedRegionId] = useState('');
@@ -975,6 +1001,13 @@ export default function App() {
       setNowTick(Date.now());
     }, 1000);
     return () => clearInterval(timer);
+  }, [activeRole]);
+
+  useEffect(() => {
+    if (activeRole === 'customer') {
+      setCustomerSplashKey(k => k + 1);
+      setShowCustomerSplash(true);
+    }
   }, [activeRole]);
 
   const triggerCancelConfirm = (orderId) => {
@@ -8940,6 +8973,7 @@ export default function App() {
         <div className="phone-mockup" data-theme={themes.customer}>
           <div className="phone-notch"></div>
           <div className="phone-screen">
+            {showCustomerSplash && <CustomerSplash key={customerSplashKey} onDone={() => setShowCustomerSplash(false)} />}
             {/* Language Selector Bar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.75rem', background: 'var(--surface-overlay)', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.7rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)' }}>

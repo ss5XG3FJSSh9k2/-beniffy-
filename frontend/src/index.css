@@ -339,6 +339,30 @@ h1, h2, h3, h4, h5, h6 {
   display: none;
 }
 
+/* Customer App Splash */
+.cs-splash { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--bg-main); color: var(--text-main); font-family: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif; transition: opacity 300ms ease; cursor: pointer; }
+.cs-splash.cs-out { opacity: 0; pointer-events: none; }
+.cs-word { display: flex; font-size: 58px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
+.cs-ch { display: inline-block; opacity: 0; transform: translateY(14px); animation: cs-rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards; animation-delay: calc(var(--i) * 45ms); }
+.cs-i { position: relative; }
+.cs-coin, .cs-ring { position: absolute; left: 50%; top: 0.08em; width: 0.21em; height: 0.21em; margin-left: -0.105em; border-radius: 50%; box-sizing: border-box; }
+.cs-coin { background: #EE6E4D; opacity: 0; transform: translateY(-3.2em); animation: cs-drop 620ms 420ms forwards; }
+.cs-ring { border: 2px solid #EE6E4D; opacity: 0; animation: cs-ripple 700ms 960ms ease-out forwards; }
+.cs-tag { font-size: 13px; font-weight: 500; letter-spacing: 0.02em; opacity: 0; transform: translateY(6px); animation: cs-rise 450ms 1150ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+@keyframes cs-rise { to { opacity: 1; transform: translateY(0); } }
+@keyframes cs-drop {
+  0% { opacity: 1; transform: translateY(-3.2em) scale(1, 1); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+  62% { opacity: 1; transform: translateY(0) scale(1, 1); animation-timing-function: ease-out; }
+  72% { opacity: 1; transform: translateY(0.02em) scale(1.25, 0.75); animation-timing-function: ease-out; }
+  84% { opacity: 1; transform: translateY(-0.12em) scale(0.95, 1.05); animation-timing-function: ease-in; }
+  100% { opacity: 1; transform: translateY(0) scale(1, 1); }
+}
+@keyframes cs-ripple { 0% { opacity: 0.7; transform: scale(1); } 100% { opacity: 0; transform: scale(4.2); } }
+@media (prefers-reduced-motion: reduce) {
+  .cs-ch, .cs-coin, .cs-tag { opacity: 1; transform: none; animation: none; }
+  .cs-ring { display: none; }
+}
+
 .phone-header {
   height: 44px;
   background: var(--bg-surface-elevated);
