@@ -6348,7 +6348,7 @@ export default function App() {
     );
 
     return (
-      <div className="login-content-container" style={{ padding: '2.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', justifyContent: 'flex-start', minHeight: '100%', overflowY: 'auto' }}>
+      <div className="login-content-container" style={{ padding: isAdminApp ? '1.5rem' : '2.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', justifyContent: 'flex-start', minHeight: '100%', overflowY: 'auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '1rem', paddingTop: '1rem' }}>
           <div style={{ marginBottom: '1rem' }}>
             {isStockistApp ? <BeniffyWordmark size={40} role="STOCKIST" /> : isAdminApp ? <BeniffyWordmark size={40} /> : <BeniffyWordmark size={40} />}
@@ -7597,7 +7597,7 @@ export default function App() {
   const renderPartnerAuthForm = () => {
     if (partnerResetToken) {
       return (
-        <div className="card" style={{ maxWidth: '400px', margin: '2rem auto', padding: '1.5rem' }}>
+        <div style={{ padding: '1.5rem 1.25rem' }}>
           <h3>Set New Password</h3>
           <div className="input-group" style={{ marginTop: '1rem' }}>
             <label className="input-label">New Password</label>
@@ -7613,7 +7613,7 @@ export default function App() {
     }
 
     return (
-      <div className="card" style={{ maxWidth: '450px', margin: '2rem auto', padding: '1.5rem', position: 'relative' }}>
+      <div style={{ padding: '1.5rem 1.25rem', position: 'relative' }}>
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <BeniffyWordmark size={40} role="PARTNER" />
           <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '1rem' }}>Partner Login</h2>
@@ -7785,9 +7785,15 @@ export default function App() {
   const renderPartnerView = () => {
     if (!currentUser || currentUser.role !== 'PARTNER_ADMIN') {
       return (
-        <div style={{ position: 'relative', minHeight: '420px', width: '100%' }}>
-          {renderPartnerAuthForm()}
-          {splash.app === 'partner' && <AppSplash theme={resolve(themes.partner)} key={splash.key} role="PARTNER" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
+          <div className="perspective-banner"><span>Partner Hub: Not logged in</span></div>
+          <div className="phone-mockup" data-theme={resolve(themes.partner)}>
+            <div className="phone-notch"></div>
+            <div className="phone-screen">
+              {splash.app === 'partner' && <AppSplash theme={resolve(themes.partner)} key={splash.key} role="PARTNER" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
+              {renderPartnerAuthForm()}
+            </div>
+          </div>
         </div>
       );
     }
@@ -7799,7 +7805,8 @@ export default function App() {
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Partner Hub: {partnerData?.display_name || partnerData?.name || 'Partner Account'}</span>
         </div>
 
-        <div className="phone-mockup" data-theme={resolve(themes.partner)} style={{ maxWidth: '600px', width: '100%' }}>
+        <div className="phone-mockup" data-theme={resolve(themes.partner)}>
+          <div className="phone-notch"></div>
           <div className="phone-screen" style={{ minHeight: '550px', display: 'flex', flexDirection: 'column' }}>
             
             {/* Header */}
@@ -7935,7 +7942,7 @@ export default function App() {
               {/* TAB 2: QUEUE */}
               {partnerAppTab === 'queue' && (
                 <div>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                     <button className={`btn ${partnerQueueSubTab === 'to_fulfill' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1, fontSize: '0.75rem' }} onClick={() => setPartnerQueueSubTab('to_fulfill')}>
                       {t('To Activate', 'सक्रिय करने के लिए', 'সক্রিয় করতে হবে')} ({partnerQueueList.length})
                     </button>
@@ -7946,7 +7953,7 @@ export default function App() {
 
                   {partnerQueueSubTab === 'to_fulfill' ? (
                     <div>
-                      <div className="table-scroll">
+                      <div style={{ overflowX: 'auto' }}>
 <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)' }}>
@@ -7997,7 +8004,7 @@ export default function App() {
                       <div style={{ background: 'var(--surface-overlay)', padding: '0.5rem 0.75rem', borderRadius: '4px', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                         <em>{t('Waiting on admin to resolve dispute', 'विवाद समाधान के लिए एडमिन की प्रतीक्षा में', 'বিরোধ সমাধানের জন্য অ্যাডমিনের অপেক্ষায়')}</em>
                       </div>
-                      <div className="table-scroll">
+                      <div style={{ overflowX: 'auto' }}>
 <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)' }}>
@@ -8038,7 +8045,7 @@ export default function App() {
                       + {t('Add Package', 'पैकेज जोड़ें', 'প্যাকেজ যোগ করুন')}
                     </button>
                   </div>
-                  <div className="table-scroll">
+                  <div style={{ overflowX: 'auto' }}>
 <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)' }}>
@@ -8065,7 +8072,7 @@ export default function App() {
                             </span>
                           </td>
                           <td style={{ padding: '0.4rem' }}>
-                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                               <button className="btn btn-secondary" style={{ padding: '0.15rem 0.35rem', fontSize: '0.65rem' }} onClick={() => openEditPackageModal(pkg)}>
                                 {t('Edit', 'संपादित करें', 'সম্পাদনা')}
                               </button>
@@ -8145,7 +8152,7 @@ export default function App() {
                                       {r.is_active ? t('Live', 'लाइव', 'লাইভ') : t('Inactive', 'निष्क्रिय', 'নিষ্ক্রিয়')}
                                     </span>
                                   </div>
-                                  <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
                                     {r.is_active ? (
                                       <button className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem', fontSize: '0.65rem' }} onClick={(e) => { e.stopPropagation(); handleDeactivateRegion(r, false); }}>
                                         {t('Deactivate', 'निष्क्रिय करें', 'নিষ্ক্রিয় করুন')}
@@ -8184,7 +8191,7 @@ export default function App() {
                       + {t('New Feedback', 'नई प्रतिक्रिया', 'নতুন ফিডব্যাক')}
                     </button>
                   </div>
-                  <div className="table-scroll">
+                  <div style={{ overflowX: 'auto' }}>
 <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)' }}>
@@ -8321,7 +8328,7 @@ export default function App() {
                           <label className="input-label">Confirm New Password</label>
                           <input type="password" className="text-input" value={pProfConfirmNewPass} onChange={e => setPProfConfirmNewPass(e.target.value)} />
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleChangePartnerPassword}>Set Password</button>
                           <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowChangePasswordForm(false)}>Cancel</button>
                         </div>
@@ -13021,11 +13028,8 @@ export default function App() {
             <span><Settings size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> OPERATOR PORTAL: Beniffy</span>
             <ThemeToggle theme={resolve(themes.admin)} appName="Admin Portal" onToggle={(e) => toggleTheme('admin', e)} />
           </div>
-          <div className="phone-mockup" style={{ maxWidth: '420px', width: '100%' }}>
-            <div className="phone-notch"></div>
-            <div className="phone-screen" style={{ minHeight: '480px' }}>
-              {renderAuthForm('admin')}
-            </div>
+          <div style={{ width: '100%', maxWidth: '440px', margin: '2.5rem auto', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '2rem' }}>
+            {renderAuthForm('admin')}
           </div>
         </div>
       );
