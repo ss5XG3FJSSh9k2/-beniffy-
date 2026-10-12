@@ -845,9 +845,16 @@ export default function App() {
   const themeApp = needsSetup ? 'admin' : activeRole === 'db' ? 'admin' : activeRole;
   const theme = themes[themeApp] || 'light';
   React.useLayoutEffect(() => {
-    if (vtRef.current) { vtRef.current.skipTransition(); vtRef.current = null; }
     document.documentElement.setAttribute('data-theme', theme);
-  }, [theme, themeApp]);
+  }, [theme]);
+
+  const prevThemeAppRef = React.useRef(themeApp);
+  React.useLayoutEffect(() => {
+    if (prevThemeAppRef.current !== themeApp) {
+      prevThemeAppRef.current = themeApp;
+      if (vtRef.current) { vtRef.current.skipTransition(); vtRef.current = null; }
+    }
+  }, [themeApp]);
   React.useEffect(() => {
     try { window.localStorage.setItem(THEME_KEY, JSON.stringify(themes)); } catch (e) { }
   }, [themes]);
