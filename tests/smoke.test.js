@@ -254,6 +254,20 @@ async function runSmokeTests() {
         await page.goto('http://localhost:5173');
         await waitForSplash(page);
 
+        const structureCheck = await page.evaluate(() => {
+          const first = document.body.firstChild;
+          if (first && first.nodeType === Node.TEXT_NODE && first.textContent.includes('\\n')) {
+            return 'Body first child is a text node with literal \\n';
+          }
+          if (!document.head.querySelector('meta[name="description"]')) {
+            return 'Missing meta description in head';
+          }
+          return null;
+        });
+        if (structureCheck) {
+          errors.push(structureCheck);
+        }
+
         // Select the role tab
         const roleBtn = page.locator(`.role-switcher button.role-tab:has-text("${role.tabName}")`);
         await roleBtn.click();
