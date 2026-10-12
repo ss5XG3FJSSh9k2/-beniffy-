@@ -3,8 +3,8 @@
   "short_name": "FastNet",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#0b0e14",
-  "theme_color": "#6366f1",
+  "background_color": "#FDF0D5",
+  "theme_color": "#61210F",
   "description": "FastNet rural connectivity and fulfillment",
   "icons": [
     {
