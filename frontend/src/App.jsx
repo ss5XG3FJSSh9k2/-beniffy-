@@ -622,12 +622,59 @@ export default function App() {
     const size = [`0px 0px`, `${2 * r}px ${2 * r}px`];
     const pos = [`${x}px ${y}px`, `${x - r}px ${y - r}px`];
 
+    document.documentElement.classList.add('vt-root-sweep');
     const vt = document.startViewTransition(applyTheme);
     vtRef.current = vt;
     vt.ready.then(() => {
       document.documentElement.animate(
         { maskSize: size, maskPosition: pos, webkitMaskSize: size, webkitMaskPosition: pos },
         { duration: 2700, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards', pseudoElement: '::view-transition-new(root)' }
+      );
+    }).catch(() => {});
+    vt.finished.catch(() => {}).finally(() => { 
+      document.documentElement.classList.remove('vt-root-sweep');
+      switchingRef.current = false; 
+      vtRef.current = null;
+      document.getAnimations().forEach(a => {
+        if (a.effect?.pseudoElement?.startsWith('::view-transition')) a.cancel();
+      });
+    });
+  };
+
+  const togglePhoneTheme = (app, next, e) => {
+    if (switchingRef.current) return;
+    const phone = e.currentTarget.closest('.phone-mockup');
+    const applyTheme = () => {
+      flushSync(() => setThemes(prev => ({ ...prev, [app]: next })));
+    };
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (typeof document.startViewTransition !== 'function' || reduced || !phone) {
+      if (phone) phone.classList.add('theme-switching');
+      applyTheme();
+      if (phone) setTimeout(() => phone.classList.remove('theme-switching'), 320);
+      return;
+    }
+
+    switchingRef.current = true;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const phoneRect = phone.getBoundingClientRect();
+    const phoneWidth = phoneRect.width, phoneHeight = phoneRect.height;
+    const relX = rect.left + rect.width / 2 - phoneRect.left;
+    const relY = rect.top + rect.height / 2 - phoneRect.top;
+    
+    const x = relX < phoneWidth / 2 ? 0 : phoneWidth;
+    const y = relY < phoneHeight / 2 ? 0 : phoneHeight;
+    const r = Math.ceil(Math.hypot(phoneWidth, phoneHeight) / 0.5) + 2;
+    const size = [`0px 0px`, `${2 * r}px ${2 * r}px`];
+    const pos = [`${x}px ${y}px`, `${x - r}px ${y - r}px`];
+
+    const vt = document.startViewTransition(applyTheme);
+    vtRef.current = vt;
+    vt.ready.then(() => {
+      document.documentElement.animate(
+        { maskSize: size, maskPosition: pos, webkitMaskSize: size, webkitMaskPosition: pos },
+        { duration: 2700, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards', pseudoElement: '::view-transition-new(phone-app)' }
       );
     }).catch(() => {});
     vt.finished.catch(() => {}).finally(() => { 
@@ -842,7 +889,7 @@ export default function App() {
 
   // Setup state (Round BF5d)
   const [needsSetup, setNeedsSetup] = useState(false);
-  const themeApp = needsSetup ? 'admin' : activeRole === 'db' ? 'admin' : activeRole;
+  const themeApp = needsSetup ? 'admin' : activeRole === 'db' ? 'admin' : ['customer','stockist','partner'].includes(activeRole) ? 'marketing' : activeRole;
   const theme = themes[themeApp] || 'light';
   React.useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -7416,9 +7463,6 @@ export default function App() {
 
     return (
       <div className="card" style={{ maxWidth: '450px', margin: '2rem auto', padding: '1.5rem', position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-          <ThemeToggle theme={themes.partner} appName="Partner App" onToggle={(e) => toggleTheme('partner', e)} />
-        </div>
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>Partner Login</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>FastNet Operator Hub</p>
@@ -7495,6 +7539,7 @@ export default function App() {
         )}
 
         {showFirstTimeSetupFlow && (
+          <div data-theme={themes.partner} style={{ color: 'var(--text-main)' }}>
           <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-main)', zIndex: 'var(--z-modal)' }}>
             <div className="modal-content FirstTimeSetupFlow" style={{ maxWidth: '450px', width: '90%', padding: '1.5rem', background: 'var(--card-bg, #1e1e2e)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
               <PanelErrorBoundary t={t}>
@@ -7556,6 +7601,7 @@ export default function App() {
               </PanelErrorBoundary>
             </div>
           </div>
+          </div>
         )}
 
 
@@ -7595,10 +7641,9 @@ export default function App() {
         {/* Perspective Banner */}
         <div className="perspective-banner">
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Partner Hub: {partnerData?.display_name || partnerData?.name || 'Partner Account'}</span>
-          <ThemeToggle theme={themes.partner} appName="Partner App" onToggle={(e) => toggleTheme('partner', e)} />
         </div>
 
-        <div className="phone-mockup" style={{ maxWidth: '600px', width: '100%' }}>
+        <div className="phone-mockup" data-theme={themes.partner} style={{ maxWidth: '600px', width: '100%' }}>
           <div className="phone-screen" style={{ minHeight: '550px', display: 'flex', flexDirection: 'column' }}>
             
             {/* Header */}
@@ -8127,6 +8172,48 @@ export default function App() {
                       </div>
                     )}
                   </div>
+
+                  {/* Appearance Settings */}
+                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '1rem' }}>
+                    <h5 style={{ margin: 0, marginBottom: '0.75rem', color: 'var(--text-main)' }}>{t('Appearance', 'दिखावट', 'চেহারা')}</h5>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Theme', 'थीम', 'থিম')}</span>
+                      <div style={{ display: 'flex', gap: '0' }}>
+                        <button
+                          type="button"
+                          aria-pressed={themes.partner === 'light'}
+                          onClick={(e) => themes.partner !== 'light' && togglePhoneTheme('partner', 'light', e)}
+                          style={{
+                            padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                            border: '1px solid var(--border-color)',
+                            background: themes.partner === 'light' ? 'var(--primary)' : 'var(--bg-surface)',
+                            color: themes.partner === 'light' ? 'var(--on-primary)' : 'var(--text-main)',
+                            borderRadius: '8px 0 0 8px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t('Light', 'रोशनी', 'হালকা')}
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={themes.partner === 'dark'}
+                          onClick={(e) => themes.partner !== 'dark' && togglePhoneTheme('partner', 'dark', e)}
+                          style={{
+                            padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                            border: '1px solid var(--border-color)',
+                            borderLeft: 'none',
+                            background: themes.partner === 'dark' ? 'var(--primary)' : 'var(--bg-surface)',
+                            color: themes.partner === 'dark' ? 'var(--on-primary)' : 'var(--text-main)',
+                            borderRadius: '0 8px 8px 0',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t('Dark', 'अंधेरा', 'অন্ধকার')}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               )}
             </div>
@@ -8848,10 +8935,9 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
         <div className="perspective-banner">
           <span><UserCheck size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> {t('Customer View', 'कस्टमर व्यू', 'গ্রাহক মোড')}: {isLoggedOut ? t('Not logged in', 'लॉग इन नहीं है', 'লগইন করা নেই') : `${currentUser.name} (${activeRegionName})`}</span>
-          <ThemeToggle theme={themes.customer} appName="Customer App" onToggle={(e) => toggleTheme('customer', e)} />
         </div>
         
-        <div className="phone-mockup">
+        <div className="phone-mockup" data-theme={themes.customer}>
           <div className="phone-notch"></div>
           <div className="phone-screen">
             {/* Language Selector Bar */}
@@ -10780,6 +10866,47 @@ export default function App() {
                           )}
                         </div>
 
+                        {/* Appearance Settings */}
+                        <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+                          <h4 style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>{t('Appearance', 'दिखावट', 'চেহারা')}</h4>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Theme', 'थीम', 'থিম')}</span>
+                            <div style={{ display: 'flex', gap: '0' }}>
+                              <button
+                                type="button"
+                                aria-pressed={themes.customer === 'light'}
+                                onClick={(e) => themes.customer !== 'light' && togglePhoneTheme('customer', 'light', e)}
+                                style={{
+                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                                  border: '1px solid var(--border-color)',
+                                  background: themes.customer === 'light' ? 'var(--primary)' : 'var(--bg-surface)',
+                                  color: themes.customer === 'light' ? 'var(--on-primary)' : 'var(--text-main)',
+                                  borderRadius: '8px 0 0 8px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {t('Light', 'रोशनी', 'হালকা')}
+                              </button>
+                              <button
+                                type="button"
+                                aria-pressed={themes.customer === 'dark'}
+                                onClick={(e) => themes.customer !== 'dark' && togglePhoneTheme('customer', 'dark', e)}
+                                style={{
+                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                                  border: '1px solid var(--border-color)',
+                                  borderLeft: 'none',
+                                  background: themes.customer === 'dark' ? 'var(--primary)' : 'var(--bg-surface)',
+                                  color: themes.customer === 'dark' ? 'var(--on-primary)' : 'var(--text-main)',
+                                  borderRadius: '0 8px 8px 0',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {t('Dark', 'अंधेरा', 'অন্ধকার')}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
                         <button
                           className="btn btn-accent"
                           disabled={profileSaving}
@@ -11275,10 +11402,9 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
         <div className="perspective-banner">
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> SHOPKEEPER VIEW (দোকানদার মোড): {isLoggedOut ? "Not logged in (লগইন করা নেই)" : `${stockistProfile?.name || currentUser.name} (${activeRegionName})`}</span>
-          <ThemeToggle theme={themes.stockist} appName="Stockist App" onToggle={(e) => toggleTheme('stockist', e)} />
         </div>
 
-        <div className="phone-mockup">
+        <div className="phone-mockup" data-theme={themes.stockist}>
           <div className="phone-notch"></div>
           <div className="phone-screen">
             {isLoggedOut ? (
@@ -12506,6 +12632,47 @@ export default function App() {
                           </select>
                         </div>
 
+                        {/* Appearance Settings */}
+                        <div style={{ marginTop: '0.25rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem' }}>
+                          <h4 style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>{t('Appearance', 'दिखावट', 'চেহারা')}</h4>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Theme', 'थीम', 'থিম')}</span>
+                            <div style={{ display: 'flex', gap: '0' }}>
+                              <button
+                                type="button"
+                                aria-pressed={themes.stockist === 'light'}
+                                onClick={(e) => themes.stockist !== 'light' && togglePhoneTheme('stockist', 'light', e)}
+                                style={{
+                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                                  border: '1px solid var(--border-color)',
+                                  background: themes.stockist === 'light' ? 'var(--primary)' : 'var(--bg-surface)',
+                                  color: themes.stockist === 'light' ? 'var(--on-primary)' : 'var(--text-main)',
+                                  borderRadius: '8px 0 0 8px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {t('Light', 'रोशनी', 'হালকা')}
+                              </button>
+                              <button
+                                type="button"
+                                aria-pressed={themes.stockist === 'dark'}
+                                onClick={(e) => themes.stockist !== 'dark' && togglePhoneTheme('stockist', 'dark', e)}
+                                style={{
+                                  padding: '0.3rem 0.6rem', fontSize: '0.7rem',
+                                  border: '1px solid var(--border-color)',
+                                  borderLeft: 'none',
+                                  background: themes.stockist === 'dark' ? 'var(--primary)' : 'var(--bg-surface)',
+                                  color: themes.stockist === 'dark' ? 'var(--on-primary)' : 'var(--text-main)',
+                                  borderRadius: '0 8px 8px 0',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {t('Dark', 'अंधेरा', 'অন্ধকার')}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Phone Number','फ़ोन नंबर','ফোন নম্বর')}</span>
                           <button type="button" className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem' }} onClick={() => { setSelfServiceNewPhone(''); setSelfServiceOtp(''); setSelfServiceNewOtp(''); setSelfServiceOtpSent(false); setShowSelfServicePhoneModal(true); }}>
@@ -12521,6 +12688,7 @@ export default function App() {
                         </div>
 
                         {showPersonalDetails && createPortal(
+                          <div data-theme={themes.stockist} style={{ color: 'var(--text-main)' }}>
                           <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-main)', backdropFilter: 'blur(2px)', zIndex: 'var(--z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setShowPersonalDetails(false)}>
                             <div style={{ width: '100%', maxWidth: '360px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxHeight: `calc(85vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                               <h4 style={{ margin: 0, color: 'var(--text-main)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>{t('Personal Details', 'व्यक्तिगत विवरण', 'ব্যক্তিগত বিবরণ')}</h4>
@@ -12542,6 +12710,7 @@ export default function App() {
                               </p>
                               <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setShowPersonalDetails(false)}>{t('Close','बंद करें','বন্ধ করুন')}</button>
                             </div>
+                          </div>
                           </div>,
                           document.body
                         )}

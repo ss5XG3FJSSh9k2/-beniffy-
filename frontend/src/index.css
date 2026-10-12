@@ -1,4 +1,4 @@
-:root {
+:root, [data-theme='light'] {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
   
@@ -1380,9 +1380,25 @@ input { color: var(--text-main); }
 
 
 ::view-transition { pointer-events: none; }
-::view-transition-old(root),
-::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
-::view-transition-new(root) {
+html.vt-root-sweep::view-transition-old(root),
+html.vt-root-sweep::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+html.vt-root-sweep::view-transition-new(root) {
+  mask-image: radial-gradient(closest-side, #000 0%, #000 50%, rgba(0,0,0,0.7) 64%, rgba(0,0,0,0.3) 80%, transparent 100%);
+  mask-repeat: no-repeat;
+  mask-size: 0px 0px;
+  -webkit-mask-image: radial-gradient(closest-side, #000 0%, #000 50%, rgba(0,0,0,0.7) 64%, rgba(0,0,0,0.3) 80%, transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: 0px 0px;
+}
+
+.phone-mockup[data-theme] { color: var(--text-main); }
+.phone-mockup[data-theme='dark'] { color-scheme: dark; }
+.phone-mockup[data-theme='light'] { color-scheme: light; }
+
+.phone-mockup { view-transition-name: phone-app; }
+::view-transition-group(phone-app) { animation: none; }
+::view-transition-old(phone-app), ::view-transition-new(phone-app) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(phone-app) {
   mask-image: radial-gradient(closest-side, #000 0%, #000 50%, rgba(0,0,0,0.7) 64%, rgba(0,0,0,0.3) 80%, transparent 100%);
   mask-repeat: no-repeat;
   mask-size: 0px 0px;
