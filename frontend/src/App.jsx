@@ -488,7 +488,7 @@ const TimePicker = ({ value, onChange }) => {
                       justifyContent: 'center',
                       background: draft.hour12 === h ? 'var(--accent)' : 'transparent',
                       borderRadius: '4px',
-                      color: draft.hour12 === h ? 'white' : 'inherit'
+                      color: draft.hour12 === h ? 'var(--on-primary)' : 'inherit'
                     }}
                   >
                     {h.padStart(2, '0')}
@@ -510,7 +510,7 @@ const TimePicker = ({ value, onChange }) => {
                       justifyContent: 'center',
                       background: draft.minute === m ? 'var(--accent)' : 'transparent',
                       borderRadius: '4px',
-                      color: draft.minute === m ? 'white' : 'inherit'
+                      color: draft.minute === m ? 'var(--on-primary)' : 'inherit'
                     }}
                   >
                     {m}
@@ -532,7 +532,7 @@ const TimePicker = ({ value, onChange }) => {
                       justifyContent: 'center',
                       background: draft.meridiem === m ? 'var(--accent)' : 'transparent',
                       borderRadius: '4px',
-                      color: draft.meridiem === m ? 'white' : 'inherit'
+                      color: draft.meridiem === m ? 'var(--on-primary)' : 'inherit'
                     }}
                   >
                     {m}
@@ -6581,8 +6581,8 @@ export default function App() {
                   className="btn"
                   style={{
                     flex: 1,
-                    background: hasBroadbandAnswered && hasBroadband ? 'var(--success, #10b981)' : 'var(--bg-card, rgba(255,255,255,0.05))',
-                    color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                    background: hasBroadbandAnswered && hasBroadband ? 'var(--primary)' : 'var(--bg-surface)',
+                    color: hasBroadbandAnswered && hasBroadband ? 'var(--on-primary)' : 'var(--text-main)',
                     border: '1px solid var(--border-color)'
                   }}
                   onClick={() => {
@@ -6597,8 +6597,8 @@ export default function App() {
                   className="btn"
                   style={{
                     flex: 1,
-                    background: hasBroadbandAnswered && !hasBroadband ? 'var(--danger, #ef4444)' : 'var(--bg-card, rgba(255,255,255,0.05))',
-                    color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                    background: hasBroadbandAnswered && !hasBroadband ? 'var(--primary)' : 'var(--bg-surface)',
+                    color: hasBroadbandAnswered && !hasBroadband ? 'var(--on-primary)' : 'var(--text-main)',
                     border: '1px solid var(--border-color)'
                   }}
                   onClick={() => {
@@ -8478,7 +8478,7 @@ export default function App() {
             </div>
 
             {/* Bottom Nav Bar (6 Tabs) */}
-            <div className="phone-bottom-nav" style={{ display: 'flex', justifyContent: 'space-around', padding: '0.5rem 0', background: 'rgba(0,0,0,0.4)', borderTop: '1px solid var(--border-color)' }}>
+            <div className="phone-bottom-nav" style={{ display: 'flex', justifyContent: 'space-around', padding: '0.5rem 0' }}>
               <button className={`phone-nav-btn ${partnerAppTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setPartnerAppTab('dashboard'); fetchPartnerDashboard(); }}>
                 <BarChart2 size={16} />
                 <span style={{ fontSize: '0.65rem' }}>Dashboard</span>
@@ -9372,9 +9372,9 @@ export default function App() {
                 {simulatedWaMessage && (
                   <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column' }}>
                     {/* WhatsApp Header */}
-                    <div style={{ background: 'var(--primary)', padding: '0.75rem 0.5rem 0.5rem 0.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ background: 'var(--primary)', padding: '0.75rem 0.5rem 0.5rem 0.5rem', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <button 
-                        style={{ background: 'none', border: 'none', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
                         onClick={() => setSimulatedWaMessage(null)}
                       >
                         <ArrowLeft size={16} />
@@ -9494,7 +9494,7 @@ export default function App() {
                   {/* Top Customer info bar */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>DELIVERING TO (ডেলিভারি ঠিকানা)</p>
+                      <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('Delivering to', 'डिलीवरी पता', 'ডেলিভারি ঠিকানা')}</p>
                       <h4 style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{currentUser.name} ({activeRegionName})</h4>
                     </div>
                     <button onClick={handleLogout} className="badge badge-danger" style={{ border: 'none', cursor: 'pointer', borderRadius: '8px', padding: '0.25rem 0.5rem' }}>Logout</button>
@@ -9671,12 +9671,12 @@ export default function App() {
                                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%' }}>
                                     <img src={p.image_url ? (p.image_url.startsWith('http') || p.image_url.startsWith('data:') ? p.image_url : `${API_BASE}${p.image_url}`) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"} alt={p.name} style={{ width: '56px', height: '56px', borderRadius: '6px', objectFit: 'cover' }} onError={(e) => { e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"; }} />
                                     <div style={{ flex: 1 }}>
-                                      <h4 style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <h4 style={{ fontSize: '0.75rem', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                           {p.name}
                                         </h4>
-                                      {p.description && <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.description}</div>}
+                                      {p.description && <div style={{ fontSize: '0.65rem', color: 'var(--on-primary)', opacity: 0.85 }}>{p.description}</div>}
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-                                        <span style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>₹{p.price}</span>
+                                        <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--on-primary)' }}>₹{p.price}</span>
                                         {hasCostPrice ? (
                                           <span className="badge badge-success" style={{ fontSize: '0.55rem', padding: '0.1rem 0.25rem' }}>
                                             Earn {formatPoints(p.estimated_points || 0)}
@@ -9739,7 +9739,7 @@ export default function App() {
                               onClick={() => setCartFulfillment('PICKUP')}
                               style={{
                                 flex: 1, padding: '0.6rem', fontSize: '0.8rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                                background: cartFulfillment === 'PICKUP' ? 'var(--primary)' : 'transparent', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem'
+                                background: cartFulfillment === 'PICKUP' ? 'var(--primary)' : 'transparent', color: cartFulfillment === 'PICKUP' ? 'var(--on-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem'
                               }}
                             >
                               <Key size={16} />
@@ -9760,7 +9760,7 @@ export default function App() {
                                   style={{
                                     flex: 1, padding: '0.6rem', fontSize: '0.8rem', fontWeight: 'bold', borderRadius: '6px', border: 'none',
                                     cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.4 : 1,
-                                    background: cartFulfillment === 'DELIVERY' ? 'var(--primary)' : 'transparent', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem'
+                                    background: cartFulfillment === 'DELIVERY' ? 'var(--primary)' : 'transparent', color: cartFulfillment === 'DELIVERY' ? 'var(--on-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem'
                                   }}
                                 >
                                   <Truck size={16} />
@@ -10435,7 +10435,7 @@ export default function App() {
                                         showToast(t('Referral code copied!', 'रेफरल कोड कॉपी हो गया!', 'রেফারেল কোড কপি হয়েছে!'));
                                       }
                                     }}
-                                    style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid #22c55e', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: '600' }}
+                                    style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid #22c55e', color: 'var(--success-text)', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: '600' }}
                                   >
                                     {t('Copy Code', 'कोड कॉपी करें', 'কোড কপি করুন')}
                                   </button>
@@ -10548,16 +10548,16 @@ export default function App() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                       {/* Points Balance Card (Moderated) */}
                       <div className="points-glow-box" style={{ padding: '1.25rem 0.75rem', borderRadius: '12px', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--on-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           {t('ACCUMULATED LOYALTY POINTS', 'संचित लॉयल्टी पॉइंट्स', 'সঞ্চিত লয়্যালটি পয়েন্ট')}
                         </span>
-                        <h1 style={{ fontSize: '1.75rem', margin: '0.25rem 0', color: 'var(--text-main)', fontWeight: 'bold' }}>{formatPoints(customerBalance)}</h1>
+                        <h1 style={{ fontSize: '1.75rem', margin: '0.25rem 0', color: 'var(--on-primary)', fontWeight: 'bold' }}>{formatPoints(customerBalance)}</h1>
                         {customerHeldBalance > 0 && (
-                          <p style={{ fontSize: '0.65rem', color: 'var(--warning-text)', margin: '0.25rem 0 0' }}>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--on-primary)', fontWeight: 600, margin: '0.25rem 0 0' }}>
                             {formatPoints(customerHeldBalance)} {t('pending bill verification', 'बिल सत्यापन लंबित', 'বিল যাচাই মুলতুবি')}
                           </p>
                         )}
-                        <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--on-primary)', margin: '0.25rem 0 0' }}>
                           {t('Closed-loop points redeemable in the Rewards tab.', 'पुरस्कार टैब में रिडीम करने योग्य पॉइंट्स।', 'রিওয়ার্ডস ট্যাবে রিডিম করার যোগ্য পয়েন্ট।')}
                         </p>
                       </div>
@@ -11041,8 +11041,8 @@ export default function App() {
                               className="btn"
                               style={{
                                 flex: 1,
-                                background: profileHasBroadband ? 'var(--success, #10b981)' : 'var(--bg-card, rgba(255,255,255,0.05))',
-                                color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                                background: profileHasBroadband ? 'var(--primary)' : 'var(--bg-surface)',
+                                color: profileHasBroadband ? 'var(--on-primary)' : 'var(--text-main)',
                                 border: '1px solid var(--border-color)'
                               }}
                               onClick={() => {
@@ -11056,8 +11056,8 @@ export default function App() {
                               className="btn"
                               style={{
                                 flex: 1,
-                                background: !profileHasBroadband ? 'var(--danger, #ef4444)' : 'var(--bg-card, rgba(255,255,255,0.05))',
-                                color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                                background: !profileHasBroadband ? 'var(--primary)' : 'var(--bg-surface)',
+                                color: !profileHasBroadband ? 'var(--on-primary)' : 'var(--text-main)',
                                 border: '1px solid var(--border-color)'
                               }}
                               onClick={() => {
@@ -11305,7 +11305,7 @@ export default function App() {
                                     key={o.id}
                                     style={{
                                       background: trackingOrder.id === o.id ? 'var(--accent)' : 'var(--border-color)',
-                                      color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', border: 'none', borderRadius: '20px', padding: '0.3rem 0.6rem',
+                                      color: trackingOrder.id === o.id ? 'var(--on-primary)' : 'var(--text-main)', border: 'none', borderRadius: '20px', padding: '0.3rem 0.6rem',
                                       fontSize: '0.7rem', cursor: 'pointer', whiteSpace: 'nowrap'
                                     }}
                                     onClick={() => setTrackingOrder(o)}
@@ -11451,7 +11451,7 @@ export default function App() {
                     {currentCart.length > 0 && (
                       <div style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        background: 'var(--accent)', color: 'var(--text-main)', padding: '0.75rem 1rem',
+                        background: 'var(--accent)', color: 'var(--on-primary)', padding: '0.75rem 1rem',
                         borderRadius: '10px', cursor: 'pointer', boxShadow: '0 -4px 12px rgba(0,0,0,0.4)'
                       }} onClick={() => setCustomerAppTab('cart')}>
                         <div>
@@ -11564,7 +11564,7 @@ export default function App() {
                   <button id="nav-pointshop" className={`phone-nav-btn ${customerAppTab === 'pointshop' ? 'active' : ''}`} onClick={() => setCustomerAppTab('pointshop')} style={{ position: 'relative' }}>
                     <Gift size={18} />
                     {t('Rewards', 'इनाम', 'রিওয়ার্ডস')}
-                    {customerBalance > 0 && <span style={{ position: 'absolute', top: '4px', right: '6px', background: 'var(--accent)', color: 'black', fontSize: '0.45rem', fontWeight: 'bold', borderRadius: '99px', padding: '1px 4px', lineHeight: 1.2 }}>{Math.floor(customerBalance)}</span>}
+                    {customerBalance > 0 && <span style={{ position: 'absolute', top: '4px', right: '6px', background: 'var(--accent)', color: 'var(--on-primary)', fontSize: '0.45rem', fontWeight: 'bold', borderRadius: '99px', padding: '1px 4px', lineHeight: 1.2 }}>{Math.floor(customerBalance)}</span>}
                   </button>
                   <button className={`phone-nav-btn ${customerAppTab === 'orders' ? 'active' : ''}`} onClick={() => setCustomerAppTab('orders')}>
                     <ArrowRightLeft size={18} />
@@ -11890,7 +11890,7 @@ export default function App() {
                                 </span>
                                 <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                                   {isNew && (
-                                    <span className="badge badge-primary" style={{ fontSize: '0.55rem', background: 'var(--primary)', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', padding: '0.15rem 0.35rem', animation: 'pulse 1s infinite', fontWeight: 'bold' }}>
+                                    <span className="badge badge-primary" style={{ fontSize: '0.55rem', background: 'var(--primary)', color: 'var(--on-primary)', padding: '0.15rem 0.35rem', animation: 'pulse 1s infinite', fontWeight: 'bold' }}>
                                       NEW
                                     </span>
                                   )}
@@ -12144,7 +12144,7 @@ export default function App() {
                                       </span>
                                     )}
                                     {p.bill_status === 'VERIFIED' && (
-                                      <span style={{ fontSize: '0.65rem', background: 'var(--accent)', color: 'var(--text-main)', padding: '2px 6px', borderRadius: 10 }}>
+                                      <span style={{ fontSize: '0.65rem', background: 'var(--accent)', color: 'var(--on-primary)', padding: '2px 6px', borderRadius: 10 }}>
                                         {t('Verified', 'सत्यापित', 'যাচাইকৃত')}
                                       </span>
                                     )}
@@ -12283,7 +12283,7 @@ export default function App() {
                                     borderRadius: '3px',
                                     cursor: 'pointer',
                                     background: analyticsRange === 'weekly' ? 'var(--primary)' : 'transparent',
-                                    color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                                    color: analyticsRange === 'weekly' ? 'var(--on-primary)' : 'var(--text-muted)',
                                     fontWeight: 'bold'
                                   }}
                                 >
@@ -12299,7 +12299,7 @@ export default function App() {
                                     borderRadius: '3px',
                                     cursor: 'pointer',
                                     background: analyticsRange === 'monthly' ? 'var(--primary)' : 'transparent',
-                                    color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)',
+                                    color: analyticsRange === 'monthly' ? 'var(--on-primary)' : 'var(--text-muted)',
                                     fontWeight: 'bold'
                                   }}
                                 >
@@ -12694,7 +12694,7 @@ export default function App() {
                       {/* Manual Closure */}
                       <div className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', borderLeft: (isWithinOpeningHours(stockistProfile) && !stockistProfile.manual_closed) ? '3px solid var(--success-color)' : '3px solid var(--danger-color)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{t('Shop Status', 'दुकान की स्थिति', 'দোকানের অবস্থা')}: {!(isWithinOpeningHours(stockistProfile) && !stockistProfile.manual_closed) ? <span style={{color: 'var(--danger-color)'}}>{t('Closed','बंद','বন্ধ')}</span> : <span style={{color: 'var(--success-color)'}}>{t('Open','खुला','খোলা')}</span>}</h4>
+                          <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{t('Shop Status', 'दुकान की स्थिति', 'দোকানের অবস্থা')}: {!(isWithinOpeningHours(stockistProfile) && !stockistProfile.manual_closed) ? <span style={{color: 'var(--danger-text)'}}>{t('Closed','बंद','বন্ধ')}</span> : <span style={{color: 'var(--success-text)'}}>{t('Open','खुला','খোলা')}</span>}</h4>
                           <button
                             type="button"
                             className={`shop-toggle ${(isWithinOpeningHours(stockistProfile) && !stockistProfile.manual_closed) ? 'is-open' : 'is-closed'}`}
@@ -13391,7 +13391,7 @@ export default function App() {
                       {payoutsDue.length} pending
                     </span>
                   </div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: payoutsDue.length > 0 ? 'var(--warning)' : '#4ade80' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: payoutsDue.length > 0 ? 'var(--warning-text)' : 'var(--success-text)' }}>
                     ₹{payoutsDue.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2)}
                   </div>
                   
@@ -13405,7 +13405,7 @@ export default function App() {
                       {commissionOwed.length} pending
                     </span>
                   </div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: commissionOwed.length > 0 ? 'var(--primary)' : '#4ade80' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: commissionOwed.length > 0 ? 'var(--primary)' : 'var(--success-text)' }}>
                     ₹{commissionOwed.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2)}
                   </div>
                   
@@ -13419,7 +13419,7 @@ export default function App() {
                       {partnerPayoutsDue.length} pending
                     </span>
                   </div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: partnerPayoutsDue.length > 0 ? 'var(--warning)' : '#4ade80' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: partnerPayoutsDue.length > 0 ? 'var(--warning-text)' : 'var(--success-text)' }}>
                     ₹{partnerPayoutsDue.reduce((sum, p) => sum + (p.amount_owed || 0), 0).toFixed(2)}
                   </div>
                 </div>
@@ -13439,7 +13439,7 @@ export default function App() {
 
                 return (
                   <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.25rem', border: '1px solid rgba(99, 102, 241, 0.3)', background: 'var(--primary-glow)' }}>
-                    <h3 style={{ fontSize: '1rem', margin: 0, marginBottom: '0.35rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <h3 style={{ fontSize: '1rem', margin: 0, marginBottom: '0.35rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <Sparkles size={16} /> {t('Getting Started: Initial Platform Setup', 'आरंभ करना: प्रारंभिक प्लेटफ़ॉर्म सेटअप', 'শুরু করুন: প্রাথমিক প্ল্যাটফর্ম সেটআপ')}
                     </h3>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
@@ -13461,13 +13461,13 @@ export default function App() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                           {step1Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>1</span>}
                           <div>
-                            <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step1Done ? '#4ade80' : 'white' }}>
+                            <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step1Done ? 'var(--success-text)' : 'var(--text-main)' }}>
                               1. {t('Create your first service region', 'अपना पहला सेवा क्षेत्र बनाएं', 'আপনার প্রথম পরিষেবা অঞ্চল তৈরি করুন')}
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Advanced → Regions</div>
                           </div>
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>Go →</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: '600' }}>Go →</span>
                       </div>
 
                       {/* Step 2 */}
@@ -13485,13 +13485,13 @@ export default function App() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                           {step2Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>2</span>}
                           <div>
-                            <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step2Done ? '#4ade80' : (step1Done ? 'white' : 'var(--text-muted)') }}>
+                            <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step2Done ? 'var(--success-text)' : (step1Done ? 'var(--text-main)' : 'var(--text-muted)') }}>
                               2. {t('Register a wholesaler for that region', 'उस क्षेत्र के लिए थोक विक्रेता पंजीकृत करें', 'সেই অঞ্চলের জন্য একজন পাইকারী বিক্রেতা রেজিস্টার করুন')}
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Advanced → Wholesalers</div>
                           </div>
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: step1Done ? 'var(--primary)' : 'var(--text-muted)' }}>
+                        <span style={{ fontSize: '0.75rem', color: step1Done ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: step1Done ? '600' : 'normal' }}>
                           {step1Done ? 'Go →' : 'Locked'}
                         </span>
                       </div>
@@ -13511,13 +13511,13 @@ export default function App() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                           {step3Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>3</span>}
                           <div>
-                            <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step3Done ? '#4ade80' : (step2Done ? 'white' : 'var(--text-muted)') }}>
+                            <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step3Done ? 'var(--success-text)' : (step2Done ? 'var(--text-main)' : 'var(--text-muted)') }}>
                               3. {t('Wait for a shopkeeper to register, then approve them', 'दुकानदार के पंजीकरण की प्रतीक्षा करें, फिर उन्हें स्वीकृत करें', 'দোকানদারের নিবন্ধনের জন্য অপেক্ষা করুন, তারপর তাদের অনুমোদন করুন')}
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Pending KYC</div>
                           </div>
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: step2Done ? 'var(--primary)' : 'var(--text-muted)' }}>
+                        <span style={{ fontSize: '0.75rem', color: step2Done ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: step2Done ? '600' : 'normal' }}>
                           {step2Done ? 'Go →' : 'Locked'}
                         </span>
                       </div>
@@ -13537,7 +13537,7 @@ export default function App() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                           {step4Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>4</span>}
                           <div>
-                            <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step4Done ? '#4ade80' : (step3Done ? 'white' : 'var(--text-muted)') }}>
+                            <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step4Done ? 'var(--success-text)' : (step3Done ? 'var(--text-main)' : 'var(--text-muted)') }}>
                               4. {t('Invite customers to sign up', 'ग्राहकों को साइन अप करने के लिए आमंत्रित करें', 'গ্রাহকদের সাইন আপ করতে আমন্ত্রণ জানান')}
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
@@ -16093,7 +16093,7 @@ export default function App() {
                                       setStockistListModal({ vendorName: v.name, stockists: v.approved_stockists });
                                     }}
                                   >
-                                    <span className="badge" style={{ background: 'var(--accent)', color: lang === 'hi' || lang === 'en' || lang === 'bn' ? 'var(--on-primary)' : 'var(--text-muted)', borderRadius: '999px', padding: '0 0.4rem' }}>{v.approved_count}</span>
+                                    <span className="badge" style={{ background: 'var(--accent)', color: 'var(--on-primary)', borderRadius: '999px', padding: '0 0.4rem' }}>{v.approved_count}</span>
                                     {t('View', 'देखें', 'দেখুন')}
                                   </button>
                                 ) : (
@@ -16812,11 +16812,11 @@ export default function App() {
               Order #{deliveredModalOrder.id.substring(2).toUpperCase()}
             </p>
             <div className="points-glow-box" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', width: '100%', margin: '0.25rem 0' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--on-primary)' }}>
                 {t('Reward Points Earned', 'अर्जित रिवॉर्ड अंक', 'অর্জিত রিওয়ার্ড পয়েন্ট')}
               </span>
-              <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0.25rem 0' }}>
-                <Sparkles size={20} style={{ color: 'var(--warning-text)' }} />
+              <h2 style={{ fontSize: '1.8rem', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0.25rem 0' }}>
+                <Sparkles size={20} style={{ color: 'var(--on-primary)' }} />
                 +{formatPoints(deliveredModalOrder.points_credited || 0)}
               </h2>
             </div>
@@ -18833,7 +18833,7 @@ export default function App() {
           <p className="cookie-banner-text">
             {t('We use cookies to improve your experience on our platform.', 'We use cookies to improve your experience on our platform.', 'We use cookies to improve your experience on our platform.')}
             {' '}
-            <button style={{ background: 'none', border: 'none', color: 'var(--primary)', textDecoration: 'underline', cursor: 'pointer', padding: 0 }} onClick={() => setShowCookiesPolicyModal(true)}>
+            <button style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0 }} onClick={() => setShowCookiesPolicyModal(true)}>
               {t('Cookies Policy', 'Cookies Policy', 'Cookies Policy')}
             </button>
           </p>

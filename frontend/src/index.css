@@ -91,7 +91,7 @@
   
   --on-primary: #20201F;
   --badge-primary-bg: rgba(238, 110, 77, 0.15);
-  --badge-primary-text: #EE6E4D;
+  --badge-primary-text: #FF8A65;
   
   --surface-overlay: rgba(255, 255, 255, 0.05);
   --surface-glass: rgba(42, 42, 41, 0.85);
@@ -538,10 +538,42 @@ select option:disabled {
 }
 
 .btn-danger {
-  background: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border: 1px solid rgba(239, 68, 68, 0.4);
 }
 .btn-danger:hover {
-  background: var(--danger);
+  background: rgba(239, 68, 68, 0.25);
+  color: var(--danger-text);
+}
+
+.btn-warning {
+  background: var(--warning-glow);
+  color: var(--warning-text);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+.btn-warning:hover {
+  background: rgba(245, 158, 11, 0.25);
+  color: var(--warning-text);
+}
+
+.btn-success {
+  background: var(--success-glow);
+  color: var(--success-text);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.btn-success:hover {
+  background: rgba(16, 185, 129, 0.25);
+  color: var(--success-text);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+.btn-outline:hover {
+  background: var(--surface-overlay);
 }
 
 /* Badge System */
@@ -696,8 +728,9 @@ select option:disabled {
 
 .admin-nav-item.active {
   background: var(--bg-surface-elevated);
-  color: var(--primary);
+  color: var(--text-main);
   border-left: 3px solid var(--primary);
+  font-weight: 600;
 }
 
 .admin-content {
@@ -771,6 +804,7 @@ select option:disabled {
 /* Customer App Specific Styles (Netflix style) */
 .netflix-card {
   background: var(--primary);
+  color: var(--on-primary);
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--surface-overlay);
@@ -816,8 +850,13 @@ select option:disabled {
 
 .points-glow-box {
   background: var(--primary);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
+  border: 1px solid var(--primary);
+  box-shadow: none;
+  color: var(--on-primary);
+}
+
+.points-glow-box * {
+  color: var(--on-primary);
 }
 
 /* Tables for Admins */
@@ -1277,14 +1316,14 @@ body:has(.admin-container):has(.modal-overlay:not(:has(.toast-msg))) .toast-msg 
   transition: background 0.25s ease;
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.25);
 }
-.shop-toggle.is-open   { background: var(--success-color); justify-content: flex-start; }
-.shop-toggle.is-closed { background: var(--danger-color);  justify-content: flex-end; }
+.shop-toggle.is-open   { background: #065F46; justify-content: flex-start; }
+.shop-toggle.is-closed { background: #9F1D14; justify-content: flex-end; }
 
 .shop-toggle-label {
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: var(--on-primary);
+  color: #ffffff;
   padding: 0 0.5rem;
   flex: 1;
   text-align: center;
