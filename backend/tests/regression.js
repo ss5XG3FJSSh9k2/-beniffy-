@@ -6133,6 +6133,25 @@ async function main() {
   assert(typeof prepaidOrderCheck.body.order.razorpay_order_id === 'string' && prepaidOrderCheck.body.order.razorpay_order_id.startsWith('rzp_order_'), 'Prepaid order has valid razorpay_order_id');
   assert(typeof prepaidOrderCheck.body.order.razorpay_payment_id === 'string' && prepaidOrderCheck.body.order.razorpay_payment_id.startsWith('rzp_pay_'), 'Prepaid order has valid razorpay_payment_id');
 
+  // --- 41. BF-IDLE-RERENDER-TC-POPUP ---
+  const appSrc = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  assert(appSrc.includes('hasActiveConfirming') && appSrc.includes('o.status === \'CONFIRMING\''), 'App.jsx nowTick timer is conditional on active confirming orders');
+  assert(appSrc.includes('prev === el ? prev : el'), 'App.jsx setPhoneEl guards against redundant state updates');
+
+  const regPhone = '9800099999';
+  const regTermsCust = await post('http://localhost:3001/api/auth/register-customer', {
+    phone: regPhone,
+    name: 'Terms Test Customer',
+    email: 'terms.cust@example.com',
+    regionId: 'r1',
+    termsAgreed: true
+  });
+  assert(regTermsCust.status === 200, 'Customer registration with terms agreed returns 200');
+  const tcAllUsers = await dbModule.getTable('users');
+  const registeredUser = tcAllUsers.find(u => u.phone === regPhone);
+  assert(registeredUser && registeredUser.terms_accepted_at !== null, 'Registered customer has terms_accepted_at set');
+  assert(registeredUser && registeredUser.terms_version === '2026-10-draft', 'Registered customer has correct terms_version');
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 

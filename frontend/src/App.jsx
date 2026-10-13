@@ -1004,12 +1004,18 @@ export default function App() {
   const [phoneEl, setPhoneElState] = useState(null);
   const setPhoneEl = useCallback((el) => {
     phoneRef.current = el;
-    setPhoneElState(el);
+    setPhoneElState(prev => (prev === el ? prev : el));
   }, []);
   const modalLayerValue = useMemo(() => ({
     phoneEl,
     inPhone: ['customer', 'stockist', 'partner'].includes(activeRole)
   }), [phoneEl, activeRole]);
+  const renders = useRef(0);
+  renders.current++;
+  if (typeof window !== 'undefined' && (import.meta.env?.DEV || window.__FASTNET_TEST__)) {
+    window.__fastnet_render_count = renders.current;
+  }
+
   const [splash, setSplash] = useState(() => {
     try {
       const p = new URLSearchParams(window.location.search).get('role') || sessionStorage.getItem('fastnet.initialRole');
@@ -1139,7 +1145,6 @@ export default function App() {
       })
       .catch(() => {});
   }, []);
-  const [nowTick, setNowTick] = useState(Date.now());
   const [confirmCancelOrderId, setConfirmCancelOrderId] = useState(null);
   const [confirmDeliverySwitchOrderId, setConfirmDeliverySwitchOrderId] = useState(null);
 
@@ -1231,14 +1236,6 @@ export default function App() {
 
   const cancelTimeoutRef = useRef(null);
   const deliverySwitchTimeoutRef = useRef(null);
-
-  useEffect(() => {
-    if (activeRole !== 'customer') return;
-    const timer = setInterval(() => {
-      setNowTick(Date.now());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [activeRole]);
 
   useEffect(() => {
     if (activeRole === 'customer' || activeRole === 'stockist' || activeRole === 'partner') {
@@ -1336,7 +1333,23 @@ export default function App() {
   const [customerBalance, setCustomerBalance] = useState(0);
   const [customerHeldBalance, setCustomerHeldBalance] = useState(0);
   const [customerOrders, setCustomerOrdersRaw] = useState([]);
-  const setCustomerOrders = (v) => setCustomerOrdersRaw(prev => toUiOrders(typeof v === 'function' ? v(prev) : v));
+  const setCustomerOrders = (v) => setCustomerOrdersRaw(prev => {
+    const next = toUiOrders(typeof v === 'function' ? v(prev) : v);
+    if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+    return next;
+  });
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    if (activeRole !== 'customer') return;
+    const hasActiveConfirming = (customerOrders || []).some(o => 
+      o.status === 'CONFIRMING' && o.cancel_deadline && new Date(o.cancel_deadline).getTime() > Date.now()
+    );
+    if (!hasActiveConfirming) return;
+    const timer = setInterval(() => {
+      setNowTick(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [activeRole, customerOrders]);
   const [customerAppTab, setCustomerAppTab] = useState('store'); // store, ledger, orders
 
   useEffect(() => {
@@ -2399,14 +2412,15 @@ export default function App() {
         const pRes = await fetch(`${API_BASE}/stockists/by-user/${currentUser.id}`);
         if (pRes.ok) {
           const pData = await pRes.json();
-          setStockistProfile(pData);
+          setStockistProfile(prev => JSON.stringify(prev) === JSON.stringify(pData) ? prev : pData);
         }
 
         const oRes = await fetch(`${API_BASE}/orders?stockistId=${stockistProfile.id}`);
         if (!oRes.ok) return;
         const oData = await oRes.json();
-        if (Array.isArray(oData)) setStockistOrders(oData);
-        else return;
+        if (Array.isArray(oData)) {
+          setStockistOrders(prev => JSON.stringify(prev) === JSON.stringify(oData) ? prev : oData);
+        } else return;
 
         // Only orders that are actionable count as "new" for the bell.
         // An order is newly-actionable when it is PENDING and we haven't already alerted on it.
@@ -3444,19 +3458,23 @@ export default function App() {
       const leadsRes = await fetch(`${API_BASE}/admin/partner-leads`);
       const leads = await leadsRes.json().catch(() => ({}));
 
-      setDbState(prev => ({
-        ...(prev || {}),
-        orders: asList(ordersRes, list, prev?.orders || []),
-        commission_rates: asList(ratesRes, rates, prev?.commission_rates || []),
-        anomaly_logs: asList(anomaliesRes, anomalies, prev?.anomaly_logs || []),
-        points_ledger: asList(redRes, red, prev?.points_ledger || []),
-        products: asList(prodRes, prods, prev?.products || []),
-        vendors: asList(venRes, vens, prev?.vendors || []),
-        stockist_commission_rates: asList(scrRes, scrs, prev?.stockist_commission_rates || []),
-        points_earn_config: asList(pecRes, pecs, prev?.points_earn_config || []),
-        feedback_reports: asList(fbRes, fbs, prev?.feedback_reports || []),
-        partner_leads: asList(leadsRes, leads, prev?.partner_leads || [])
-      }));
+      setDbState(prev => {
+        const next = {
+          ...(prev || {}),
+          orders: asList(ordersRes, list, prev?.orders || []),
+          commission_rates: asList(ratesRes, rates, prev?.commission_rates || []),
+          anomaly_logs: asList(anomaliesRes, anomalies, prev?.anomaly_logs || []),
+          points_ledger: asList(redRes, red, prev?.points_ledger || []),
+          products: asList(prodRes, prods, prev?.products || []),
+          vendors: asList(venRes, vens, prev?.vendors || []),
+          stockist_commission_rates: asList(scrRes, scrs, prev?.stockist_commission_rates || []),
+          points_earn_config: asList(pecRes, pecs, prev?.points_earn_config || []),
+          feedback_reports: asList(fbRes, fbs, prev?.feedback_reports || []),
+          partner_leads: asList(leadsRes, leads, prev?.partner_leads || [])
+        };
+        if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+        return next;
+      });
     } catch (err) {
       console.log('Error syncing inspector:', err);
     }
@@ -6466,14 +6484,14 @@ export default function App() {
 
     const renderCustomerSignupBtn = () => (
       <button className="btn btn-secondary" style={{ width: '100%', fontSize: '0.7rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
-        onClick={() => { if (!otpSent) handleSendOtp(); setShowCustomerSignup(true); setShowStockistSignup(false); }}>
+        onClick={() => { setShowCustomerSignup(true); setShowStockistSignup(false); }}>
         <UserPlus size={12} /> {t("Sign Up (Customer)", "साइन अप (ग्राहक)", "সাইন আপ (ক্রেতা)")}
       </button>
     );
 
     const renderStockistSignupBtn = () => (
       <button className="btn btn-secondary" style={{ width: '100%', fontSize: '0.7rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
-        onClick={() => { if (!otpSent) handleSendOtp(); setShowStockistSignup(true); setShowCustomerSignup(false); }}>
+        onClick={() => { setShowStockistSignup(true); setShowCustomerSignup(false); }}>
         <Store size={12} /> {t("Open a Shop", "दुकान खोलें", "দোকান খুলুন")}
       </button>
     );
@@ -6490,7 +6508,7 @@ export default function App() {
           )}
         </div>
 
-        {!otpSent ? (
+        {(!showCustomerSignup && !showStockistSignup && !otpSent) ? (
           <>
             <div className="input-group">
               <label className="input-label">{t('Phone Number or Email', 'फ़ोन नंबर या ईमेल', 'ফোন নম্বর বা ইমেল')}</label>
@@ -6620,7 +6638,19 @@ export default function App() {
           <>
             <div style={{ background: 'var(--primary-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.75rem', textAlign: 'center' }}>
               <UserPlus size={14} style={{ color: 'var(--primary)', marginRight: '0.35rem', verticalAlign: 'middle' }} />
-              {t('New Customer Registration', 'नया ग्राहक पंजीकरण', 'নতুন ক্রেতা নিবন্ধন')}: {loginPhone}
+              {t('New Customer Registration', 'नया ग्राहक पंजीकरण', 'নতুন ক্রেতা নিবন্ধন')}{loginPhone ? `: ${loginPhone}` : ''}
+            </div>
+            <div className="input-group">
+              <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'फोन নম্বর (১০ সংখ্যা)')}</label>
+              <input 
+                type="tel" 
+                inputMode="numeric" 
+                maxLength={10} 
+                className="text-input" 
+                placeholder="e.g. 9876543210" 
+                value={loginPhone} 
+                onChange={e => { setLoginPhone(normalizeFrontendPhone(e.target.value)); setLoginErrorMessage(''); }} 
+              />
             </div>
             <div className="input-group">
               <label className="input-label">{t('Full Name', 'पूरा नाम', 'পুরো নাম')}</label>
@@ -6773,9 +6803,9 @@ export default function App() {
               />
               <label htmlFor="customer-terms-checkbox" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 {t('I agree to the ', 'मैं ', 'আমি ')}
-                <span onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }} style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>{t('Terms & Conditions', 'नियम और शर्तें', 'নিয়ম ও শর্তাবলী')}</span>
+                <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTermsModal(true); }} style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>{t('Terms & Conditions', 'नियम और शर्तें', 'নিয়ম ও শর্তাবলী')}</span>
                 {t(' and ', ' और ', ' এবং ')}
-                <span onClick={(e) => { e.preventDefault(); setShowPrivacyPolicyModal(true); }} style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>{t('Privacy Policy', 'गोपनीयता नीति', 'গোপনীয়তা নীতি')}</span>
+                <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPrivacyPolicyModal(true); }} style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>{t('Privacy Policy', 'गोपनीयता नीति', 'গোপনীয়ता নীতি')}</span>
                 {t('', ' से सहमत हूँ।', ' তে সম্মত।')}
               </label>
             </div>
@@ -6817,7 +6847,19 @@ export default function App() {
           <>
             <div style={{ background: 'var(--warning-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.2)', fontSize: '0.75rem', textAlign: 'center' }}>
               <Store size={14} style={{ color: 'var(--warning-text)', marginRight: '0.35rem', verticalAlign: 'middle' }} />
-              {t('Register Local Shop (KYC Required)', 'स्थानीय दुकान पंजीकरण (KYC आवश्यक)', 'স্থানীয় দোকান নিবন্ধন (KYC প্রয়োজন)')}: {loginPhone}
+              {t('Register Local Shop (KYC Required)', 'स्थानीय दुकान पंजीकरण (KYC आवश्यक)', 'স্থানীয় দোকান নিবন্ধন (KYC প্রয়োজন)')}{loginPhone ? `: ${loginPhone}` : ''}
+            </div>
+            <div className="input-group">
+              <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'फोन নম্বর (১০ সংখ্যা)')}</label>
+              <input 
+                type="tel" 
+                inputMode="numeric" 
+                maxLength={10} 
+                className="text-input" 
+                placeholder="e.g. 9876543210" 
+                value={loginPhone} 
+                onChange={e => { setLoginPhone(normalizeFrontendPhone(e.target.value)); setLoginErrorMessage(''); }} 
+              />
             </div>
             {isCustomerApp && renderCustomerSignupBtn()}
             {isStockistApp && renderStockistSignupBtn()}
@@ -7136,8 +7178,9 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
-        setPartnerNotifList(data);
-        setUnreadNotifCount(data.filter(n => !n.is_read).length);
+        setPartnerNotifList(prev => JSON.stringify(prev) === JSON.stringify(data) ? prev : data);
+        const unread = Array.isArray(data) ? data.filter(n => !n.is_read).length : 0;
+        setUnreadNotifCount(prev => prev === unread ? prev : unread);
       }
     } catch (err) {
       console.error('Error fetching partner notifications:', err);
