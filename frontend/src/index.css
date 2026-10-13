@@ -53,6 +53,11 @@
   --card-strong-bg: #61210F;
   --card-strong-text: #FDF0D5;
   --card-strong-muted: rgba(253, 240, 213, 0.8);
+  --i: 0;
+  --x0: 0px;
+  --x1: 0px;
+  --y0: 0px;
+  --y1: 0px;
 }
 
 .theme-switching, .theme-switching * {
@@ -108,6 +113,11 @@
   --card-strong-bg: #61210F;
   --card-strong-text: #FDF0D5;
   --card-strong-muted: rgba(253, 240, 213, 0.8);
+  --i: 0;
+  --x0: 0px;
+  --x1: 0px;
+  --y0: 0px;
+  --y1: 0px;
 }
 
 

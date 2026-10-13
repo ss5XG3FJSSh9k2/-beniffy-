@@ -175,4 +175,30 @@ if (violations.length > 0) {
 }
 
 console.log('✓ check-hook-deps: All hook dependencies in App.jsx are declared before use.');
+
+// Check undefined CSS variables (Ticket 7 requirement)
+try {
+  let checkCssVars;
+  try {
+    checkCssVars = require(path.join(__dirname, '../../scripts/check-css-vars.js')).checkCssVars;
+  } catch {
+    checkCssVars = require(path.join(__dirname, 'check-css-vars.js')).checkCssVars;
+  }
+  if (checkCssVars) {
+    const { undefinedHits } = checkCssVars();
+    if (undefinedHits && undefinedHits.length > 0) {
+      console.error(`\n❌ check-css-vars FAILED: Found ${undefinedHits.length} undefined CSS variable usage(s):\n`);
+      for (const hit of undefinedHits) {
+        const relPath = hit.file.replace(/\\/g, '/').replace(/^.*?frontend\//, 'frontend/');
+        console.error(`  - ${relPath}:${hit.line} ${hit.name}`);
+      }
+      process.exit(1);
+    }
+    console.log('✓ check-css-vars: All CSS variables used in index.css and App.jsx are defined in theme blocks.');
+  }
+} catch (e) {
+  console.error('Failed to run check-css-vars:', e);
+  process.exit(1);
+}
+
 process.exit(0);

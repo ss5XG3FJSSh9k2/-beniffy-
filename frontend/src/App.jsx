@@ -7153,7 +7153,7 @@ export default function App() {
   const handlePartnerSetupComplete = async () => {
     if (setupStep === 1) {
       if (!setupEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(setupEmail.trim())) {
-        showToast('Please enter a valid email address', 'error');
+        showToast(t('Please enter a valid email address', 'कृपया एक मान्य ईमेल पता दर्ज करें', 'অনুগ্রহ করে একটি বৈধ ইমেল ঠিকানা দিন'), 'error');
         return;
       }
       setSetupStep(2);
@@ -7162,11 +7162,11 @@ export default function App() {
 
     if (setupStep === 2) {
       if (!setupPassword || setupPassword.length < 8) {
-        showToast('Password must be at least 8 characters long', 'error');
+        showToast(t('Password must be at least 8 characters long', 'पासवर्ड कम से कम 8 वर्णों का होना चाहिए', 'পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে'), 'error');
         return;
       }
       if (setupPassword !== setupConfirmPassword) {
-        showToast('Passwords do not match', 'error');
+        showToast(t('Passwords do not match', 'पासवर्ड मेल नहीं खाते', 'পাসওয়ার্ড মিলছে না'), 'error');
         return;
       }
       try {
@@ -7191,12 +7191,12 @@ export default function App() {
           setActiveRole('partner');
           setPartnerAppTab('dashboard');
           loadPartnerAppData(sToken);
-          showToast('Account setup completed successfully!', 'success');
+          showToast(t('Account setup completed successfully!', 'खाता सेटअप सफलतापूर्वक पूरा हुआ!', 'অ্যাকাউন্ট সেটআপ সফলভাবে সম্পন্ন হয়েছে!'), 'success');
         } else {
           showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
         }
       } catch (err) {
-        showToast('Network error during setup', 'error');
+        showToast(t('Network error during setup', 'सेटअप के दौरान नेटवर्क त्रुटि', 'সেটআপের সময় নেটওয়ার্ক ত্রুটি'), 'error');
       }
     }
   };
@@ -7769,69 +7769,70 @@ export default function App() {
 
         {showFirstTimeSetupFlow && (
           <ModalLayer>
-            <div data-theme={resolve(themes.partner)} style={{ color: 'var(--text-main)' }}>
-              <div className="modal-overlay">
-                <div className="modal-content FirstTimeSetupFlow" style={{ maxWidth: '450px', width: '90%', padding: '1.5rem', borderRadius: '8px' }}>
-              <PanelErrorBoundary t={t}>
-              <h3 style={{ marginTop: 0, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Key size={20} /> FirstTimeSetupFlow: Partner Account Setup
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-                Step {setupStep} of 2: {setupStep === 1 ? 'Set Account Email' : 'Set Account Password'}
-              </p>
+            <div className="modal-overlay">
+              <div className="modal-content" style={{ maxWidth: '450px', width: '100%' }}>
+                <PanelErrorBoundary t={t}>
+                  <h3 style={{ marginTop: 0, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Key size={20} style={{ color: 'var(--primary)' }} />
+                    {t('Set up your partner account', 'अपना पार्टनर खाता सेट करें', 'আপনার পার্টনার অ্যাকাউন্ট সেট আপ করুন')}
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                    {setupStep === 1
+                      ? `${t('Step 1 of 2', 'चरण 1 का 2', 'ধাপ ১ এর ২')}: ${t('Set account email', 'खाता ईमेल सेट करें', 'অ্যাকাউন্ট ইমেল সেট করুন')}`
+                      : `${t('Step 2 of 2', 'चरण 2 का 2', 'ধাপ ২ এর ২')}: ${t('Set account password', 'खाता पासवर्ड सेट करें', 'অ্যাকাউন্ট পাসওয়ার্ড सेट করুন')}`}
+                  </p>
 
-              {setupStep === 1 ? (
-                <div className="setup-step-1">
-                  <div className="input-group">
-                    <label className="input-label">Email Address</label>
-                    <input 
-                      type="email" 
-                      placeholder="partner@example.com" 
-                      className="text-input" 
-                      value={setupEmail} 
-                      onChange={e => setSetupEmail(e.target.value)} 
-                    />
-                  </div>
-                  <button className="btn btn-primary" style={{ width: '100%', marginTop: '1.25rem' }} onClick={handlePartnerSetupComplete}>
-                    Next →
-                  </button>
-                </div>
-              ) : (
-                <div className="setup-step-2">
-                  <div className="input-group">
-                    <label className="input-label">Password (min 8 characters)</label>
-                    <input 
-                      type="password" 
-                      placeholder="••••••••" 
-                      className="text-input" 
-                      value={setupPassword} 
-                      onChange={e => setSetupPassword(e.target.value)} 
-                    />
-                  </div>
-                  <div className="input-group" style={{ marginTop: '0.75rem' }}>
-                    <label className="input-label">Confirm Password</label>
-                    <input 
-                      type="password" 
-                      placeholder="••••••••" 
-                      className="text-input" 
-                      value={setupConfirmPassword} 
-                      onChange={e => setSetupConfirmPassword(e.target.value)} 
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
-                    <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setSetupStep(1)}>
-                      ← Back
-                    </button>
-                    <button className="btn btn-primary" style={{ flex: 2 }} onClick={handlePartnerSetupComplete}>
-                      Complete Setup
-                    </button>
-                  </div>
-                </div>
-              )}
-              </PanelErrorBoundary>
+                  {setupStep === 1 ? (
+                    <div className="setup-step-1">
+                      <div className="input-group">
+                        <label className="input-label">{t('Email address', 'ईमेल पता', 'ইমেল ঠিকানা')}</label>
+                        <input 
+                          type="email" 
+                          placeholder="partner@example.com" 
+                          className="text-input" 
+                          value={setupEmail} 
+                          onChange={e => setSetupEmail(e.target.value)} 
+                        />
+                      </div>
+                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }} onClick={handlePartnerSetupComplete}>
+                        {t('Next', 'आगे', 'পরবর্তী')} <ArrowRight size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="setup-step-2">
+                      <div className="input-group">
+                        <label className="input-label">{t('Password (min 8 characters)', 'पासवर्ड (न्यूनतम 8 वर्ण)', 'পাসওয়ার্ড (কমপক্ষে ৮টি অক্ষর)')}</label>
+                        <input 
+                          type="password" 
+                          placeholder="••••••••" 
+                          className="text-input" 
+                          value={setupPassword} 
+                          onChange={e => setSetupPassword(e.target.value)} 
+                        />
+                      </div>
+                      <div className="input-group" style={{ marginTop: '0.75rem' }}>
+                        <label className="input-label">{t('Confirm password', 'पासवर्ड की पुष्टि करें', 'পাসवर्ड निश्चित করুন')}</label>
+                        <input 
+                          type="password" 
+                          placeholder="••••••••" 
+                          className="text-input" 
+                          value={setupConfirmPassword} 
+                          onChange={e => setSetupConfirmPassword(e.target.value)} 
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
+                        <button className="btn btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }} onClick={() => setSetupStep(1)}>
+                          <ArrowLeft size={16} /> {t('Back', 'पीछे', 'পেছনে')}
+                        </button>
+                        <button className="btn btn-primary" style={{ flex: 2 }} onClick={handlePartnerSetupComplete}>
+                          {t('Complete Setup', 'सेटअप पूरा करें', 'সেটআপ সম্পন্ন করুন')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </PanelErrorBoundary>
+              </div>
             </div>
-          </div>
-          </div>
           </ModalLayer>
         )}
 
@@ -7913,7 +7914,7 @@ export default function App() {
 
             {/* Notifications Dropdown Modal / Popup */}
             {showNotifDropdown && (
-              <div style={{ padding: '0.75rem', background: 'var(--bg-card)', borderBottom: '2px solid var(--primary)', fontSize: '0.8rem', position: 'relative', zIndex: 10 }}>
+              <div style={{ padding: '0.75rem', background: 'var(--bg-surface-elevated)', borderBottom: '2px solid var(--primary)', fontSize: '0.8rem', position: 'relative', zIndex: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <strong>Notifications ({partnerNotifList.length})</strong>
                   <button className="btn btn-secondary" style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }} onClick={() => handleMarkNotificationsRead([], true)}>
@@ -8196,7 +8197,7 @@ export default function App() {
                       const isOpen = regionCardOpenState[group.region_id] !== undefined ? regionCardOpenState[group.region_id] : isAutoOpen;
                       
                       return (
-                        <div key={group.region_id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                        <div key={group.region_id} style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
                           <div 
                             onClick={() => toggleRegionCard(group.region_id)}
                             style={{ padding: '0.75rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: isOpen ? '1px solid var(--border-color)' : 'none' }}
@@ -8211,7 +8212,7 @@ export default function App() {
                               </div>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                                 {group.services.map(s => (
-                                  <span key={s.id} className={`badge ${s.is_active ? 'badge-success' : ''}`} style={s.is_active ? {} : { background: 'var(--bg-default)', color: 'var(--text-muted)' }}>
+                                  <span key={s.id} className={`badge ${s.is_active ? 'badge-success' : ''}`} style={s.is_active ? {} : { background: 'var(--surface-overlay)', color: 'var(--text-muted)' }}>
                                     {getServiceTypeLabel(s.service_type)}
                                   </span>
                                 ))}
@@ -8227,7 +8228,7 @@ export default function App() {
                               {group.services.map((r, i) => (
                                 <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: i < group.services.length - 1 ? '1px dashed var(--border-color)' : 'none' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <span className="badge badge-secondary" style={{ fontSize: '0.7rem', background: 'var(--bg-default)', color: 'var(--text-muted)' }}>{getServiceTypeLabel(r.service_type)}</span>
+                                    <span className="badge badge-secondary" style={{ fontSize: '0.7rem', background: 'var(--surface-overlay)', color: 'var(--text-muted)' }}>{getServiceTypeLabel(r.service_type)}</span>
                                     <span className={`badge ${r.is_active ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.65rem' }}>
                                       {r.is_active ? t('Live', 'लाइव', 'লাইভ') : t('Inactive', 'निष्क्रिय', 'নিষ্ক্রিয়')}
                                     </span>
@@ -11350,7 +11351,7 @@ export default function App() {
                               return (
                                 <div key={step.key} style={{ position: 'relative' }}>
                                   <div style={{ position: 'absolute', left: '-1.6rem', top: '0.25rem', width: '10px', height: '10px', borderRadius: '50%', background: dotColor, boxShadow: isActive ? '0 0 8px var(--accent)' : 'none' }}></div>
-                                  <div style={{ color: isActive ? 'white' : (isCompleted ? 'var(--text)' : 'var(--text-muted)'), fontWeight: isActive ? 'bold' : 'normal', fontSize: '0.85rem' }}>
+                                  <div style={{ color: isActive ? 'white' : (isCompleted ? 'var(--text-main)' : 'var(--text-muted)'), fontWeight: isActive ? 'bold' : 'normal', fontSize: '0.85rem' }}>
                                     {step.label}
                                   </div>
                                 </div>
@@ -11443,7 +11444,7 @@ export default function App() {
                 {(currentCart.length > 0 || Object.keys(customerCarts).length > 0) && customerAppTab === 'store' && (
                   <div style={{ position: 'absolute', left: 0, right: 0, bottom: activeOrderList.length > 0 ? '110px' : '60px', padding: '0 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', zIndex: 60, transition: 'bottom 0.3s' }}>
                     {Object.keys(customerCarts).length > 0 && (
-                      <div style={{ alignSelf: 'center', background: 'var(--bg-surface)', color: 'var(--text)', padding: '0.35rem 0.75rem', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', border: '1px solid var(--border-color)' }} onClick={() => setShowCartsSheet(true)}>
+                      <div style={{ alignSelf: 'center', background: 'var(--bg-surface)', color: 'var(--text-main)', padding: '0.35rem 0.75rem', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', border: '1px solid var(--border-color)' }} onClick={() => setShowCartsSheet(true)}>
                         <ShoppingBag size={12} />
                         {Object.keys(customerCarts).length} {t('Carts', 'कार्ट', 'কার্ট')}
                       </div>
@@ -11504,7 +11505,7 @@ export default function App() {
                             style={{
                               flex: '0 0 100%', scrollSnapAlign: 'center', boxSizing: 'border-box',
                               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                              background: 'var(--bg-surface)', color: 'var(--text)', padding: '0.75rem 1rem',
+                              background: 'var(--bg-surface)', color: 'var(--text-main)', padding: '0.75rem 1rem',
                               borderRadius: '10px', cursor: 'pointer', boxShadow: '0 -4px 12px rgba(0,0,0,0.4)',
                               border: '1px solid var(--border-color)'
                             }}
@@ -12801,11 +12802,11 @@ export default function App() {
                               )}
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-color)', padding: '0.75rem', borderRadius: '4px', color: 'var(--text-main)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-surface-elevated)', padding: '0.75rem', borderRadius: '4px', color: 'var(--text-main)' }}>
                               <div style={{ fontSize: '0.85rem' }}>
                                 <strong>{t('Selected:', 'चयनित:', 'নির্বাচিত:')} </strong>
                                 {(closedUntilDraft !== null ? closedUntilDraft : stockistProfile.closed_until) ? new Date(closedUntilDraft !== null ? closedUntilDraft : stockistProfile.closed_until).toLocaleString() : t('Reopens at next opening time', 'अगले खुलने के समय खुलेगा', 'পরবর্তী খোলার সময়ে পুনরায় খুলবে')}
-                                {closedUntilDraft !== null && <span style={{ color: 'var(--warning-color)', marginLeft: '0.5rem', fontSize: '0.75rem' }}>{t('(Unsaved)', '(सहेजा नहीं गया)', '(সংরক্ষিত নয়)')}</span>}
+                                {closedUntilDraft !== null && <span style={{ color: 'var(--warning-text)', marginLeft: '0.5rem', fontSize: '0.75rem' }}>{t('(Unsaved)', '(सहेजा नहीं गया)', '(সংরক্ষিত নয়)')}</span>}
                               </div>
                               {closedUntilDraft !== null && (
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -13863,7 +13864,7 @@ export default function App() {
                         className="text-input"
                         placeholder={adminStockistSearchField === 'KYC_ID' ? 'Enter full 12-digit ID' : t('Search...', 'खोजें...', 'খুঁজুন...')}
                         maxLength={adminStockistSearchField === 'KYC_ID' ? 12 : undefined}
-                        style={{ fontSize: '0.8rem', padding: '0.35rem 0.5rem', width: '220px', background: 'var(--bg-panel)' }}
+                        style={{ fontSize: '0.8rem', padding: '0.35rem 0.5rem', width: '220px', background: 'var(--bg-surface)' }}
                         value={adminStockistSearchText}
                         onChange={e => {
                           if (adminStockistSearchField === 'KYC_ID') {
@@ -13906,7 +13907,7 @@ export default function App() {
                   </div>
 
                   {adminStockistSearchField === 'KYC_ID' ? (
-                    <div style={{ background: 'var(--bg-panel)', padding: '2rem', borderRadius: '8px', textAlign: 'center', marginTop: '1rem', border: '1px solid var(--border-color)' }}>
+                    <div style={{ background: 'var(--bg-surface-elevated)', padding: '2rem', borderRadius: '8px', textAlign: 'center', marginTop: '1rem', border: '1px solid var(--border-color)' }}>
                       {adminStockistLookupResult === 'NOT_FOUND' ? (
                         <p style={{ color: 'var(--text-muted)' }}>No stockist found with that ID number</p>
                       ) : adminStockistLookupResult ? (
@@ -14569,14 +14570,14 @@ export default function App() {
                             </td>
                           </tr>
                           {expandedKycRow === u.id && (
-                            <tr className="flags-panel" style={{ background: 'var(--surface-light)' }}>
+                            <tr className="flags-panel" style={{ background: 'var(--surface-overlay)' }}>
                               <td colSpan="10" style={{ padding: '1rem' }}>
                                 <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Risk Flags</h4>
                                 {u.flags && u.flags.length > 0 ? (
                                   <ul style={{ paddingLeft: '1.2rem', margin: 0, fontSize: '0.85rem' }}>
                                     {u.flags.map(f => (
                                       <li key={f.id} style={{ marginBottom: '0.4rem', opacity: f.cleared_at ? 0.6 : 1, textDecoration: f.cleared_at ? 'line-through' : 'none' }}>
-                                        <strong style={{ color: f.severity === 'HIGH' ? 'var(--danger-color)' : (f.severity === 'MEDIUM' ? 'var(--warning-color)' : 'inherit') }}>[{f.severity}] {f.flag_type}</strong>: {f.detail}
+                                        <strong style={{ color: f.severity === 'HIGH' ? 'var(--danger-color)' : (f.severity === 'MEDIUM' ? 'var(--warning-text)' : 'inherit') }}>[{f.severity}] {f.flag_type}</strong>: {f.detail}
                                         {f.related_user_ids && f.related_user_ids.length > 0 && (
                                           <span style={{ marginLeft: '0.5rem', fontStyle: 'italic' }}>
                                             (Matches: {f.related_user_ids.join(', ')})
@@ -19005,8 +19006,8 @@ export default function App() {
                 {kycApproveVendors === null ? (
                   <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Loading vendors...</div>
                 ) : kycApproveVendors.length === 0 ? (
-                  <div style={{ padding: '1rem', background: 'rgba(255, 170, 0, 0.1)', border: '1px solid var(--warning-color)', borderRadius: '8px' }}>
-                    <p style={{ margin: '0 0 0.5rem 0', color: 'var(--warning-color)' }}>No active vendors found in this region.</p>
+                  <div style={{ padding: '1rem', background: 'rgba(255, 170, 0, 0.1)', border: '1px solid var(--warning)', borderRadius: '8px' }}>
+                    <p style={{ margin: '0 0 0.5rem 0', color: 'var(--warning-text)' }}>No active vendors found in this region.</p>
                     <button className="btn btn-secondary btn-sm" onClick={() => {
                       setShowKycApproveModal(false);
                       handleSetAdminTab('vendors');
@@ -19084,8 +19085,8 @@ export default function App() {
                 {kycApproveVendors === null ? (
                   <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Loading vendors...</div>
                 ) : kycApproveVendors.length === 0 ? (
-                  <div style={{ padding: '1rem', background: 'rgba(255, 170, 0, 0.1)', border: '1px solid var(--warning-color)', borderRadius: '8px' }}>
-                    <p style={{ margin: '0 0 0.5rem 0', color: 'var(--warning-color)' }}>No active vendors found in this region.</p>
+                  <div style={{ padding: '1rem', background: 'rgba(255, 170, 0, 0.1)', border: '1px solid var(--warning)', borderRadius: '8px' }}>
+                    <p style={{ margin: '0 0 0.5rem 0', color: 'var(--warning-text)' }}>No active vendors found in this region.</p>
                     <button className="btn btn-secondary btn-sm" onClick={() => {
                       setShowKycApproveModal(false);
                       handleSetAdminTab('vendors');
