@@ -20,8 +20,8 @@
         var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (raw) {
           var saved = JSON.parse(raw);
-          var m = saved['marketing'];
-          t = m === 'system' || !m ? (sysDark ? 'dark' : 'light') : m;
+          var m = saved ? saved['marketing'] : null;
+          t = (m === 'system' || !m) ? (sysDark ? 'dark' : 'light') : m;
         } else {
           t = sysDark ? 'dark' : 'light';
         }

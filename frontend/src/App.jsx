@@ -739,7 +739,8 @@ export default function App() {
 
   const toggleTheme = (app, e) => {
     if (switchingRef.current) return;
-    const next = themes[app] === 'light' ? 'dark' : 'light';
+    const currentResolved = resolve(themes[app]);
+    const next = currentResolved === 'light' ? 'dark' : 'light';
     const applyTheme = () => {
       document.documentElement.setAttribute('data-theme', next);
       flushSync(() => setThemes(prev => ({ ...prev, [app]: next })));
