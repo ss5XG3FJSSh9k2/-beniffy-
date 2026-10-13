@@ -50,6 +50,9 @@
   --toggle-on: #047857;
   --toggle-off: #B91C1C;
   --toggle-label: #FFFFFF;
+  --card-strong-bg: #61210F;
+  --card-strong-text: #FDF0D5;
+  --card-strong-muted: rgba(253, 240, 213, 0.8);
 }
 
 .theme-switching, .theme-switching * {
@@ -102,6 +105,9 @@
   --toggle-on: #047857;
   --toggle-off: #B91C1C;
   --toggle-label: #FFFFFF;
+  --card-strong-bg: #61210F;
+  --card-strong-text: #FDF0D5;
+  --card-strong-muted: rgba(253, 240, 213, 0.8);
 }
 
 

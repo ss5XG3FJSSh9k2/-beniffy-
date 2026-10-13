@@ -10400,14 +10400,14 @@ export default function App() {
                           return (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                               {/* Header Hero */}
-                              <div style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, var(--primary-glow) 100%)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '14px', padding: '1rem', textAlign: 'center' }}>
+                              <div style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-color)', borderRadius: '14px', padding: '1rem', textAlign: 'center' }}>
                                 <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{t('Your Balance', 'आपका बैलेंस', 'আপনার ব্যালেন্স')}</div>
                                 <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1 }}>{formatPoints(customerBalance)}</div>
                                 <div style={{ fontSize: '0.6rem', color: 'var(--secondary)', marginTop: '0.35rem' }}>{t('Redeemable across Beniffy broadband, wifi, and cable TV plans', 'बेनिफ़ी ब्रॉडबैंड, वाईफाई और केबल टीवी प्लान में रिडीम करने योग्य', 'বেনিফি ব্রডব্যান্ড, ওয়াইফাই এবং কেবল টিভি প্ল্যানে রিডিম করার যোগ্য')}</div>
                               </div>
 
                               {/* Refer a friend Tile */}
-                              <div className="referral-tile" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.05) 100%)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '12px', padding: '0.85rem' }}>
+                              <div className="referral-tile" style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.85rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
                                   <Share2 size={16} style={{ color: 'var(--success-text)' }} />
                                   <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
@@ -10435,7 +10435,7 @@ export default function App() {
                                         showToast(t('Referral code copied!', 'रेफरल कोड कॉपी हो गया!', 'রেফারেল কোড কপি হয়েছে!'));
                                       }
                                     }}
-                                    style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid #22c55e', color: 'var(--success-text)', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: '600' }}
+                                    style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid #22c55e', color: 'var(--success-text)', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: '600' }}
                                   >
                                     {t('Copy Code', 'कोड कॉपी करें', 'কোড কপি করুন')}
                                   </button>
@@ -11788,45 +11788,41 @@ export default function App() {
                       {/* Grid layout for Today's Earnings & COD Commission */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
                         {/* Today's Earnings Summary Widget */}
-                        <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-glow) 100%)', borderRadius: '12px', padding: '0.85rem 1rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '0.15rem', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)', border: '1px solid var(--border-color)' }}>
-                          <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-main)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                            <Store size={10} /> {t("Today's Earnings", "आज की कमाई", "আজকের আয়")}
+                        <div style={{ background: 'var(--card-strong-bg)', color: 'var(--card-strong-text)', border: '1px solid var(--card-strong-bg)', borderRadius: '12px', padding: '0.85rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', minWidth: 0 }}>
+                          <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--card-strong-text)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                            <Store size={10} style={{ color: 'var(--card-strong-text)' }} /> {t("Today's Earnings", "आज की कमाई", "আজকের আয়")}
                           </span>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Shop Status', 'दुकान की स्थिति', 'দোকানের অবস্থা')}:</span>
-                            <div style={{ fontSize: '0.9rem', textAlign: 'right' }}>
-                              {stockistProfile.is_shop_open ? (
-                                <span style={{ color: 'var(--toggle-on)', fontWeight: 'bold' }}>{t('Open','खुला','খোলা')}</span>
-                              ) : (
-                                <span style={{ color: 'var(--danger-color)', fontWeight: 'bold' }}>{t('Closed','बंद','বন্ধ')}</span>
-                              )}
-                              {!stockistProfile.is_shop_open && !stockistProfile.manual_closed && (
-                                <span style={{ fontSize: '0.65rem', color: 'var(--text-main)', display: 'block' }}>
-                                  {t('Closed now (outside opening hours)', 'अभी बंद (खुलने के समय के बाहर)', 'এখন বন্ধ (খোলার সময়ের বাইরে)')}
-                                </span>
-                              )}
-                              {stockistProfile.manual_closed && (
-                                <span style={{ fontSize: '0.65rem', color: 'var(--text-main)', display: 'block' }}>
-                                  {t('Manually closed', 'मैन्युअल रूप से बंद', 'ম্যানুয়ালি বন্ধ')}
-                                </span>
-                              )}
-                            </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{ width: '8px', height: '8px', minWidth: '8px', minHeight: '8px', borderRadius: '50%', background: stockistProfile.is_shop_open ? '#34D399' : '#F87171', display: 'inline-block', flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--card-strong-text)' }}>
+                              {stockistProfile.is_shop_open ? t('Open', 'खुला', 'খোলা') : t('Closed', 'बंद', 'বন্ধ')}
+                            </span>
                           </div>
-                          <span style={{ fontSize: '1.4rem', fontWeight: 'bold', fontFamily: 'var(--font-display)' }}>
+                          {!stockistProfile.is_shop_open && !stockistProfile.manual_closed && (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--card-strong-muted)', display: 'block', lineHeight: 1.2 }}>
+                              {t('Closed now (outside opening hours)', 'अभी बंद (खुलने के समय के बाहर)', 'এখন বন্ধ (খোলার সময়ের বাইরে)')}
+                            </span>
+                          )}
+                          {stockistProfile.manual_closed && (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--card-strong-muted)', display: 'block', lineHeight: 1.2 }}>
+                              {t('Manually closed', 'मैन्युअल रूप से बंद', 'ম্যানুয়ালি বন্ধ')}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '1.4rem', fontWeight: 'bold', fontFamily: 'var(--font-display)', color: 'var(--card-strong-text)' }}>
                             ₹{todaysEarnings.toFixed(2)}
                           </span>
-                          <span style={{ fontSize: '0.5rem', color: 'var(--text-main)' }}>{t("Settlement to bank", "बैंक में निपटान", "ব্যাংক সেটেলমেন্ট")}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--card-strong-muted)' }}>{t("Settlement to bank", "बैंक में निपटान", "ব্যাংক সেটেলমেন্ট")}</span>
                         </div>
 
                         {/* COD Commission Owed Widget */}
-                        <div style={{ background: 'linear-gradient(135deg, var(--bg-surface-elevated) 0%, rgba(255,255,255,0.02) 100%)', borderRadius: '12px', padding: '0.85rem 1rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '0.15rem', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                        <div style={{ background: 'var(--bg-surface-elevated)', borderRadius: '12px', padding: '0.85rem 1rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '0.15rem', border: '1px solid var(--border-color)', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)', minWidth: 0 }}>
                           <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                             <AlertCircle size={10} style={{ color: 'var(--warning-text)' }} /> {t("COD Commission Owed", "COD कमीशन देय", "COD কমিশন বকেয়া")}
                           </span>
                           <span style={{ fontSize: '1.4rem', fontWeight: 'bold', fontFamily: 'var(--font-display)', color: 'var(--warning-text)' }}>
                             ₹{stockistAnalytics?.cod_commission_outstanding !== undefined ? stockistAnalytics.cod_commission_outstanding.toFixed(2) : '0.00'}
                           </span>
-                          <span style={{ fontSize: '0.5rem', color: 'var(--text-muted)' }}>{t("Owed to Beniffy", "बेनिफ़ी का देय", "বেনিফি এর বকেয়া")}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t("Owed to Beniffy", "बेनिफ़ी का देय", "বেনিফি এর বকেয়া")}</span>
                         </div>
                       </div>
 
