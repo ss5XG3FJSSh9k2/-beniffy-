@@ -6551,11 +6551,11 @@ export default function App() {
                   }
                 }}
               >
-                <option value="" disabled>-- Select --</option>
+                <option value="">{t('Select', 'चुनें', 'নির্বাচন করুন')}</option>
                 {(availablePartners.cable || []).map(p => (
                   <option key={p.id} value={p.id}>{p.display_name}</option>
                 ))}
-                <option value="NOT_LISTED" style={{ fontStyle: 'italic', fontSize: '0.85em' }}>
+                <option value="NOT_LISTED">
                   {t("My provider isn't listed yet", "मेरा प्रदाता अभी सूचीबद्ध नहीं है", "আমার প্রদানকারী এখনও তালিকাভুক্ত নয়")}
                 </option>
               </select>
@@ -6579,11 +6579,13 @@ export default function App() {
                 <button
                   type="button"
                   className="btn"
+                  aria-pressed={hasBroadbandAnswered && hasBroadband}
                   style={{
                     flex: 1,
-                    background: hasBroadbandAnswered && hasBroadband ? 'var(--primary)' : 'var(--bg-surface)',
-                    color: hasBroadbandAnswered && hasBroadband ? 'var(--on-primary)' : 'var(--text-main)',
-                    border: '1px solid var(--border-color)'
+                    background: (hasBroadbandAnswered && hasBroadband) ? 'var(--primary)' : 'var(--bg-surface-elevated)',
+                    color: (hasBroadbandAnswered && hasBroadband) ? 'var(--on-primary)' : 'var(--text-main)',
+                    border: `1px solid ${(hasBroadbandAnswered && hasBroadband) ? 'var(--primary)' : 'var(--border-color)'}`,
+                    fontWeight: (hasBroadbandAnswered && hasBroadband) ? 700 : 500
                   }}
                   onClick={() => {
                     setHasBroadbandAnswered(true);
@@ -6595,11 +6597,13 @@ export default function App() {
                 <button
                   type="button"
                   className="btn"
+                  aria-pressed={hasBroadbandAnswered && !hasBroadband}
                   style={{
                     flex: 1,
-                    background: hasBroadbandAnswered && !hasBroadband ? 'var(--primary)' : 'var(--bg-surface)',
-                    color: hasBroadbandAnswered && !hasBroadband ? 'var(--on-primary)' : 'var(--text-main)',
-                    border: '1px solid var(--border-color)'
+                    background: (hasBroadbandAnswered && !hasBroadband) ? 'var(--primary)' : 'var(--bg-surface-elevated)',
+                    color: (hasBroadbandAnswered && !hasBroadband) ? 'var(--on-primary)' : 'var(--text-main)',
+                    border: `1px solid ${(hasBroadbandAnswered && !hasBroadband) ? 'var(--primary)' : 'var(--border-color)'}`,
+                    fontWeight: (hasBroadbandAnswered && !hasBroadband) ? 700 : 500
                   }}
                   onClick={() => {
                     setHasBroadbandAnswered(true);
@@ -6627,11 +6631,11 @@ export default function App() {
                       }
                     }}
                   >
-                    <option value="" disabled>-- Select --</option>
+                    <option value="">{t('Select', 'चुनें', 'নির্বাচন করুন')}</option>
                     {(availablePartners.broadband || []).map(p => (
                       <option key={p.id} value={p.id}>{p.display_name}</option>
                     ))}
-                    <option value="NOT_LISTED" style={{ fontStyle: 'italic', fontSize: '0.85em' }}>
+                    <option value="NOT_LISTED">
                       {t("My provider isn't listed yet", "मेरा प्रदाता अभी सूचीबद्ध नहीं है", "আমার প্রদানকারী এখনও তালিকাভুক্ত নয়")}
                     </option>
                   </select>
@@ -9673,12 +9677,12 @@ export default function App() {
                                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%' }}>
                                     <img src={p.image_url ? (p.image_url.startsWith('http') || p.image_url.startsWith('data:') ? p.image_url : `${API_BASE}${p.image_url}`) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"} alt={p.name} style={{ width: '56px', height: '56px', borderRadius: '6px', objectFit: 'cover' }} onError={(e) => { e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"; }} />
                                     <div style={{ flex: 1 }}>
-                                      <h4 style={{ fontSize: '0.75rem', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <h4 style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                           {p.name}
                                         </h4>
-                                      {p.description && <div style={{ fontSize: '0.65rem', color: 'var(--on-primary)', opacity: 0.85 }}>{p.description}</div>}
+                                      {p.description && <div style={{ fontSize: '0.65rem', color: 'var(--text-main)', opacity: 0.85 }}>{p.description}</div>}
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-                                        <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--on-primary)' }}>₹{p.price}</span>
+                                        <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-main)' }}>₹{p.price}</span>
                                         {hasCostPrice ? (
                                           <span className="badge badge-success" style={{ fontSize: '0.55rem', padding: '0.1rem 0.25rem' }}>
                                             Earn {formatPoints(p.estimated_points || 0)}
@@ -11022,11 +11026,11 @@ export default function App() {
                               }
                             }}
                           >
-                            <option value="" disabled>-- Select --</option>
+                            <option value="">{t('Select', 'चुनें', 'নির্বাচন করুন')}</option>
                             {(profileAvailablePartners.cable || []).map(p => (
                               <option key={p.id} value={p.id}>{p.display_name}</option>
                             ))}
-                            <option value="NOT_LISTED" style={{ fontStyle: 'italic', fontSize: '0.85em' }}>
+                            <option value="NOT_LISTED">
                               {t("My provider isn't listed yet", "मेरा प्रदाता अभी सूचीबद्ध नहीं है", "আমার প্রদানকারী এখনও তালিকাভুক্ত নয়")}
                             </option>
                           </select>
@@ -11041,11 +11045,13 @@ export default function App() {
                             <button
                               type="button"
                               className="btn"
+                              aria-pressed={profileHasBroadband}
                               style={{
                                 flex: 1,
-                                background: profileHasBroadband ? 'var(--primary)' : 'var(--bg-surface)',
+                                background: profileHasBroadband ? 'var(--primary)' : 'var(--bg-surface-elevated)',
                                 color: profileHasBroadband ? 'var(--on-primary)' : 'var(--text-main)',
-                                border: '1px solid var(--border-color)'
+                                border: `1px solid ${profileHasBroadband ? 'var(--primary)' : 'var(--border-color)'}`,
+                                fontWeight: profileHasBroadband ? 700 : 500
                               }}
                               onClick={() => {
                                 setProfileHasBroadband(true);
@@ -11056,11 +11062,13 @@ export default function App() {
                             <button
                               type="button"
                               className="btn"
+                              aria-pressed={!profileHasBroadband}
                               style={{
                                 flex: 1,
-                                background: !profileHasBroadband ? 'var(--primary)' : 'var(--bg-surface)',
+                                background: !profileHasBroadband ? 'var(--primary)' : 'var(--bg-surface-elevated)',
                                 color: !profileHasBroadband ? 'var(--on-primary)' : 'var(--text-main)',
-                                border: '1px solid var(--border-color)'
+                                border: `1px solid ${!profileHasBroadband ? 'var(--primary)' : 'var(--border-color)'}`,
+                                fontWeight: !profileHasBroadband ? 700 : 500
                               }}
                               onClick={() => {
                                 setProfileHasBroadband(false);
@@ -11087,11 +11095,11 @@ export default function App() {
                                   }
                                 }}
                               >
-                                <option value="" disabled>-- Select --</option>
+                                <option value="">{t('Select', 'चुनें', 'নির্বাচন করুন')}</option>
                                 {(profileAvailablePartners.broadband || []).map(p => (
                                   <option key={p.id} value={p.id}>{p.display_name}</option>
                                 ))}
-                                <option value="NOT_LISTED" style={{ fontStyle: 'italic', fontSize: '0.85em' }}>
+                                <option value="NOT_LISTED">
                                   {t("My provider isn't listed yet", "मेरा प्रदाता अभी सूचीबद्ध नहीं है", "আমার প্রদানকারী এখনও তালিকাভুক্ত নয়")}
                                 </option>
                               </select>

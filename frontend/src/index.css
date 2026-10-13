@@ -496,9 +496,22 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 0 0 2px var(--primary-glow);
 }
 
+select.text-input {
+  color-scheme: light;
+}
+
+[data-theme='dark'] select.text-input {
+  color-scheme: dark;
+}
+
 select option {
   background: var(--bg-surface-elevated);
   color: var(--text-main);
+  font-style: normal;
+}
+
+select option[value=""] {
+  color: var(--text-muted);
 }
 
 select option:checked {
