@@ -602,27 +602,48 @@ const AppSplash = ({ theme, onDone, role }) => {
   const coinRef = React.useRef(null);
   const roleRef = React.useRef(null);
 
-  React.useLayoutEffect(() => {
-    if (role && lockupRef.current && coinRef.current && roleRef.current) {
-      const lockRect = lockupRef.current.getBoundingClientRect();
-      const coinRect = coinRef.current.getBoundingClientRect();
-      const roleRect = roleRef.current.getBoundingClientRect();
-      const lockupRefStyle = lockupRef.current.style;
-      
-      const x0 = coinRect.left + coinRect.width / 2 - lockRect.left;
-      const y0 = coinRect.top + coinRect.height / 2 - lockRect.top;
-      const x1 = roleRect.left + roleRect.width / 2 - lockRect.left;
-      const y1 = roleRect.top + roleRect.height / 2 - lockRect.top;
+  React.useEffect(() => {
+    if (!role) return;
 
-      lockupRefStyle.setProperty('--x0', `${x0}px`);
-      lockupRefStyle.setProperty('--y0', `${y0}px`);
-      lockupRefStyle.setProperty('--x1', `${x1}px`);
-      lockupRefStyle.setProperty('--y1', `${y1}px`);
-      const dropx = lockupRef.current.querySelector('.cs-dropx');
-      if (dropx) dropx.style.transform = `translateX(${x0}px)`;
-      
-      console.log('AppSplash Layout:', { x0, y0, x1, y1, coinRect, lockRect });
-    }
+    const measure = () => {
+      const lock = lockupRef.current, coin = coinRef.current, roleEl = roleRef.current;
+      if (!lock || !coin || !roleEl) return false;
+      const ci = coin.offsetParent;
+      if (!ci) return false;
+      let wordLeft = 0, wordTop = 0;
+      if (ci.offsetParent && ci.offsetParent !== lock) {
+        wordLeft = ci.offsetParent.offsetLeft;
+        wordTop = ci.offsetParent.offsetTop;
+      }
+      const x0 = wordLeft + ci.offsetLeft + coin.offsetLeft + coin.offsetWidth / 2;
+      const y0 = wordTop + ci.offsetTop + coin.offsetTop + coin.offsetHeight / 2;
+      const x1 = roleEl.offsetLeft + roleEl.offsetWidth / 2;
+      const y1 = roleEl.offsetTop + roleEl.offsetHeight / 2;
+      const ok = [x0, y0, x1, y1].every(Number.isFinite) && x0 > 0 && y1 > y0 && lock.offsetWidth > 0;
+      if (!ok) return false;
+      lock.style.setProperty('--x0', `${x0}px`);
+      lock.style.setProperty('--y0', `${y0}px`);
+      lock.style.setProperty('--x1', `${x1}px`);
+      lock.style.setProperty('--y1', `${y1}px`);
+      const dx = lock.querySelector('.cs-dropx');
+      if (dx) dx.style.transform = `translateX(${x0}px)`;
+      return true;
+    };
+
+    const rafId = window.requestAnimationFrame(() => {
+      measure();
+    });
+    const timerId = setTimeout(() => {
+      const ok = measure();
+      if (!ok && lockupRef.current) {
+        lockupRef.current.classList.add('cs-nodrop');
+      }
+    }, 1080);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      clearTimeout(timerId);
+    };
   }, [role]);
 
   React.useEffect(() => {
@@ -943,7 +964,13 @@ export default function App() {
     try { return !!localStorage.getItem('token') && !!localStorage.getItem('currentUser'); }
     catch { return false; }
   });
-  const [activeRole, setActiveRole] = useState('marketing');
+  const [activeRole, setActiveRole] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search).get('role') || sessionStorage.getItem('fastnet.initialRole');
+      if (['marketing', 'customer', 'stockist', 'admin', 'partner', 'db'].includes(p)) return p;
+    } catch {}
+    return 'marketing';
+  });
   const phoneRef = useRef(null);
   _globalPhoneRef = phoneRef;
   _globalActiveRole = activeRole;
@@ -952,7 +979,13 @@ export default function App() {
     const inPhone = ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current;
     return inPhone ? createPortal(children, phoneRef.current) : children;
   };
-  const [splash, setSplash] = useState({ app: null, key: 0 });
+  const [splash, setSplash] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search).get('role') || sessionStorage.getItem('fastnet.initialRole');
+      if (['customer', 'stockist', 'partner'].includes(p)) return { app: p, key: 1 };
+    } catch {}
+    return { app: null, key: 0 };
+  });
   const [dbState, setDbState] = useState(null);
   const [regions, setRegions] = useState([]);
   const [selectedRegionId, setSelectedRegionId] = useState('');
@@ -1178,7 +1211,7 @@ export default function App() {
 
   useEffect(() => {
     if (activeRole === 'customer' || activeRole === 'stockist' || activeRole === 'partner') {
-      setSplash(s => ({ app: activeRole, key: s.key + 1 }));
+      setSplash(s => (s.app === activeRole && s.key > 0 ? s : { app: activeRole, key: s.key + 1 }));
     }
   }, [activeRole]);
 

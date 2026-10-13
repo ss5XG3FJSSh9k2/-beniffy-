@@ -409,6 +409,7 @@ h1, h2, h3, h4, h5, h6 {
   .cs-role { opacity: 1; clip-path: none; animation: none; }
   .cs-dropx, .cs-splat { display: none; }
 }
+.cs-nodrop .cs-dropx, .cs-nodrop .cs-splat { display: none; }
 
 .phone-footer {
   height: 56px;
