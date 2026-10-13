@@ -734,6 +734,7 @@ export default function App() {
 
   const [themes, setThemes] = React.useState(loadThemes);
   const vtRef = React.useRef(null);
+  const activeVtRef = vtRef;
   
   const switchingRef = React.useRef(false);
 
@@ -765,6 +766,7 @@ export default function App() {
 
     document.documentElement.classList.add('vt-root-sweep');
     const vt = document.startViewTransition(applyTheme);
+    activeVtRef.current = vt;
     vtRef.current = vt;
     vt.ready.then(() => {
       document.documentElement.animate(
@@ -775,6 +777,7 @@ export default function App() {
     vt.finished.catch(() => {}).finally(() => { 
       document.documentElement.classList.remove('vt-root-sweep');
       switchingRef.current = false; 
+      activeVtRef.current = null;
       vtRef.current = null;
       document.getAnimations().forEach(a => {
         if (a.effect?.pseudoElement?.startsWith('::view-transition')) a.cancel();
@@ -820,6 +823,7 @@ export default function App() {
     const pos = [`${x}px ${y}px`, `${x - r}px ${y - r}px`];
 
     const vt = document.startViewTransition(applyTheme);
+    activeVtRef.current = vt;
     vtRef.current = vt;
     vt.ready.then(() => {
       document.documentElement.animate(
@@ -829,12 +833,55 @@ export default function App() {
     }).catch(() => {});
     vt.finished.catch(() => {}).finally(() => { 
       switchingRef.current = false; 
+      activeVtRef.current = null;
       vtRef.current = null;
       document.getAnimations().forEach(a => {
         if (a.effect?.pseudoElement?.startsWith('::view-transition')) a.cancel();
       });
     });
   };
+
+  React.useEffect(() => {
+    let pendingTap = null;
+    const onPointerDown = (e) => {
+      const vt = activeVtRef.current;
+      if (!vt) return;
+      vt.skipTransition();
+      document.getAnimations().forEach(a => {
+        if (a.effect?.pseudoElement?.startsWith('::view-transition')) a.cancel();
+      });
+      pendingTap = { x: e.clientX, y: e.clientY };
+    };
+    const onClick = (e) => {
+      if (!pendingTap) return;
+      const tap = pendingTap; pendingTap = null;
+      if (e.target !== document.documentElement && e.target !== document.body) return;
+      const el = document.elementFromPoint(tap.x, tap.y);
+      if (!el || el === document.documentElement || el === document.body) return;
+      if (typeof el.focus === 'function') el.focus();
+      el.click();
+    };
+    const onSkipOnly = () => {
+      if (activeVtRef.current) {
+        activeVtRef.current.skipTransition();
+        document.getAnimations().forEach(a => {
+          if (a.effect?.pseudoElement?.startsWith('::view-transition')) a.cancel();
+        });
+      }
+    };
+    window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('click', onClick, true);
+    window.addEventListener('keydown', onSkipOnly, true);
+    window.addEventListener('wheel', onSkipOnly, { capture: true, passive: true });
+    window.addEventListener('touchmove', onSkipOnly, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('click', onClick, true);
+      window.removeEventListener('keydown', onSkipOnly, true);
+      window.removeEventListener('wheel', onSkipOnly, { capture: true, passive: true });
+      window.removeEventListener('touchmove', onSkipOnly, { capture: true, passive: true });
+    };
+  }, []);
 
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
