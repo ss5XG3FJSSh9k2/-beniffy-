@@ -1,7 +1,7 @@
 /* global FormData, URLSearchParams */
 
 /* global CustomEvent, Notification */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { 
   ShoppingBag, 
@@ -381,14 +381,11 @@ const NumberStepper = ({ id, value, onChange, min, max, step, decimals = 0, suff
   );
 };
 
-let _globalPhoneRef = { current: null };
-let _globalActiveRole = 'marketing';
-
-const GlobalModalLayer = ({ children }) => {
-  const inPhone = ['customer', 'stockist', 'partner'].includes(_globalActiveRole) && _globalPhoneRef.current;
-  return inPhone ? createPortal(children, _globalPhoneRef.current) : children;
+const ModalLayerContext = React.createContext({ phoneEl: null, inPhone: false });
+const ModalLayer = ({ children }) => {
+  const { phoneEl, inPhone } = React.useContext(ModalLayerContext);
+  return inPhone && phoneEl ? createPortal(children, phoneEl) : children;
 };
-const ModalLayer = GlobalModalLayer;
 
 const TimePicker = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -743,6 +740,38 @@ const BeniffyWordmark = ({ size = 24, role }) => {
 
 const systemDark = () => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+const AlternativeShops = ({ productName, regionId, excludeStockistId, onStartNewOrder }) => {
+  const [alts, setAlts] = useState([]);
+  useEffect(() => {
+    fetch(`${API_BASE}/products/search-alternatives?name=${encodeURIComponent(productName)}&regionId=${regionId}&excludeStockistId=${excludeStockistId}`)
+      .then(res => res.json())
+      .then(data => setAlts(data))
+      .catch(err => console.error(err));
+  }, [productName, regionId, excludeStockistId]);
+
+  if (alts.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: '0.4rem', fontSize: '0.65rem', background: 'var(--warning-glow)', border: '1px dashed var(--warning)', borderRadius: '6px', padding: '0.35rem', width: '100%' }}>
+      <span style={{ color: 'var(--warning-text)', fontWeight: 'bold' }}>Also available at:</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.2rem' }}>
+        {alts.map(alt => (
+          <div key={alt.shopId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)' }}>{alt.shopName} (₹{alt.price})</span>
+            <button 
+              className="badge badge-warning" 
+              style={{ border: 'none', cursor: 'pointer', fontSize: '0.55rem', padding: '0.1rem 0.3rem' }}
+              onClick={() => onStartNewOrder && onStartNewOrder(alt.shopId, productName)}
+            >
+              Order Here
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [osDark, setOsDark] = React.useState(systemDark);
   React.useEffect(() => {
@@ -972,13 +1001,15 @@ export default function App() {
     return 'marketing';
   });
   const phoneRef = useRef(null);
-  _globalPhoneRef = phoneRef;
-  _globalActiveRole = activeRole;
-
-  const ModalLayer = ({ children }) => {
-    const inPhone = ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current;
-    return inPhone ? createPortal(children, phoneRef.current) : children;
-  };
+  const [phoneEl, setPhoneElState] = useState(null);
+  const setPhoneEl = useCallback((el) => {
+    phoneRef.current = el;
+    setPhoneElState(el);
+  }, []);
+  const modalLayerValue = useMemo(() => ({
+    phoneEl,
+    inPhone: ['customer', 'stockist', 'partner'].includes(activeRole)
+  }), [phoneEl, activeRole]);
   const [splash, setSplash] = useState(() => {
     try {
       const p = new URLSearchParams(window.location.search).get('role') || sessionStorage.getItem('fastnet.initialRole');
@@ -7953,7 +7984,7 @@ export default function App() {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
           <div className="perspective-banner"><span>Partner Hub: Not logged in</span></div>
-          <div className="phone-mockup" ref={phoneRef} data-theme={resolve(themes.partner)}>
+          <div className="phone-mockup" ref={setPhoneEl} data-theme={resolve(themes.partner)}>
             <div className="phone-notch"></div>
             <div className="phone-screen">
               {splash.app === 'partner' && <AppSplash theme={resolve(themes.partner)} key={splash.key} role="PARTNER" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
@@ -7971,7 +8002,7 @@ export default function App() {
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Partner Hub: {partnerData?.display_name || partnerData?.name || 'Partner Account'}</span>
         </div>
 
-        <div className="phone-mockup" ref={phoneRef} data-theme={resolve(themes.partner)}>
+        <div className="phone-mockup" ref={setPhoneEl} data-theme={resolve(themes.partner)}>
           <div className="phone-notch"></div>
           <div className="phone-screen" style={{ minHeight: '550px', display: 'flex', flexDirection: 'column' }}>
             
@@ -9225,38 +9256,6 @@ export default function App() {
     }
   };
 
-  const AlternativeShops = ({ productName, regionId, excludeStockistId }) => {
-    const [alts, setAlts] = useState([]);
-    useEffect(() => {
-      fetch(`${API_BASE}/products/search-alternatives?name=${encodeURIComponent(productName)}&regionId=${regionId}&excludeStockistId=${excludeStockistId}`)
-        .then(res => res.json())
-        .then(data => setAlts(data))
-        .catch(err => console.error(err));
-    }, [productName, regionId, excludeStockistId]);
-
-    if (alts.length === 0) return null;
-
-    return (
-      <div style={{ marginTop: '0.4rem', fontSize: '0.65rem', background: 'var(--warning-glow)', border: '1px dashed var(--warning)', borderRadius: '6px', padding: '0.35rem', width: '100%' }}>
-        <span style={{ color: 'var(--warning-text)', fontWeight: 'bold' }}>Also available at:</span>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.2rem' }}>
-          {alts.map(alt => (
-            <div key={alt.shopId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--text-muted)' }}>{alt.shopName} (₹{alt.price})</span>
-              <button 
-                className="badge badge-warning" 
-                style={{ border: 'none', cursor: 'pointer', fontSize: '0.55rem', padding: '0.1rem 0.3rem' }}
-                onClick={() => handleStartNewOrder(alt.shopId, productName)}
-              >
-                Order Here
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   // ----------------------------------------------------
   // 2. CUSTOMER MOBILE APP SIMULATOR
   // ----------------------------------------------------
@@ -9297,7 +9296,7 @@ export default function App() {
           <span><UserCheck size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> {t('Customer View', 'कस्टमर व्यू', 'গ্রাহক মোড')}: {isLoggedOut ? t('Not logged in', 'लॉग इन नहीं है', 'লগইন করা নেই') : `${currentUser.name} (${activeRegionName})`}</span>
         </div>
         
-        <div className="phone-mockup" ref={phoneRef} data-theme={resolve(themes.customer)}>
+        <div className="phone-mockup" ref={setPhoneEl} data-theme={resolve(themes.customer)}>
           <div className="phone-notch"></div>
           <div className="phone-screen">
             {splash.app === 'customer' && <AppSplash theme={resolve(themes.customer)} key={splash.key} role={null} onDone={() => setSplash(s => ({ ...s, app: null }))} />}
@@ -9785,7 +9784,7 @@ export default function App() {
                                     </button>
                                   </div>
                                   {isOutOfStock && (
-                                    <AlternativeShops productName={p.name} regionId={currentUser.region_id} excludeStockistId={selectedStockist.id} />
+                                    <AlternativeShops productName={p.name} regionId={currentUser.region_id} excludeStockistId={selectedStockist.id} onStartNewOrder={handleStartNewOrder} />
                                   )}
                                 </div>
                               );
@@ -11794,7 +11793,7 @@ export default function App() {
           <span><Store size={14} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} /> SHOPKEEPER VIEW (দোকানদার মোড): {isLoggedOut ? "Not logged in (লগইন করা নেই)" : `${stockistProfile?.name || currentUser.name} (${activeRegionName})`}</span>
         </div>
 
-        <div className="phone-mockup" ref={phoneRef} data-theme={resolve(themes.stockist)}>
+        <div className="phone-mockup" ref={setPhoneEl} data-theme={resolve(themes.stockist)}>
           <div className="phone-notch"></div>
           <div className="phone-screen">
             {splash.app === 'stockist' && <AppSplash theme={resolve(themes.stockist)} key={splash.key} role="STOCKIST" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
@@ -16636,7 +16635,8 @@ export default function App() {
 
   if (needsSetup) {
     return (
-      <div className="simulator-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: `calc(100vh / var(--ui-scale))`, padding: '1.5rem', background: 'var(--bg-main)' }}>
+      <ModalLayerContext.Provider value={modalLayerValue}>
+        <div className="simulator-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: `calc(100vh / var(--ui-scale))`, padding: '1.5rem', background: 'var(--bg-main)' }}>
         <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-elevated)', backdropFilter: 'blur(16px)', position: 'relative' }}>
           <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
             <ThemeToggle theme={resolve(themes.admin)} appName="Setup" onToggle={(e) => toggleTheme('admin', e)} />
@@ -16745,6 +16745,7 @@ export default function App() {
           )}
         </div>
       </div>
+      </ModalLayerContext.Provider>
     );
   }
 
@@ -16777,7 +16778,8 @@ export default function App() {
   const priceChanged = editingProduct ? (Math.abs(parseFloat(editProdPrice || 0) - editingProduct.price) > 0.001 || Math.abs(parseFloat(editProdCostPrice || 0) - editingProduct.cost_price) > 0.001) : false;
 
   return (
-    <div className="simulator-shell">
+    <ModalLayerContext.Provider value={modalLayerValue}>
+      <div className="simulator-shell">
       
       {/* Toast popup */}
       {toast && (
@@ -19368,6 +19370,7 @@ export default function App() {
         </ModalLayer>
       )}
     </div>
+    </ModalLayerContext.Provider>
   );
 }
 

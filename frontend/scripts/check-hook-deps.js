@@ -176,6 +176,60 @@ if (violations.length > 0) {
 
 console.log('✓ check-hook-deps: All hook dependencies in App.jsx are declared before use.');
 
+// Check that no capitalized component is declared inside App's body
+let appFunc = null;
+for (const n of ast.body) {
+  if (n.type === 'ExportDefaultDeclaration' && n.declaration && (n.declaration.type === 'FunctionDeclaration' || n.declaration.type === 'FunctionExpression')) {
+    appFunc = n.declaration;
+    break;
+  }
+  if (n.type === 'FunctionDeclaration' && n.id && n.id.name === 'App') {
+    appFunc = n;
+    break;
+  }
+}
+
+const innerComponents = [];
+function checkInnerComponent(node) {
+  if (!node) return;
+  if (node === appFunc) {
+    if (node.body && node.body.body) {
+      node.body.body.forEach(checkInnerComponent);
+    }
+    return;
+  }
+  if (node.type === 'FunctionDeclaration' && node.id && /^[A-Z]/.test(node.id.name) && !/^[A-Z0-9_]+$/.test(node.id.name)) {
+    innerComponents.push({ name: node.id.name, line: node.loc.start.line });
+  } else if (node.type === 'VariableDeclaration') {
+    for (const decl of node.declarations) {
+      if (decl.id && decl.id.type === 'Identifier' && /^[A-Z]/.test(decl.id.name) && !/^[A-Z0-9_]+$/.test(decl.id.name)) {
+        if (decl.init && (decl.init.type === 'ArrowFunctionExpression' || decl.init.type === 'FunctionExpression')) {
+          innerComponents.push({ name: decl.id.name, line: decl.loc.start.line });
+        }
+      }
+    }
+  }
+  for (const k in node) {
+    if (k !== 'parent') {
+      const child = node[k];
+      if (Array.isArray(child)) child.forEach(checkInnerComponent);
+      else if (child && typeof child === 'object' && child.type) checkInnerComponent(child);
+    }
+  }
+}
+if (appFunc) {
+  checkInnerComponent(appFunc);
+}
+
+if (innerComponents.length > 0) {
+  console.error(`\n❌ check-hook-deps FAILED: Found ${innerComponents.length} capitalized component(s) declared inside App body:\n`);
+  innerComponents.forEach(c => {
+    console.error(`  - Component '${c.name}' declared at line ${c.line}. Move it to module level.`);
+  });
+  process.exit(1);
+}
+console.log('✓ check-hook-deps: No capitalized components declared inside App body.');
+
 // Check undefined CSS variables (Ticket 7 requirement)
 try {
   let checkCssVars;
