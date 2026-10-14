@@ -1,4 +1,8 @@
 const { chromium } = require('playwright');
+const fs = require('fs');
+const path = require('path');
+
+const ARTIFACTS_DIR = 'C:/Users/thari/.gemini/antigravity-ide/brain/f85b8837-8d4d-43a1-b68c-6c8cb21cab66/screenshots';
 
 async function runTest(width, theme, reducedMotion) {
   console.log(`\n=== Running Splash Test: ${width}px | Theme: ${theme} | Reduced Motion: ${reducedMotion} ===`);
@@ -41,29 +45,153 @@ async function runTest(width, theme, reducedMotion) {
 
   for (const app of apps) {
     console.log(`\n--- Testing ${app.name} App ---`);
+    if (app.hasRole) {
+      await page.evaluate(() => {
+        window.__splashStart = 0;
+        const observer = new MutationObserver(() => {
+          if (document.querySelector('.cs-lockup') && !window.__splashStart) {
+            window.__splashStart = performance.now();
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+      });
+    }
+
     await page.click(`.role-switcher button.role-tab:has-text("${app.tab}")`);
     
     const splash = page.locator('.cs-splash');
     await splash.waitFor({ state: 'visible', timeout: 2000 });
     console.log(`${app.name} Splash visible.`);
 
-    // Wait until 1300ms from start (approx 1300 since click)
     let prefix = `${app.name.toLowerCase()}_splash_${width}px_${theme}${reducedMotion ? '_reduced' : ''}`;
     
     if (app.hasRole && !reducedMotion) {
-      await page.waitForTimeout(1300);
-      await page.screenshot({ path: `tests/${prefix}_1300ms.png` });
-      
-      const dropy = page.locator('.cs-dropy');
-      if (await dropy.count() > 0) {
-        const dropyBox = await dropy.boundingBox();
-        console.log(`Drop Y Box at 1300ms:`, dropyBox);
+      // 1300ms screenshot
+      await page.waitForFunction(() => window.__splashStart && (performance.now() - window.__splashStart) >= 1300);
+      const shot1300Path = `tests/${prefix}_1300ms.png`;
+      await page.screenshot({ path: shot1300Path });
+      if (fs.existsSync(ARTIFACTS_DIR)) fs.copyFileSync(shot1300Path, path.join(ARTIFACTS_DIR, `${prefix}_1300ms.png`));
+
+      // 1450ms screenshot & pixel sampling
+      await page.waitForFunction(() => window.__splashStart && (performance.now() - window.__splashStart) >= 1450);
+      const shot1450Path = `tests/${prefix}_1450ms.png`;
+      const shot1450 = await page.screenshot({ path: shot1450Path });
+      if (fs.existsSync(ARTIFACTS_DIR)) fs.copyFileSync(shot1450Path, path.join(ARTIFACTS_DIR, `${prefix}_1450ms.png`));
+
+      const coords = await page.evaluate(() => {
+        const bEl = document.querySelector('.cs-word .cs-ch');
+        const coin = document.querySelector('.cs-coin');
+        const roleEl = document.querySelector('.cs-role');
+        if (!bEl || !coin || !roleEl) return null;
+        const bRect = bEl.getBoundingClientRect();
+        const coinRect = coin.getBoundingClientRect();
+        const roleRect = roleEl.getBoundingClientRect();
+        return {
+          bBox: { x: bRect.left, y: bRect.top, width: bRect.width, height: bRect.height },
+          coinCenter: { x: coinRect.left + coinRect.width / 2, y: coinRect.top + coinRect.height / 2 },
+          labelCenter: { x: roleRect.left + roleRect.width / 2, y: roleRect.top + roleRect.height / 2 }
+        };
+      });
+
+      if (coords && width === 1280) {
+        const midPoint = {
+          x: (coords.coinCenter.x + coords.labelCenter.x) / 2,
+          y: (coords.coinCenter.y + coords.labelCenter.y) / 2
+        };
+
+        const check1450 = await page.evaluate(async ({ base64, bBox, midPoint }) => {
+          const img = new Image();
+          await new Promise(r => { img.onload = r; img.src = 'data:image/png;base64,' + base64; });
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width; canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+
+          const isStrictCoin = (r, g, b) => {
+            return Math.abs(r - 238) <= 12 && Math.abs(g - 110) <= 12 && Math.abs(b - 77) <= 12;
+          };
+
+          // 1. Within 30x30 px box at "b" top-left: NO coin-coloured pixels (#EE6E4D +- 12)
+          const bx = Math.round(bBox.x), by = Math.round(bBox.y);
+          const bData = ctx.getImageData(bx, by, 30, 30).data;
+          let bCoinCount = 0;
+          for (let i = 0; i < bData.length; i += 4) {
+            if (isStrictCoin(bData[i], bData[i+1], bData[i+2])) bCoinCount++;
+          }
+
+          // 2. Within 20 px of midpoint between coin center and label center: MUST have coin-coloured pixels
+          const mx = Math.round(midPoint.x), my = Math.round(midPoint.y);
+          let midCoinCount = 0;
+          for (let dy = -20; dy <= 20; dy++) {
+            for (let dx = -20; dx <= 20; dx++) {
+              if (Math.hypot(dx, dy) <= 20) {
+                const p = ctx.getImageData(mx + dx, my + dy, 1, 1).data;
+                if (isStrictCoin(p[0], p[1], p[2])) midCoinCount++;
+              }
+            }
+          }
+
+          return { bCoinCount, midCoinCount };
+        }, { base64: shot1450.toString('base64'), bBox: coords.bBox, midPoint });
+
+        console.log(`  1450ms "b" glyph top-left coin pixels: ${check1450.bCoinCount} (expected 0)`);
+        console.log(`  1450ms midpoint coin pixels: ${check1450.midCoinCount} (expected > 0)`);
+        if (check1450.bCoinCount > 0) errors.push(`Found ${check1450.bCoinCount} coin pixels at "b" top-left at 1450ms`);
+        if (check1450.midCoinCount === 0) errors.push(`No coin pixels near midpoint at 1450ms`);
       }
+
+      // At 1600ms: coin-coloured pixels must exist within 25 px of the label centre (the splash ring)
+      await page.waitForFunction(() => window.__splashStart && (performance.now() - window.__splashStart) >= 1600);
+      const shot1600 = await page.screenshot();
+
+      if (coords && width === 1280) {
+        const check1600 = await page.evaluate(async ({ base64, labelCenter, theme }) => {
+          const img = new Image();
+          await new Promise(r => { img.onload = r; img.src = 'data:image/png;base64,' + base64; });
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width; canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+
+          const isCoinColoured = (r, g, b) => {
+            if (Math.abs(r - 238) <= 12 && Math.abs(g - 110) <= 12 && Math.abs(b - 77) <= 12) return true;
+            const bg = (theme === 'dark') ? { r: 32, g: 32, b: 31 } : { r: 253, g: 240, b: 213 };
+            for (let a = 0.25; a <= 0.95; a += 0.05) {
+              const er = 238 * a + bg.r * (1 - a);
+              const eg = 110 * a + bg.g * (1 - a);
+              const eb = 77 * a + bg.b * (1 - a);
+              if (Math.abs(r - er) <= 16 && Math.abs(g - eg) <= 16 && Math.abs(b - eb) <= 16) {
+                return true;
+              }
+            }
+            return false;
+          };
+
+          const lx = Math.round(labelCenter.x), ly = Math.round(labelCenter.y);
+          let ringCoinCount = 0;
+          for (let dy = -25; dy <= 25; dy++) {
+            for (let dx = -25; dx <= 25; dx++) {
+              if (Math.hypot(dx, dy) <= 25) {
+                const p = ctx.getImageData(lx + dx, ly + dy, 1, 1).data;
+                if (isCoinColoured(p[0], p[1], p[2])) ringCoinCount++;
+              }
+            }
+          }
+          return { ringCoinCount };
+        }, { base64: shot1600.toString('base64'), labelCenter: coords.labelCenter, theme });
+
+        console.log(`  1600ms label centre splash ring pixels: ${check1600.ringCoinCount} (expected > 0)`);
+        if (check1600.ringCoinCount === 0) errors.push(`No splash ring coin pixels near label centre at 1600ms`);
+      }
+
+      // 1700ms screenshot
+      await page.waitForFunction(() => window.__splashStart && (performance.now() - window.__splashStart) >= 1700);
+      const shot1700Path = `tests/${prefix}_1700ms.png`;
+      await page.screenshot({ path: shot1700Path });
+      if (fs.existsSync(ARTIFACTS_DIR)) fs.copyFileSync(shot1700Path, path.join(ARTIFACTS_DIR, `${prefix}_1700ms.png`));
       
-      await page.waitForTimeout(400); // 1700ms
-      await page.screenshot({ path: `tests/${prefix}_1700ms.png` });
-      
-      await page.waitForTimeout(400); // 2100ms
+      // 2100ms screenshot & check
+      await page.waitForFunction(() => window.__splashStart && (performance.now() - window.__splashStart) >= 2100);
       await page.screenshot({ path: `tests/${prefix}_2100ms.png` });
       
       const roleEl = page.locator('.cs-role');

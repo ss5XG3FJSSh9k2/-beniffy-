@@ -634,16 +634,34 @@ const AppSplash = ({ theme, onDone, role }) => {
     const rafId = window.requestAnimationFrame(() => {
       measure();
     });
+    let anims = [];
     const timerId = setTimeout(() => {
       const ok = measure();
-      if (!ok && lockupRef.current) {
-        lockupRef.current.classList.add('cs-nodrop');
-      }
+      const lock = lockupRef.current;
+      if (!lock) return;
+      if (!ok) { lock.classList.add('cs-nodrop'); return; }
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const cs = window.getComputedStyle(lock);
+      const x0 = parseFloat(cs.getPropertyValue('--x0')), y0 = parseFloat(cs.getPropertyValue('--y0'));
+      const x1 = parseFloat(cs.getPropertyValue('--x1')), y1 = parseFloat(cs.getPropertyValue('--y1'));
+      const dx = lock.querySelector('.cs-dropx'), dy = lock.querySelector('.cs-dropy'), sp = lock.querySelector('.cs-splat');
+      anims.push(dx.animate([{ transform: `translateX(${x0}px)` }, { transform: `translateX(${x1}px)` }], { duration: 420, delay: 40, easing: 'linear', fill: 'forwards' }));
+      anims.push(dy.animate([
+        { offset: 0, opacity: 0, transform: `translateY(${y0}px) scale(0.4)`, easing: 'cubic-bezier(0.5, 0, 1, 0.6)' },
+        { offset: 0.12, opacity: 1, transform: `translateY(${y0}px) scale(1, 1.15)`, easing: 'cubic-bezier(0.5, 0, 1, 0.6)' },
+        { offset: 1, opacity: 1, transform: `translateY(${y1}px) scale(0.9, 1.25)` }
+      ], { duration: 420, delay: 40, fill: 'forwards' }));
+      anims.push(dy.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1, delay: 480, fill: 'forwards' }));
+      anims.push(sp.animate([
+        { opacity: 0.9, transform: `translateX(${x1}px) translateY(${y1}px) scale(1)` },
+        { opacity: 0, transform: `translateX(${x1}px) translateY(${y1}px) scale(5, 2.2)` }
+      ], { duration: 520, delay: 460, easing: 'ease-out', fill: 'forwards' }));
     }, 1080);
 
     return () => {
       window.cancelAnimationFrame(rafId);
       clearTimeout(timerId);
+      anims.forEach(a => a.cancel());
     };
   }, [role]);
 
