@@ -8551,7 +8551,7 @@ export default function App() {
                         </tr>
                       ))}
                       {partnerPackagesList.length === 0 && (
-                        <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>
+                        <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>
                           <p style={{ margin: '0 0 0.75rem 0' }}>
                             {t("You haven't added any packages yet. Customers can only redeem what you list here.", "आपने अभी तक कोई पैकेज नहीं जोड़ा है। ग्राहक केवल वही रिडीम कर सकते हैं जो आप सूचीबद्ध करते हैं।", "আপনি এখনো কোনো প্যাকেজ যোগ করেননি। গ্রাহকরা কেবল আপনার তালিকাবদ্ধ অফারই রিডিম করতে পারবে।")}
                           </p>
@@ -14498,7 +14498,7 @@ export default function App() {
 
                   {pendingKyc.length > 0 && (
                     <div
-                      className="glass-card alert-kyc-pending"
+                      className="glass-card alert-kyc-pending is-clickable"
                       style={{
                         marginBottom: '1.5rem',
                         padding: '0.85rem 1.25rem',
@@ -14506,8 +14506,7 @@ export default function App() {
                         background: 'var(--danger-bg)',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center',
-                        cursor: 'pointer'
+                        alignItems: 'center'
                       }}
                       onClick={() => { setAdminTab('kyc'); fetchDbState(); }}
                     >
@@ -14987,7 +14986,7 @@ export default function App() {
                     })}
                       {pendingKyc.length === 0 && (
                         <tr>
-                          <td colSpan="9" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          <td colSpan="10" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                             No stockists awaiting KYC approval right now.
                           </td>
                         </tr>
@@ -15677,7 +15676,7 @@ export default function App() {
                     </p>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
                     {/* LEFT COLUMN: GLOBAL DEFAULTS & LIVE WORKED EXAMPLE */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -16376,10 +16375,10 @@ export default function App() {
                     Configure wholesalers and approve them for local shopkeepers to buy stock from.
                   </p>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <h4>Register Wholesaler</h4>
+                      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem', border: 'none', boxShadow: 'none', background: 'var(--bg-surface-elevated)', borderRadius: '12px', padding: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.25rem' }}>Register Wholesaler</h3>
                         <div className="input-group">
                           <label className="input-label">Wholesaler Name</label>
                           <input 
@@ -16404,11 +16403,11 @@ export default function App() {
                             </p>
                           )}
                         </div>
-                        <button className="btn" onClick={handleCreateVendor} disabled={regions.length === 0}>Register Wholesaler</button>
+                        <button className="btn" style={{ width: '100%', marginTop: '0.5rem' }} onClick={handleCreateVendor} disabled={regions.length === 0}>Register Wholesaler</button>
                       </div>
 
-                      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <h4>Approve Wholesaler for Store</h4>
+                      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem', border: 'none', boxShadow: 'none', background: 'var(--bg-surface-elevated)', borderRadius: '12px', padding: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.25rem' }}>Approve Wholesaler for Store</h3>
                         <div className="input-group">
                           <label className="input-label">Select Shop</label>
                           <select className="text-input" value={vendorAdminStockistId} onChange={e => setVendorAdminStockistId(e.target.value)}>
@@ -16427,13 +16426,13 @@ export default function App() {
                             ))}
                           </select>
                         </div>
-                        <button className="btn" onClick={() => handleAssignVendorToStockist(vendorAdminStockistId, vendorAdminVendorId)} disabled={!vendorAdminStockistId || !vendorAdminVendorId}>
+                        <button className="btn" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => handleAssignVendorToStockist(vendorAdminStockistId, vendorAdminVendorId)} disabled={!vendorAdminStockistId || !vendorAdminVendorId}>
                           Approve Association
                         </button>
                       </div>
                     </div>
 
-                    <div>
+                    <div style={{ minWidth: 0, overflowX: 'auto' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                         <h3 style={{ margin: 0 }}>Wholesalers List</h3>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
@@ -16613,7 +16612,7 @@ export default function App() {
                           );
                         })}
                         {adminGenericRewards.length === 0 && (
-                          <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No generic rewards found.</td></tr>
+                          <tr><td colSpan="9" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No generic rewards found.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -17297,7 +17296,7 @@ export default function App() {
           {currentUser && currentUser.email && currentUser.email.includes('fastnet.invalid') ? (
             <PanelErrorBoundary key="add-email" t={t}>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', width: '100%', padding: '2rem' }}>
-                <div className="glass-card" style={{ width: '450px', maxWidth: '100%', borderRadius: '16px', overflow: 'hidden', background: 'var(--bg-surface)' }}>
+                <div className="glass-card" style={{ width: '450px', maxWidth: '100%', borderRadius: '16px', overflow: 'hidden', background: 'var(--bg-surface)', padding: 0 }}>
                   {renderAddEmailScreen()}
                 </div>
               </div>
