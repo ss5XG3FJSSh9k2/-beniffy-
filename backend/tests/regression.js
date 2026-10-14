@@ -1497,7 +1497,7 @@ async function main() {
 
   // Test 9: login-otp-request with nonexistent phone -> 200 (no leak)
   const p1_otpNonExistReqRes = await post('http://localhost:3001/api/partner/auth/login-otp-request', {
-    phone: '0000000000', email: 'test_0000000000@fastnet.test'
+    phone: '9000000000', email: 'test_9000000000@fastnet.test'
   });
   assert(p1_otpNonExistReqRes.status === 200, 'OTP request with nonexistent phone returns 200 without leak');
 
@@ -6151,6 +6151,53 @@ async function main() {
   const registeredUser = tcAllUsers.find(u => u.phone === regPhone);
   assert(registeredUser && registeredUser.terms_accepted_at !== null, 'Registered customer has terms_accepted_at set');
   assert(registeredUser && registeredUser.terms_version === '2026-10-draft', 'Registered customer has correct terms_version');
+
+  // --- 42. BF-FIELD-LIMITS-FORMATS ---
+  console.log('\n--- 42. BF-FIELD-LIMITS-FORMATS ---');
+  const badPhoneLogin = await post('http://localhost:3001/api/auth/send-otp', { phone: '5123456789' });
+  assert(badPhoneLogin.status === 400, 'send-otp with invalid phone starting with 5 returns 400');
+
+  const longPhoneLogin = await post('http://localhost:3001/api/auth/send-otp', { phone: '98765432101' });
+  assert(longPhoneLogin.status === 400, 'send-otp with 11-digit phone returns 400');
+
+  const badOtpLogin = await post('http://localhost:3001/api/auth/verify-otp', { phone: '9876543210', otp: '12345' });
+  assert(badOtpLogin.status === 400, 'verify-otp with 5-digit OTP returns 400');
+
+  const badCustReg = await post('http://localhost:3001/api/auth/register-customer', {
+    phone: '5876543210',
+    name: 'Bad Phone User',
+    email: 'bad.phone@example.com',
+    regionId: 'r1',
+    termsAgreed: true
+  });
+  assert(badCustReg.status === 400, 'register-customer with phone starting with 5 returns 400');
+
+  const badPanStockist = await post('http://localhost:3001/api/auth/register-stockist', {
+    name: 'Stockist Bad KYC',
+    phone: '9876500001',
+    email: 'bad.kyc@example.com',
+    shopName: 'Bad KYC Shop',
+    address: '123 Main St',
+    region: 'r1',
+    kyc_id_type: 'PAN',
+    kyc_id_number: 'INVALID_PAN'
+  }, { asMultipart: true });
+  assert(badPanStockist.status === 400, 'register-stockist with invalid PAN returns 400');
+
+  const badAadhaarStockist = await post('http://localhost:3001/api/auth/register-stockist', {
+    name: 'Stockist Bad Aadhaar',
+    phone: '9876500002',
+    email: 'bad.aadhaar@example.com',
+    shopName: 'Bad Aadhaar Shop',
+    address: '123 Main St',
+    region: 'r1',
+    kyc_id_type: 'Aadhaar',
+    kyc_id_number: '12345'
+  }, { asMultipart: true });
+  assert(badAadhaarStockist.status === 400, 'register-stockist with 5-digit Aadhaar returns 400');
+
+  const badPickupPin = await post('http://localhost:3001/api/orders/ord-fake-123/verify-pickup', { pin: '12' });
+  assert(badPickupPin.status === 400, 'verify-pickup with 2-digit PIN returns 400');
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);

@@ -141,8 +141,10 @@ function checkTermsAgreed(req, res, isTest) {
 
 function checkPhone(phone, res) {
   const cleanPhone = normalizePhone(phone);
-  if (!cleanPhone || cleanPhone.length !== 10) {
-    res.status(400).json({ error: 'invalid_phone', message: 'Enter a valid 10-digit mobile number.' });
+  if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+    if (res) {
+      res.status(400).json({ error: 'invalid_phone', message: 'Enter a valid 10-digit mobile number.' });
+    }
     return null;
   }
   return cleanPhone;
@@ -152,7 +154,7 @@ function checkPhone(phone, res) {
 function validateUserInput({ phone, email, name }) {
   if (phone !== undefined) {
     const cleanPhone = normalizePhone(phone);
-    if (!cleanPhone || cleanPhone.length !== 10) {
+    if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
       return 'invalid_phone';
     }
   }
@@ -608,8 +610,8 @@ const handleSendOtpRoute = async (req, res) => {
     user = users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail && u.role === 'STOCKIST') ||
            users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail);
   } else {
-    const cleanPhone = identifier.replace(/\D/g, '');
-    if (cleanPhone.length !== 10) return res.status(400).json({ error: 'Invalid phone format' });
+    const cleanPhone = checkPhone(identifier, res);
+    if (!cleanPhone) return;
     user = users.find(u => u.phone === cleanPhone && u.role === 'STOCKIST') ||
            users.find(u => u.phone === cleanPhone);
   }
@@ -895,6 +897,10 @@ const handleVerifyOtpRoute = async (req, res) => {
     return res.status(400).json({ error: 'Phone/Email and OTP are required' });
   }
 
+  if (!/^\d{6}$/.test(String(otp).trim())) {
+    return res.status(400).json({ error: 'Invalid or expired OTP' });
+  }
+
   const ALLOWED_ROLES = ['CUSTOMER', 'STOCKIST', 'PARTNER_ADMIN', 'ADMIN'];
   if (expected_role && !ALLOWED_ROLES.includes(expected_role)) {
     return res.status(400).json({ error: 'Invalid expected_role parameter' });
@@ -915,7 +921,8 @@ const handleVerifyOtpRoute = async (req, res) => {
     user = users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail && u.role === 'STOCKIST') ||
            users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail);
   } else {
-    const cleanPhone = identifier.replace(/\D/g, '');
+    const cleanPhone = checkPhone(identifier, res);
+    if (!cleanPhone) return;
     user = users.find(u => u.phone === cleanPhone && u.role === 'STOCKIST') ||
            users.find(u => u.phone === cleanPhone);
   }
@@ -1196,6 +1203,26 @@ app.post('/api/auth/register-stockist', uploadBillMiddleware, async (req, res) =
     cleanIdNumber = String(idNumber || '').replace(/\D/g, '');
     if (cleanIdNumber.length !== 12) {
       return res.status(400).json({ error: 'Aadhaar must be 12 digits' });
+    }
+  } else if (normIdType.includes('PAN')) {
+    cleanIdNumber = String(idNumber || '').trim().toUpperCase();
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(cleanIdNumber)) {
+      return res.status(400).json({ error: 'Enter a valid 10-character PAN (e.g. ABCDE1234F)' });
+    }
+  } else if (normIdType.includes('VOTER')) {
+    cleanIdNumber = String(idNumber || '').trim().toUpperCase();
+    if (!/^[A-Z0-9]{10}$/.test(cleanIdNumber)) {
+      return res.status(400).json({ error: 'Voter ID must be 10 letters and digits' });
+    }
+  } else if (normIdType.includes('DRIV')) {
+    cleanIdNumber = String(idNumber || '').trim().toUpperCase();
+    if (!/^[A-Z0-9]{1,16}$/.test(cleanIdNumber)) {
+      return res.status(400).json({ error: 'Driving licence must be up to 16 letters and digits' });
+    }
+  } else {
+    cleanIdNumber = String(idNumber || '').trim();
+    if (!cleanIdNumber || cleanIdNumber.length > 20) {
+      return res.status(400).json({ error: 'Document ID must be up to 20 characters' });
     }
   }
 
@@ -2236,7 +2263,15 @@ app.patch('/api/stockist/profile', requireAuth, async (req, res) => {
     if (payoutVal.values.payout_bank_account !== undefined) stockist.payout_bank_account = payoutVal.values.payout_bank_account;
     if (payoutVal.values.payout_account_name !== undefined) stockist.payout_account_name = payoutVal.values.payout_account_name;
     
-    if (payload.contact_phone !== undefined) stockist.contact_phone = payload.contact_phone;
+    if (payload.contact_phone !== undefined) {
+      if (payload.contact_phone) {
+        const validPhone = checkPhone(payload.contact_phone, res);
+        if (!validPhone) return;
+        stockist.contact_phone = validPhone;
+      } else {
+        stockist.contact_phone = '';
+      }
+    }
 
     // Handle Manual Closed
     if (payload.manual_closed !== undefined) {
@@ -3432,6 +3467,10 @@ app.post('/api/orders/:id/verify-pickup', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { pin } = req.body;
 
+  if (!pin || !/^\d{4}$/.test(String(pin).trim())) {
+    return res.status(400).json({ error: 'Incorrect pickup verification PIN.' });
+  }
+
   const orders = await db.getTable('orders');
   const order = orders.find(o => o.id === id);
   if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -3782,7 +3821,7 @@ const handleOrderStatusUpdate = async (req, res) => {
   }
 
   if ((status === 'DELIVERED' || status === 'PICKED_UP') && !isAdmin) {
-    if (!pin) {
+    if (!pin || !/^\d{4}$/.test(String(pin).trim())) {
       return res.status(400).json({
         error: 'Direct transition blocked. PIN verification required for handoff completion.',
         code: 'PIN_REQUIRED'
@@ -5644,6 +5683,9 @@ app.post('/api/customer/phone-change/verify', requireAuth, async (req, res) => {
   const checkCurrent = current_otp || otp;
   const checkNew = new_otp || otp;
   if (!checkCurrent || !checkNew) return res.status(400).json({ error: 'Both OTPs are required' });
+  if (!/^\d{6}$/.test(String(checkCurrent).trim()) || !/^\d{6}$/.test(String(checkNew).trim())) {
+    return res.status(400).json({ error: 'Invalid or expired OTP' });
+  }
   const vCurrent = verifyOtp('customer-phone-change-current:' + user_id, checkCurrent);
   const vNew = verifyOtp('customer-phone-change-new:' + user_id, checkNew);
   if (!vCurrent.ok || !vNew.ok) {
@@ -6368,6 +6410,7 @@ app.post('/api/admin/customers/:id/phone-change/send-current', async (req, res) 
 app.post('/api/admin/customers/:id/phone-change/verify-current', async (req, res) => {
   const { id } = req.params;
   const { otp } = req.body;
+  if (!otp || !/^\d{6}$/.test(String(otp).trim())) return res.status(400).json({ error: 'Invalid OTP for current phone' });
   const vC = verifyOtp('admin-phone-change-current:' + id, otp);
   if (!vC.ok) return res.status(400).json({ error: 'Invalid OTP for current phone' });
   
@@ -6420,6 +6463,7 @@ app.post('/api/admin/customers/:id/phone-change/verify-new', async (req, res) =>
   if (!validPhone) return;
   const cleanPhone = validPhone;
 
+  if (!otp || !/^\d{6}$/.test(String(otp).trim())) return res.status(400).json({ error: 'Invalid OTP' });
   const vN = verifyOtp('admin-phone-change-new:' + id, otp);
   if (!vN.ok) return res.status(400).json({ error: 'Invalid OTP' });
   
@@ -6807,7 +6851,26 @@ app.post('/api/admin/stockists/:id', async (req, res) => {
     const oldIdNumber = kyc.id_number || user.kyc_id_number;
 
     if (kyc_id_type && kyc_id_type !== oldIdType) { kyc.id_type = kyc_id_type; user.kyc_id_type = kyc_id_type; kycChanged = true; }
-    if (kyc_id_number && kyc_id_number !== oldIdNumber) { kyc.id_number = kyc_id_number; user.kyc_id_number = kyc_id_number; kycChanged = true; }
+    if (kyc_id_number && kyc_id_number !== oldIdNumber) {
+      const effectiveType = String(kyc_id_type || oldIdType || '').toUpperCase();
+      let cleanId = String(kyc_id_number || '').trim();
+      if (effectiveType.includes('AADHAAR') || effectiveType.includes('AADHAR')) {
+        const digits = cleanId.replace(/\D/g, '');
+        if (digits.length !== 12) return res.status(400).json({ error: 'Aadhaar must be 12 digits' });
+      } else if (effectiveType.includes('PAN')) {
+        cleanId = cleanId.toUpperCase();
+        if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(cleanId)) return res.status(400).json({ error: 'Enter a valid 10-character PAN (e.g. ABCDE1234F)' });
+      } else if (effectiveType.includes('VOTER')) {
+        cleanId = cleanId.toUpperCase();
+        if (!/^[A-Z0-9]{10}$/.test(cleanId)) return res.status(400).json({ error: 'Voter ID must be 10 letters and digits' });
+      } else if (effectiveType.includes('DRIV')) {
+        cleanId = cleanId.toUpperCase();
+        if (!/^[A-Z0-9]{1,16}$/.test(cleanId)) return res.status(400).json({ error: 'Driving licence must be up to 16 letters and digits' });
+      } else if (cleanId.length > 20) {
+        return res.status(400).json({ error: 'Document ID must be up to 20 characters' });
+      }
+      kyc.id_number = cleanId; user.kyc_id_number = cleanId; kycChanged = true;
+    }
     if (user_name && user_name !== user.name) { user.name = user_name.trim(); kycChanged = true; }
     if (user_phone && user_phone !== user.phone) {
       const validPhone = checkPhone(user_phone, res);
@@ -7118,6 +7181,9 @@ app.post('/api/partner/auth/login-otp-request', async (req, res) => {
 const handlePartnerOtpVerify = async (req, res) => {
   const { phone, otp } = req.body;
   if (!phone || !otp) return res.status(400).json({ error: 'Phone and OTP are required' });
+  const validPhone = checkPhone(phone, res);
+  if (!validPhone) return;
+  if (!/^\d{6}$/.test(String(otp).trim())) return res.status(400).json({ error: 'Invalid OTP' });
 
   const users = await db.getTable('users');
   const user = users.find(u => u.role === 'PARTNER_ADMIN' && u.phone === phone && u.is_active !== false);

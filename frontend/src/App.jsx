@@ -118,8 +118,12 @@ window.fetch = async (...args) => {
   return res;
 };
 const normalizeFrontendPhone = (val) => {
-  let clean = String(val).replace(/\D/g, '');
-  if (clean.length > 10 && clean.startsWith('91')) {
+  if (!val) return '';
+  let str = String(val);
+  let clean = str.replace(/\D/g, '');
+  if (str.trim().startsWith('+91') || str.trim().startsWith('91 ') || (clean.length === 12 && clean.startsWith('91'))) {
+    clean = clean.slice(2);
+  } else if (clean.length > 10 && clean.startsWith('91')) {
     clean = clean.slice(2);
   }
   return clean.slice(0, 10);
@@ -772,6 +776,151 @@ const AlternativeShops = ({ productName, regionId, excludeStockistId, onStartNew
   );
 };
 
+
+const PhoneInput = ({ value, onChange, onKeyDown, onPaste, ...rest }) => {
+  const handleChange = (e) => {
+    const normalized = normalizeFrontendPhone(e.target.value);
+    e.target.value = normalized;
+    if (onChange) onChange(e);
+  };
+  const handlePaste = (e) => {
+    const pastedText = e.clipboardData ? e.clipboardData.getData('text') : '';
+    if (pastedText) {
+      e.preventDefault();
+      const normalized = normalizeFrontendPhone(pastedText);
+      const synthEvent = {
+        ...e,
+        target: { ...e.target, value: normalized },
+        currentTarget: { ...e.currentTarget, value: normalized }
+      };
+      if (onChange) onChange(synthEvent);
+    }
+    if (onPaste) onPaste(e);
+  };
+  return (
+    <input
+      {...rest}
+      type="tel"
+      inputMode="numeric"
+      autoComplete="tel-national"
+      maxLength={10}
+      value={value ?? ''}
+      onChange={handleChange}
+      onPaste={handlePaste}
+      onKeyDown={(e) => {
+        if (
+          e.key === 'Backspace' ||
+          e.key === 'Delete' ||
+          e.key === 'Tab' ||
+          e.key === 'Escape' ||
+          e.key === 'Enter' ||
+          e.key === 'ArrowLeft' ||
+          e.key === 'ArrowRight' ||
+          e.key === 'ArrowUp' ||
+          e.key === 'ArrowDown' ||
+          (e.ctrlKey || e.metaKey)
+        ) {
+          if (onKeyDown) onKeyDown(e);
+          return;
+        }
+        if (!/^\d$/.test(e.key) && e.key !== '+') {
+          e.preventDefault();
+        }
+        if (onKeyDown) onKeyDown(e);
+      }}
+    />
+  );
+};
+
+const OtpInput = ({ length = 6, value, onChange, onKeyDown, onPaste, ...rest }) => {
+  const handleChange = (e) => {
+    const digits = (e.target.value || '').replace(/\D/g, '').slice(0, length);
+    e.target.value = digits;
+    if (onChange) onChange(e);
+  };
+  const handlePaste = (e) => {
+    const pastedText = e.clipboardData ? e.clipboardData.getData('text') : '';
+    if (pastedText) {
+      e.preventDefault();
+      const digits = pastedText.replace(/\D/g, '').slice(0, length);
+      const synthEvent = {
+        ...e,
+        target: { ...e.target, value: digits },
+        currentTarget: { ...e.currentTarget, value: digits }
+      };
+      if (onChange) onChange(synthEvent);
+    }
+    if (onPaste) onPaste(e);
+  };
+  return (
+    <input
+      {...rest}
+      type="text"
+      inputMode="numeric"
+      autoComplete="one-time-code"
+      maxLength={length}
+      value={value ?? ''}
+      onChange={handleChange}
+      onPaste={handlePaste}
+      onKeyDown={(e) => {
+        if (
+          e.key === 'Backspace' ||
+          e.key === 'Delete' ||
+          e.key === 'Tab' ||
+          e.key === 'Escape' ||
+          e.key === 'Enter' ||
+          e.key === 'ArrowLeft' ||
+          e.key === 'ArrowRight' ||
+          e.key === 'ArrowUp' ||
+          e.key === 'ArrowDown' ||
+          (e.ctrlKey || e.metaKey)
+        ) {
+          if (onKeyDown) onKeyDown(e);
+          return;
+        }
+        if (!/^\d$/.test(e.key)) {
+          e.preventDefault();
+        }
+        if (onKeyDown) onKeyDown(e);
+      }}
+    />
+  );
+};
+
+const validateKycId = (idType, idNumber, t) => {
+  const norm = String(idType || '').toUpperCase();
+  const num = String(idNumber || '').trim();
+  if (norm.includes('AADHAAR') || norm.includes('AADHAR')) {
+    const digits = num.replace(/\D/g, '');
+    if (digits.length !== 12) {
+      return t('Aadhaar must be exactly 12 digits', 'आधार संख्या में ठीक 12 अंक होने चाहिए', 'আধার নম্বরটি ঠিক ১২ টি সংখ্যার হতে হবে');
+    }
+    return null;
+  }
+  if (norm.includes('PAN')) {
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(num)) {
+      return t('Enter a valid 10-character PAN (e.g. ABCDE1234F)', 'मान्य 10-अक्षरों का पैन दर्ज करें (उदा. ABCDE1234F)', 'বৈধ ১০ অক্ষরের প্যান লিখুন (উদাঃ ABCDE1234F)');
+    }
+    return null;
+  }
+  if (norm.includes('VOTER')) {
+    if (!/^[A-Z0-9]{10}$/.test(num)) {
+      return t('Voter ID must be 10 letters and digits', 'वोटर आईडी 10 अक्षर और अंक होना चाहिए', 'ভোটার আইডি ১০টি অক্ষর ও সংখ্যা হতে হবে');
+    }
+    return null;
+  }
+  if (norm.includes('DRIV')) {
+    if (!/^[A-Z0-9]{1,16}$/.test(num)) {
+      return t('Driving licence must be up to 16 letters and digits', 'ड्राइविंग लाइसेंस 16 अक्षरों और अंकों तक होना चाहिए', 'ড্রাইভিং লাইসেন্স সর্বোচ্চ ১৬টি অক্ষর ও সংখ্যা হতে হবে');
+    }
+    return null;
+  }
+  if (!num || num.length > 20) {
+    return t('Document ID must be up to 20 characters', 'दस्तावेज़ आईडी 20 वर्णों तक होनी चाहिए', 'ডকুমেন্ট আইডি সর্বোচ্চ ২০ অক্ষরের হতে হবে');
+  }
+  return null;
+};
+
 export default function App() {
   const [osDark, setOsDark] = React.useState(systemDark);
   React.useEffect(() => {
@@ -1203,8 +1352,8 @@ export default function App() {
       setSetupError(t('Administrator name is required.', 'प्रशासक का नाम आवश्यक है।', 'প্রশাসকের নাম প্রয়োজন।'));
       return;
     }
-    if (!setupPhone || !/^\d{10}$/.test(setupPhone.trim())) {
-      setSetupError(t('Please enter a valid 10-digit phone number.', 'कृपया 10 अंकों का मान्य फ़ोन नंबर दर्ज करें।', 'অনুগ্রহ করে একটি বৈধ ১০ সংখ্যার ফোন নম্বর লিখুন।'));
+    if (!setupPhone || !/^[6-9]\d{9}$/.test(setupPhone.trim())) {
+      setSetupError(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'));
       return;
     }
     if (!adminSetupEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminSetupEmail.trim())) {
@@ -3616,8 +3765,34 @@ export default function App() {
 
   const handleSendOtp = async () => {
     if (!loginPhone) {
-      showToast('Please enter a phone number', 'error');
+      const err = t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন');
+      setLoginErrorMessage(err);
+      showToast(err, 'error');
       return;
+    }
+    const isAllDigits = /^\d+$/.test(loginPhone);
+    if (isAllDigits) {
+      if (loginPhone.length !== 10 || !/^[6-9]/.test(loginPhone)) {
+        const err = t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন');
+        setLoginErrorMessage(err);
+        showToast(err, 'error');
+        return;
+      }
+    } else {
+      const looksLikeEmail = /[a-z@]/i.test(loginPhone);
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginPhone);
+      if (looksLikeEmail && !isEmail) {
+        const err = t('Enter a valid email address', 'मान्य ईमेल पता दर्ज करें', 'সঠিক ইমেল ঠিকানা লিখুন');
+        setLoginErrorMessage(err);
+        showToast(err, 'error');
+        return;
+      }
+      if (!isEmail) {
+        const err = t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন');
+        setLoginErrorMessage(err);
+        showToast(err, 'error');
+        return;
+      }
     }
     try {
       const res = await fetch(`${API_BASE}/auth/send-otp`, {
@@ -3643,8 +3818,8 @@ export default function App() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!loginOtp) {
-      showToast('Please enter the OTP', 'error');
+    if (!loginOtp || loginOtp.length !== 6 || !/^\d{6}$/.test(loginOtp)) {
+      showToast(t('Enter a valid 6-digit OTP', 'मान्य 6-अंकीय ओटीपी दर्ज करें', 'সঠিক ৬ অঙ্কের ওটিপি লিখুন'), 'error');
       return;
     }
     try {
@@ -4228,6 +4403,10 @@ export default function App() {
   // Customer registration
   const handleCustomerRegister = async () => {
     if (!regName || !loginPhone || !regEmail) { showToast('Name, phone and email required', 'error'); return; }
+    if (!loginPhone || loginPhone.length !== 10 || !/^[6-9]\d{9}$/.test(loginPhone)) {
+      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
+      return;
+    }
     if (!noCableProvider && !signupCablePartnerId) {
       showToast('Please select your cable operator or choose Not Listed', 'error');
       return;
@@ -4350,15 +4529,22 @@ export default function App() {
     if (!regName || !loginPhone || !regEmail || !regShopName || !regAddress || !regRegion) {
       showToast('All fields required (including email)', 'error'); return;
     }
+    if (!loginPhone || loginPhone.length !== 10 || !/^[6-9]\d{9}$/.test(loginPhone)) {
+      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
+      return;
+    }
     const isAadhaar = String(regKycType2 || '').toUpperCase().includes('AADHAAR') || String(regKycType2 || '').toUpperCase().includes('AADHAR');
     if (isAadhaar) {
       if (aadhaarDigits.length !== 12) {
-        showToast(t('Aadhaar must be exactly 12 digits', 'आधार संख्या में ठीक 12 अंक होने चाहिए', 'আধার নম্বরটি ঠিক ১২ টি সংখ্যার হতে হবে'), 'error');
+        showToast(t('Aadhaar must be exactly 12 digits', 'आधार संख्या में ठीक 12 अंक होने चाहिए', 'আধার নম্বরটি ठीक ১২ টি সংখ্যার হতে হবে'), 'error');
         return;
       }
-    } else if (!regKycNumber2) {
-      showToast(t('Document ID number is required', 'दस्तावेज़ नंबर आवश्यक है', 'ডকুমেন্ট নম্বর আবশ্যক'), 'error');
-      return;
+    } else {
+      const kycErr = validateKycId(regKycType2, regKycNumber2, t);
+      if (kycErr) {
+        showToast(kycErr, 'error');
+        return;
+      }
     }
     if (!regDocPhoto) {
       showToast(t('Document photo upload is required', 'दस्तावेज़ फोटो अपलोड आवश्यक है', 'ডকুমেন্ট ফটো আপলোড আবশ্যক'), 'error');
@@ -4506,7 +4692,10 @@ export default function App() {
   };
 
   const handleVerifyCurrentPhoneOtp = async () => {
-    if (!changePhoneCurrentOtp) { showToast('Enter OTP', 'error'); return; }
+    if (!changePhoneCurrentOtp || changePhoneCurrentOtp.length !== 6 || !/^\d{6}$/.test(changePhoneCurrentOtp)) {
+      showToast(t('Enter a valid 6-digit OTP', 'मान्य 6-अंकीय ओटीपी दर्ज करें', 'সঠিক ৬ অঙ্কের ওটিপি লিখুন'), 'error');
+      return;
+    }
     try {
       const res = await adminFetch(`/admin/customers/${selectedCustomerDetail.id}/phone-change/verify-current`, {
         method: 'POST',
@@ -4524,7 +4713,10 @@ export default function App() {
   };
 
   const handleSendNewPhoneOtp = async () => {
-    if (!changePhoneNewNumber) { showToast('Enter new phone', 'error'); return; }
+    if (!changePhoneNewNumber || changePhoneNewNumber.length !== 10 || !/^[6-9]\d{9}$/.test(changePhoneNewNumber)) {
+      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
+      return;
+    }
     try {
       const res = await adminFetch(`/admin/customers/${selectedCustomerDetail.id}/phone-change/send-new`, {
         method: 'POST',
@@ -4541,7 +4733,14 @@ export default function App() {
   };
 
   const handleVerifyNewPhoneOtp = async () => {
-    if (!changePhoneNewOtp || !changePhoneNewNumber) { showToast('Enter OTP and new phone', 'error'); return; }
+    if (!changePhoneNewNumber || changePhoneNewNumber.length !== 10 || !/^[6-9]\d{9}$/.test(changePhoneNewNumber)) {
+      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
+      return;
+    }
+    if (!changePhoneNewOtp || changePhoneNewOtp.length !== 6 || !/^\d{6}$/.test(changePhoneNewOtp)) {
+      showToast(t('Enter a valid 6-digit OTP', 'मान्य 6-अंकीय ओटीपी दर्ज करें', 'সঠিক ৬ অঙ্কের ওটিপি লিখুন'), 'error');
+      return;
+    }
     try {
       const res = await adminFetch(`/admin/customers/${selectedCustomerDetail.id}/phone-change/verify-new`, {
         method: 'POST',
@@ -4638,6 +4837,10 @@ export default function App() {
       showToast('Name and phone are required', 'error');
       return;
     }
+    if (!createStkPhone || createStkPhone.length !== 10 || !/^[6-9]\d{9}$/.test(createStkPhone)) {
+      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
+      return;
+    }
     const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
     if (createStkOpen && (createStkOpen === '24:00' || !timeRegex.test(createStkOpen))) {
       showToast(t('Opening time must be between 00:00 and 23:59', 'खुलने का समय 00:00 और 23:59 के बीच होना चाहिए', 'খোলার সময় 00:00 থেকে 23:59 এর মধ্যে হতে হবে'), 'error');
@@ -4678,6 +4881,17 @@ export default function App() {
 
   const handleEditStockist = async () => {
     if (!selectedStockistDetail) return;
+    if (editStkPhone && (editStkPhone.length !== 10 || !/^[6-9]\d{9}$/.test(editStkPhone))) {
+      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
+      return;
+    }
+    if (editStkIdNumber) {
+      const kycErr = validateKycId(editStkIdType, editStkIdNumber, t);
+      if (kycErr) {
+        showToast(kycErr, 'error');
+        return;
+      }
+    }
     const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
     if (!editStkName || editStkName.trim().length < 2) {
       showToast(t('Stockist name must be at least 2 characters', 'स्टॉकिस्ट का नाम कम से कम 2 अक्षरों का होना चाहिए', 'স্টকিস্টের নাম কমপক্ষে 2 অক্ষরের হতে হবে'), 'error');
@@ -6335,8 +6549,8 @@ export default function App() {
 
   const handleVerifyPickupPIN = async (orderId) => {
     const pin = enteredPins[orderId];
-    if (!pin) {
-      showToast('Please enter the 4-digit verification PIN', 'error');
+    if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      showToast(t('Please enter the 4-digit verification PIN', 'कृपया 4-अंकीय सत्यापन पिन दर्ज करें', 'অনুগ্রহ করে ৪ অঙ্কের যাচাইকরণ পিন লিখুন'), 'error');
       return;
     }
     try {
@@ -6517,7 +6731,8 @@ export default function App() {
                 placeholder={t('Enter 10-digit mobile or email', '10-अंकीय मोबाइल या ईमेल दर्ज करें', '10-অঙ্কের মোবাইল বা ইমেল লিখুন')} 
                 className="text-input" 
                 value={loginPhone}
-                onChange={e => { setLoginPhone(e.target.value.trim().toLowerCase()); setLoginErrorMessage(''); }}
+                autoComplete="username"
+                onChange={e => { const raw = e.target.value; const looksLikeEmail = /[a-z@]/i.test(raw); setLoginPhone(looksLikeEmail ? raw.trim().toLowerCase().slice(0, 254) : normalizeFrontendPhone(raw)); setLoginErrorMessage(''); }}
               />
             </div>
             {loginErrorMessage && (
@@ -6642,14 +6857,11 @@ export default function App() {
             </div>
             <div className="input-group">
               <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'फोन নম্বর (১০ সংখ্যা)')}</label>
-              <input 
-                type="tel" 
-                inputMode="numeric" 
-                maxLength={10} 
+              <PhoneInput 
                 className="text-input" 
                 placeholder="e.g. 9876543210" 
                 value={loginPhone} 
-                onChange={e => { setLoginPhone(normalizeFrontendPhone(e.target.value)); setLoginErrorMessage(''); }} 
+                onChange={e => { setLoginPhone(e.target.value); setLoginErrorMessage(''); }} 
               />
             </div>
             <div className="input-group">
@@ -6851,14 +7063,11 @@ export default function App() {
             </div>
             <div className="input-group">
               <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'फोन নম্বর (১০ সংখ্যা)')}</label>
-              <input 
-                type="tel" 
-                inputMode="numeric" 
-                maxLength={10} 
+              <PhoneInput 
                 className="text-input" 
                 placeholder="e.g. 9876543210" 
                 value={loginPhone} 
-                onChange={e => { setLoginPhone(normalizeFrontendPhone(e.target.value)); setLoginErrorMessage(''); }} 
+                onChange={e => { setLoginPhone(e.target.value); setLoginErrorMessage(''); }} 
               />
             </div>
             {isCustomerApp && renderCustomerSignupBtn()}
@@ -6918,7 +7127,15 @@ export default function App() {
                   placeholder={t('Enter ID Number', 'आईडी दर्ज करें', 'আইডি লিখুন')} 
                   className="text-input" 
                   value={regKycNumber2} 
-                  onChange={e => setRegKycNumber2(e.target.value)} 
+                  maxLength={regKycType2 === 'PAN' || regKycType2 === 'Voter ID' ? 10 : regKycType2 === 'Driving Licence' ? 16 : 20} 
+                  onChange={e => {
+                    const norm = String(regKycType2 || '').toUpperCase();
+                    let val = e.target.value.trim();
+                    if (norm.includes('PAN') || norm.includes('VOTER') || norm.includes('DRIV')) {
+                      val = val.toUpperCase();
+                    }
+                    setRegKycNumber2(val);
+                  }} 
                 />
               </div>
             )}
@@ -6969,13 +7186,12 @@ export default function App() {
             </div>
             <div className="input-group">
               <label className="input-label">Enter 6-Digit OTP</label>
-              <input 
-                type="text" 
+              <OtpInput 
+                length={6}
                 placeholder={demoOtpMode ? "Enter 123456" : "Enter 6-digit OTP"} 
-                maxLength={6}
                 className="text-input" 
                 value={loginOtp}
-                onChange={e => setLoginOtp(e.target.value.replace(/\D/g,''))}
+                onChange={e => setLoginOtp(e.target.value)}
                 style={{ textAlign: 'center', letterSpacing: '0.5em', fontSize: '1.2rem', fontWeight: 'bold' }}
               />
             </div>
@@ -7003,6 +7219,10 @@ export default function App() {
   const handlePartnerSubmit = async () => {
     if (!partnerName.trim() || !partnerPhone.trim()) {
       showToast('Name and phone are required', 'error');
+      return;
+    }
+    if (!partnerPhone || partnerPhone.length !== 10 || !/^[6-9]\d{9}$/.test(partnerPhone)) {
+      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
       return;
     }
     if (!partnerServiceTypes || partnerServiceTypes.length === 0) {
@@ -7245,8 +7465,8 @@ export default function App() {
   };
 
   const handlePartnerSendOtp = async () => {
-    if (!partnerLoginPhone) {
-      showToast('Please enter phone number', 'error');
+    if (!partnerLoginPhone || partnerLoginPhone.length !== 10 || !/^[6-9]\d{9}$/.test(partnerLoginPhone)) {
+      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
       return;
     }
     try {
@@ -7268,8 +7488,8 @@ export default function App() {
   };
 
   const handlePartnerVerifyOtp = async () => {
-    if (!partnerLoginOtp) {
-      showToast('Please enter OTP', 'error');
+    if (!partnerLoginOtp || partnerLoginOtp.length !== 6 || !/^\d{6}$/.test(partnerLoginOtp)) {
+      showToast(t('Enter a valid 6-digit OTP', 'मान्य 6-अंकीय ओटीपी दर्ज करें', 'সঠিক ৬ অঙ্কের ওটিপি লিখুন'), 'error');
       return;
     }
     try {
@@ -7697,6 +7917,11 @@ export default function App() {
     const tAccount = pProfPayoutBankAccount ? pProfPayoutBankAccount.trim() : '';
     const tName = pProfPayoutAccountName ? pProfPayoutAccountName.trim() : '';
 
+    if (pProfContactPhone && (pProfContactPhone.length !== 10 || !/^[6-9]\d{9}$/.test(pProfContactPhone))) {
+      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
+      return;
+    }
+
     if (tDisplayName.length > 100) {
       showToast(t("Display name cannot exceed 100 characters.", "प्रदर्शन नाम 100 वर्णों से अधिक नहीं हो सकता।", "প্রদর্শন নাম 100 অক্ষরের বেশি হতে পারে না।"), 'error');
       return;
@@ -7705,7 +7930,7 @@ export default function App() {
       showToast(t("Address cannot exceed 300 characters.", "पता 300 वर्णों से अधिक नहीं हो सकता।", "ঠিকানা 300 অক্ষরের বেশি হতে পারে না।"), 'error');
       return;
     }
-    if (tUpi && !/^[\w.-]+@[\w.-]+$/.test(tUpi)) {
+    if (tUpi && !/^[a-z0-9.\-_]{2,}@[a-z]{2,}$/i.test(tUpi)) {
       showToast(t("Enter a valid UPI ID like name@bank.", "name@bank की तरह एक मान्य UPI ID दर्ज करें।", "name@bank এর মত একটি বৈধ UPI ID লিখুন।"), 'error');
       return;
     }
@@ -7895,7 +8120,7 @@ export default function App() {
               <>
                 <div className="input-group">
                   <label className="input-label">Registered Phone Number</label>
-                  <input type="tel" inputMode="numeric" maxLength={10} placeholder="10-digit mobile number" className="text-input" value={partnerLoginPhone} onChange={e => setPartnerLoginPhone(normalizeFrontendPhone(e.target.value))} />
+                  <PhoneInput placeholder="10-digit mobile number" className="text-input" value={partnerLoginPhone} onChange={e => setPartnerLoginPhone(e.target.value)} />
                 </div>
                 <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} onClick={handlePartnerSendOtp}>
                   Send One-Time Password
@@ -7913,7 +8138,7 @@ export default function App() {
               <>
                 <div className="input-group">
                   <label className="input-label">{demoOtpMode ? 'Enter OTP (Demo: 123456)' : 'Enter OTP'}</label>
-                  <input type="tel" inputMode="numeric" maxLength={6} placeholder="6-digit OTP" className="text-input" value={partnerLoginOtp} onChange={e => setPartnerLoginOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+                  <OtpInput length={6} placeholder="6-digit OTP" className="text-input" value={partnerLoginOtp} onChange={e => setPartnerLoginOtp(e.target.value)} />
                 </div>
                 <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} onClick={handlePartnerVerifyOtp}>
                   Verify
@@ -8490,7 +8715,7 @@ export default function App() {
                     </div>
                     <div className="input-group">
                       <label className="input-label">{t('Contact Phone', 'संपर्क फोन', 'যোগাযোগ ফোন')}</label>
-                      <input type="tel" inputMode="numeric" maxLength={10} className="text-input" value={pProfContactPhone} onChange={e => setPProfContactPhone(normalizeFrontendPhone(e.target.value))} />
+                      <PhoneInput className="text-input" value={pProfContactPhone} onChange={e => setPProfContactPhone(e.target.value)} />
                       {pProfContactPhone !== initialContactPhone && (
                         <div style={{ marginTop: '0.35rem', fontSize: '0.7rem' }}>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -8512,15 +8737,15 @@ export default function App() {
                     <h5 style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.85rem' }}>{t('Payout Details', 'पेआउट विवरण', 'পেআউট বিবরণ')}</h5>
                     <div className="input-group">
                       <label className="input-label">{t('UPI ID', 'यूपीआई आईडी', 'ইউপিআই আইডি')}</label>
-                      <input type="text" className="text-input" placeholder="name@bank" value={pProfPayoutUpiId} onChange={e => setPProfPayoutUpiId(e.target.value)} />
+                      <input type="text" className="text-input" placeholder="name@bank" maxLength={50} value={pProfPayoutUpiId} onChange={e => setPProfPayoutUpiId(e.target.value.toLowerCase().replace(/[^a-z0-9.\-_@]/g, ''))} />
                     </div>
                     <div className="input-group">
                       <label className="input-label">{t('Bank Account Number', 'बैंक खाता संख्या', 'ব্যাংক অ্যাকাউন্ট নম্বর')}</label>
-                      <input type="text" className="text-input" value={pProfPayoutBankAccount} onChange={e => setPProfPayoutBankAccount(e.target.value)} maxLength={18} inputMode="numeric" />
+                      <input type="text" className="text-input" value={pProfPayoutBankAccount} onChange={e => setPProfPayoutBankAccount(e.target.value.replace(/\D/g, '').slice(0, 18))} maxLength={18} inputMode="numeric" />
                     </div>
                     <div className="input-group">
                       <label className="input-label">{t('IFSC Code', 'आईएफएससी कोड', 'আইএফএসসি কোড')}</label>
-                      <input type="text" className="text-input" value={pProfPayoutBankIfsc} onChange={e => setPProfPayoutBankIfsc(e.target.value.toUpperCase())} />
+                      <input type="text" className="text-input" maxLength={11} value={pProfPayoutBankIfsc} onChange={e => setPProfPayoutBankIfsc(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11))} />
                     </div>
                     <div className="input-group">
                       <label className="input-label">{t('Account Holder Name', 'खाता धारक का नाम', 'অ্যাকাউন্ট হোল্ডারের নাম')}</label>
@@ -9220,8 +9445,8 @@ export default function App() {
               value={partnerContactName}
               onChange={(e) => setPartnerContactName(e.target.value)}
             />
-            <input 
-              type="tel" inputMode="numeric" maxLength={10} placeholder="Phone Number" className="text-input" value={partnerPhone} onChange={(e) => setPartnerPhone(normalizeFrontendPhone(e.target.value))}
+            <PhoneInput 
+              placeholder="Phone Number" className="text-input" value={partnerPhone} onChange={(e) => setPartnerPhone(e.target.value)} 
             />
             <input 
               type="email" 
@@ -11074,6 +11299,7 @@ export default function App() {
                             type="text"
                             className="text-input"
                             disabled
+                            readOnly
                             value={currentUser.phone}
                             style={{ opacity: 0.7, cursor: 'not-allowed' }}
                           />
@@ -12107,14 +12333,13 @@ export default function App() {
                                   )}
                                   {o.status === 'READY' && (
                                     <div style={{ display: 'flex', gap: '0.25rem', width: '100%' }}>
-                                      <input 
-                                        type="text" 
+                                      <OtpInput 
+                                        length={4}
                                         placeholder={o.fulfillment_type === 'DELIVERY' ? t("Enter Delivery PIN", "डिलीवरी पिन दर्ज करें", "ডেলিভারি পিন লিখুন") : t("Enter PIN", "पिन दर्ज करें", "পিন লিখুন")} 
-                                        title={t("Enter customer's PIN to confirm handoff", "हैंडऑफ की पुष्टि के लिए ग्राहक का पिन दर्ज करें", "হ্যান্ডঅফ নিশ্চিত করতে গ্রাহকের পিন লিখুন")}
-                                        maxLength="4"
-                                        style={{ flex: 1, padding: '0.25rem', fontSize: '0.7rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', textAlign: 'center' }}
-                                        value={enteredPins[o.id] || ''}
-                                        onChange={e => setEnteredPins(prev => ({ ...prev, [o.id]: e.target.value }))}
+                                        title={t("Enter customer's PIN to confirm handoff", "हैंडऑफ की पुष्टि के लिए ग्राहक का PIN दर्ज करें", "হ্যান্ডঅফ নিশ্চিত করতে গ্রাহকের পিন লিখুন")} 
+                                        style={{ flex: 1, padding: '0.25rem', fontSize: '0.7rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', textAlign: 'center' }} 
+                                        value={enteredPins[o.id] || ''} 
+                                        onChange={e => setEnteredPins(prev => ({ ...prev, [o.id]: e.target.value }))} 
                                       />
                                       <button 
                                         className="btn btn-accent" 
@@ -12989,18 +13214,18 @@ export default function App() {
                         
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('UPI ID (Primary)', 'UPI आईडी (प्राथमिक)', 'UPI আইডি (প্রাথমিক)')}</label>
-                          <input type="text" placeholder="name@bank" className="text-input" value={stockistProfile.payout_upi_id || ''} onChange={e => setStockistProfile({...stockistProfile, payout_upi_id: e.target.value})} />
+                          <input type="text" placeholder="name@bank" maxLength={50} className="text-input" value={stockistProfile.payout_upi_id || ''} onChange={e => setStockistProfile({...stockistProfile, payout_upi_id: e.target.value.toLowerCase().replace(/[^a-z0-9.\-_@]/g, '')})} />
                         </div>
 
                         <div style={{ borderTop: '1px dashed var(--border-color)', margin: '0.5rem 0' }}></div>
 
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('Bank Account Number (Fallback)', 'बैंक खाता संख्या (वैकल्पिक)', 'ব্যাংক অ্যাকাউন্ট নম্বর (বিকল্প)')}</label>
-                          <input type="text" className="text-input" value={stockistProfile.payout_bank_account || ''} onChange={e => setStockistProfile({...stockistProfile, payout_bank_account: e.target.value})} />
+                          <input type="text" className="text-input" maxLength={18} inputMode="numeric" value={stockistProfile.payout_bank_account || ''} onChange={e => setStockistProfile({...stockistProfile, payout_bank_account: e.target.value.replace(/\D/g, '').slice(0, 18)})} />
                         </div>
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('IFSC Code', 'IFSC कोड', 'IFSC কোড')}</label>
-                          <input type="text" placeholder="ABCD0123456" className="text-input" value={stockistProfile.payout_ifsc || ''} onChange={e => setStockistProfile({...stockistProfile, payout_ifsc: e.target.value.toUpperCase()})} />
+                          <input type="text" placeholder="ABCD0123456" maxLength={11} className="text-input" value={stockistProfile.payout_ifsc || ''} onChange={e => setStockistProfile({...stockistProfile, payout_ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11)})} />
                         </div>
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('Account Holder Name', 'खाताधारक का नाम', 'অ্যাকাউন্ট হোল্ডারের নাম')}</label>
@@ -13159,6 +13384,26 @@ export default function App() {
                         disabled={savingSettings}
                         style={{ width: '100%', minHeight: '40px', marginTop: '0.5rem' }}
                         onClick={async () => {
+                          const tUpi = (stockistProfile.payout_upi_id || '').trim();
+                          const tAccount = (stockistProfile.payout_bank_account || '').trim();
+                          const tIfsc = (stockistProfile.payout_ifsc || '').trim().toUpperCase();
+                          const tPhone = (stockistProfile.contact_phone || '').trim();
+                          if (tPhone && (tPhone.length !== 10 || !/^[6-9]\d{9}$/.test(tPhone))) {
+                            showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
+                            return;
+                          }
+                          if (tUpi && !/^[a-z0-9.\-_]{2,}@[a-z]{2,}$/i.test(tUpi)) {
+                            showToast(t("Enter a valid UPI ID like name@bank.", "name@bank की तरह एक मान्य UPI ID दर्ज करें।", "name@bank এর মত একটি বৈধ UPI ID লিখুন।"), 'error');
+                            return;
+                          }
+                          if (tIfsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(tIfsc)) {
+                            showToast(t("IFSC must be 11 characters, like SBIN0000300.", "IFSC 11 वर्णों का होना चाहिए, जैसे SBIN0000300।", "IFSC অবশ্যই 11 অক্ষরের হতে হবে, যেমন SBIN0000300।"), 'error');
+                            return;
+                          }
+                          if (tAccount && !/^\d{9,18}$/.test(tAccount)) {
+                            showToast(t("Bank account number must be 9 to 18 digits.", "बैंक खाता संख्या 9 से 18 अंकों की होनी चाहिए।", "ব্যাঙ্ক অ্যাকাউন্ট নম্বর 9 থেকে 18 অঙ্কের হতে হবে।"), 'error');
+                            return;
+                          }
                           setSavingSettings(true);
                           try {
                             const res = await fetch(`${API_BASE}/stockist/profile`, {
@@ -16751,9 +16996,8 @@ export default function App() {
                 <label className="input-label" style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-main)' }}>
                   {t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'ফোন নম্বর (১০ সংখ্যা)')}
                 </label>
-                <input
-                  type="tel" inputMode="numeric" maxLength={10} className="text-input" placeholder="9876543210" value={setupPhone} onChange={e => setSetupPhone(normalizeFrontendPhone(e.target.value))}
-
+                <PhoneInput
+                  className="text-input" placeholder="9876543210" value={setupPhone} onChange={e => setSetupPhone(e.target.value)}
                   style={{ width: '100%', padding: '0.65rem 0.85rem', fontSize: '0.85rem' }}
                 />
               </div>
@@ -17655,7 +17899,7 @@ export default function App() {
                 
                 <div className="input-group" style={{ marginTop: '0.5rem' }}>
                   <label className="input-label">{demoOtpMode ? t('OTP (Demo: 123456)', 'ओटीपी (डेमो: 123456)', 'ওটিপি (ডেমো: 123456)') : t('OTP', 'ओटीपी', 'ওটিপি')}</label>
-                  <input type="tel" inputMode="numeric" maxLength={6} className="text-input" placeholder="123456" value={changePhoneCurrentOtp} onChange={e => setChangePhoneCurrentOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+                  <OtpInput length={6} className="text-input" placeholder="123456" value={changePhoneCurrentOtp} onChange={e => setChangePhoneCurrentOtp(e.target.value)} />
                 </div>
                 
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
@@ -17667,13 +17911,13 @@ export default function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', margin: '1rem 0' }}>
                 <div className="input-group">
                   <label className="input-label">{t('New Phone Number', 'नया फ़ोन नंबर', 'নতুন ফোন নম্বর')}</label>
-                  <input type="tel" inputMode="numeric" maxLength={10} className="text-input" placeholder="9830099999" value={changePhoneNewNumber} onChange={e => setChangePhoneNewNumber(normalizeFrontendPhone(e.target.value))} />
+                  <PhoneInput className="text-input" placeholder="9830099999" value={changePhoneNewNumber} onChange={e => setChangePhoneNewNumber(e.target.value)} />
                 </div>
                 <button className="btn btn-secondary" onClick={handleSendNewPhoneOtp} style={{ alignSelf: 'flex-start' }}>{t('Send OTP', 'ओटीपी भेजें', 'ওটিপি পাঠান')}</button>
                 
                 <div className="input-group" style={{ marginTop: '0.5rem' }}>
                   <label className="input-label">{demoOtpMode ? t('New Phone OTP (Demo: 123456)', 'नए फ़ोन का ओटीपी (डेमो: 123456)', 'নতুন ফোনের ওটিপি (ডেমো: 123456)') : t('New Phone OTP', 'नए फ़ोन का ओटीपी', 'নতুন ফোনের ওটিপি')}</label>
-                  <input type="tel" inputMode="numeric" maxLength={6} className="text-input" placeholder="123456" value={changePhoneNewOtp} onChange={e => setChangePhoneNewOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+                  <OtpInput length={6} className="text-input" placeholder="123456" value={changePhoneNewOtp} onChange={e => setChangePhoneNewOtp(e.target.value)} />
                 </div>
                 
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
@@ -17867,7 +18111,7 @@ export default function App() {
               </div>
               <div className="input-group">
                 <label className="input-label">Phone Number (Login user)</label>
-                <input type="tel" inputMode="numeric" maxLength={10} className="text-input" placeholder="9830011223" value={createStkPhone} onChange={e => setCreateStkPhone(normalizeFrontendPhone(e.target.value))} />
+                <PhoneInput className="text-input" placeholder="9830011223" value={createStkPhone} onChange={e => setCreateStkPhone(e.target.value)} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div className="input-group">
@@ -18048,8 +18292,8 @@ export default function App() {
                   </div>
                   <div className="input-group">
                     <label className="input-label">{t('Phone', 'फ़ोन', 'ফোন')}</label>
-                    <input type="tel" inputMode="numeric" maxLength={10} className="text-input" value={editStkPhone} onChange={e => setEditStkPhone(normalizeFrontendPhone(e.target.value))} />
-                    {editStkPhone.length > 0 && editStkPhone.length !== 10 && (
+                    <PhoneInput className="text-input" value={editStkPhone} onChange={e => setEditStkPhone(e.target.value)} />
+                    {editStkPhone.length > 0 && (editStkPhone.length !== 10 || !/^[6-9]/.test(editStkPhone)) && (
                       <span style={{ fontSize: '0.75rem', color: 'var(--danger-text)', marginTop: '0.2rem' }}>
                         {t('Enter exactly 10 digits', 'बिल्कुल 10 अंक दर्ज करें', 'ঠিক ১০টি সংখ্যা লিখুন')}
                       </span>
@@ -18066,7 +18310,25 @@ export default function App() {
                   </div>
                   <div className="input-group">
                     <label className="input-label">{t('ID Number', 'पहचान संख्या', 'পরিচয় নম্বর')}</label>
-                    <input type="text" className="text-input" value={editStkIdNumber} onChange={e => setEditStkIdNumber(e.target.value)} />
+                    <input 
+                      type="text" 
+                      className="text-input" 
+                      value={editStkIdNumber} 
+                      maxLength={editStkIdType === 'AADHAAR' ? 12 : (editStkIdType === 'PAN' || editStkIdType === 'VOTER_ID') ? 10 : editStkIdType === 'DRIVING_LICENSE' ? 16 : 20} 
+                      onChange={e => {
+                        let val = e.target.value.trim();
+                        if (editStkIdType === 'AADHAAR') {
+                          val = val.replace(/\D/g, '').slice(0, 12);
+                        } else if (editStkIdType === 'PAN' || editStkIdType === 'VOTER_ID' || editStkIdType === 'DRIVING_LICENSE') {
+                          val = val.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                          if (editStkIdType === 'PAN' || editStkIdType === 'VOTER_ID') val = val.slice(0, 10);
+                          if (editStkIdType === 'DRIVING_LICENSE') val = val.slice(0, 16);
+                        } else {
+                          val = val.slice(0, 20);
+                        }
+                        setEditStkIdNumber(val);
+                      }} 
+                    />
                   </div>
                 </div>
               </div>
@@ -18868,12 +19130,12 @@ export default function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 <div className="input-group">
                   <label className="input-label">Current Phone</label>
-                  <input type="text" className="text-input" disabled value={currentUser?.phone || ''} style={{ opacity: 0.7 }} />
+                  <input type="text" className="text-input" disabled readOnly value={currentUser?.phone || ''} style={{ opacity: 0.7 }} />
                 </div>
                 <div className="input-group">
                   <label className="input-label">New 10-Digit Phone Number</label>
-                  <input
-                    type="tel" inputMode="numeric" maxLength={10} className="text-input" placeholder="Enter new phone number" value={selfServiceNewPhone} onChange={e => setSelfServiceNewPhone(normalizeFrontendPhone(e.target.value))}
+                  <PhoneInput
+                    className="text-input" placeholder="Enter new phone number" value={selfServiceNewPhone} onChange={e => setSelfServiceNewPhone(e.target.value)}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
@@ -18882,6 +19144,10 @@ export default function App() {
                     className="btn btn-primary"
                     disabled={selfServiceLoading || !selfServiceNewPhone}
                     onClick={async () => {
+                      if (!selfServiceNewPhone || selfServiceNewPhone.length !== 10 || !/^[6-9]\d{9}$/.test(selfServiceNewPhone)) {
+                        showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
+                        return;
+                      }
                       setSelfServiceLoading(true);
                       try {
                         const res = await fetch(`${API_BASE}/customer/phone-change/request`, {
@@ -18913,13 +19179,23 @@ export default function App() {
                   6-digit codes were sent to <strong>{currentUser?.phone}</strong> and <strong>{selfServiceNewPhone}</strong>.{demoOtpMode && ' (Mock OTP: 123456)'}
                 </p>
                 <div className="input-group">
-                  <label className="input-label">Verification Code (OTP)</label>
-                  <input
-                    type="text"
+                  <label className="input-label">Verification Code (Current Phone OTP)</label>
+                  <OtpInput
+                    length={6}
                     className="text-input"
                     placeholder="123456"
                     value={selfServiceOtp}
                     onChange={e => setSelfServiceOtp(e.target.value)}
+                  />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Verification Code (New Phone OTP)</label>
+                  <OtpInput
+                    length={6}
+                    className="text-input"
+                    placeholder="123456"
+                    value={selfServiceNewOtp}
+                    onChange={e => setSelfServiceNewOtp(e.target.value)}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
@@ -18928,6 +19204,10 @@ export default function App() {
                     className="btn btn-accent"
                     disabled={selfServiceLoading || !selfServiceOtp || !selfServiceNewOtp}
                     onClick={async () => {
+                      if (!selfServiceOtp || selfServiceOtp.length !== 6 || !/^\d{6}$/.test(selfServiceOtp) || !selfServiceNewOtp || selfServiceNewOtp.length !== 6 || !/^\d{6}$/.test(selfServiceNewOtp)) {
+                        showToast(t('Enter a valid 6-digit OTP', 'मान्य 6-अंकीय ओटीपी दर्ज करें', 'সঠিক ৬ অঙ্কের ওটিপি লিখুন'), 'error');
+                        return;
+                      }
                       setSelfServiceLoading(true);
                       try {
                         const res = await fetch(`${API_BASE}/customer/phone-change/verify`, {
