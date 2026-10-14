@@ -16301,7 +16301,7 @@ export default function App() {
                   </div>
 
                   <div className="table-scroll glass-card" style={{ padding: '1rem' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                    <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                           <th style={{ padding: '0.75rem 0.5rem' }}>Name</th>
@@ -16445,7 +16445,7 @@ export default function App() {
                         <thead>
                           <tr>
                             <th>Wholesaler ID</th>
-                            <th>Name</th>
+                            <th style={{ minWidth: '160px' }}>Name</th>
                             <th>Region Area</th>
                             <th>Assigned Stockists</th>
                             <th>Status</th>

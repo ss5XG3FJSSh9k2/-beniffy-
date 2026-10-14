@@ -1494,8 +1494,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .table-scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
 .admin-table th:first-child, .admin-table td:first-child { min-width: 140px; }
-.admin-table td { overflow-wrap: anywhere; }
-.admin-table th:last-child, .admin-table td:last-child { background-color: var(--bg-surface); z-index: 1; }
+.admin-table td { overflow-wrap: break-word; }
 .admin-table.stockist-table th, .admin-table.stockist-table td { padding: 0.75rem 0.5rem; }
 
 input { color: var(--text-main); }
