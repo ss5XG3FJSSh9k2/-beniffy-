@@ -2185,7 +2185,7 @@ export default function App() {
       return <span className="badge badge-success" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>ACTIVE</span>;
     }
     if (st === 'DEACTIVATED' || isActive === false) {
-      return <span className="badge badge-secondary" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>INACTIVE</span>;
+      return <span className="badge badge-inactive" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>INACTIVE</span>;
     }
     if (st === 'PENDING') {
       return <span className="badge badge-warning" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>PENDING</span>;
@@ -2196,7 +2196,7 @@ export default function App() {
     if (st === 'BLACKLISTED') {
       return <span className="badge badge-danger" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>BLACKLISTED</span>;
     }
-    return <span className="badge badge-secondary" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>{st || 'INACTIVE'}</span>;
+    return <span className="badge badge-inactive" style={{ whiteSpace: 'nowrap', minWidth: '52px', display: 'inline-flex', justifyContent: 'center' }}>{st || 'INACTIVE'}</span>;
   };
 
   // Multi-lingual & Simulation States
@@ -2614,6 +2614,11 @@ export default function App() {
 
   const [vendors, setVendors] = useState([]);
   const [showInactiveVendors, setShowInactiveVendors] = useState(false);
+  const showInactiveVendorsRef = useRef(showInactiveVendors);
+  useEffect(() => {
+    showInactiveVendorsRef.current = showInactiveVendors;
+  }, [showInactiveVendors]);
+  const [stockistAvailableVendors, setStockistAvailableVendors] = useState([]);
   const [selectedVendorId, setSelectedVendorId] = useState('');
 
   const fetchAdminPayouts = async () => {
@@ -2683,7 +2688,7 @@ export default function App() {
     }
   };
 
-  const fetchAdminVendors = async (includeInactive = showInactiveVendors) => {
+  const fetchAdminVendors = async (includeInactive = showInactiveVendorsRef.current) => {
     try {
       const res = await adminFetch(`/admin/vendors${includeInactive ? '?include_inactive=true' : ''}`);
       if (res.ok) {
@@ -2697,7 +2702,7 @@ export default function App() {
   useEffect(() => {
     // Only once an admin is signed in; before that the call just returns 401.
     if (activeRole === "admin" && currentUser?.role === 'ADMIN') {
-      fetchAdminVendors(showInactiveVendors);
+      fetchAdminVendors(showInactiveVendorsRef.current);
     }
   }, [showInactiveVendors, activeRole, currentUser?.role]);
 
@@ -3008,10 +3013,10 @@ export default function App() {
         const ratesRes = await fetch(`${API_BASE}/admin/commission-rates`);
         const anomaliesRes = await fetch(`${API_BASE}/admin/anomalies`);
         const redRes = await fetch(`${API_BASE}/admin/redemptions`);
-        const vendorsRes = await adminFetch('/admin/vendors');
         const prodRes = await fetch(`${API_BASE}/products`);
         
         // Fetch new configurations/feedback logs
+        // Note: /admin/vendors fetch and setVendors removed: wholesalers loaded only by fetchAdminVendors
         const scrRes = await fetch(`${API_BASE}/admin/stockist-commission-rates`);
         const pecRes = await fetch(`${API_BASE}/admin/points-earn-config`);
         const fbRes = await fetch(`${API_BASE}/admin/feedback`);
@@ -3022,7 +3027,6 @@ export default function App() {
         const rates = await ratesRes.json().catch(() => ({}));
         const anomalies = await anomaliesRes.json().catch(() => ({}));
         const redemptions = await redRes.json().catch(() => ({}));
-        const vendorsList = await vendorsRes.json().catch(() => ({}));
         const productsList = await prodRes.json().catch(() => ({}));
         
         const stockistCommissionRates = await scrRes.json().catch(() => ({}));
@@ -3080,7 +3084,6 @@ export default function App() {
         setCommissionRates(rates);
         setAnomalies(prev => asList(anomaliesRes, anomalies, prev || []));
         setPendingRedemptions(prev => asList(redRes, redemptions, prev || []));
-        setVendors(prev => asList(vendorsRes, vendorsList, prev || []));
         setPartnerLeads(prev => asList(leadsRes, leads, prev || []));
         
         setAllStockistCommissionRates(stockistCommissionRates);
@@ -3107,7 +3110,7 @@ export default function App() {
           anomaly_logs: asList(anomaliesRes, anomalies, prev?.anomaly_logs || []),
           points_ledger: asList(redRes, redemptions, prev?.points_ledger || []),
           products: asList(prodRes, productsList, prev?.products || []),
-          vendors: asList(vendorsRes, vendorsList, prev?.vendors || []),
+          vendors: prev?.vendors || [],
           stockist_commission_rates: asList(scrRes, stockistCommissionRates, prev?.stockist_commission_rates || []),
           points_earn_config: asList(pecRes, pointsEarnConfigs, prev?.points_earn_config || []),
           feedback_reports: asList(fbRes, feedbackReports, prev?.feedback_reports || []),
@@ -5222,7 +5225,7 @@ export default function App() {
       // Save all available vendors list too for selection
       const allVRes = await fetch(`${API_BASE}/stockists/${pData.id}/available-vendors`);
       const allVData = await allVRes.json().catch(() => ({}));
-      setVendors(prev => asList(allVRes, allVData, prev || []));
+      setStockistAvailableVendors(prev => asList(allVRes, allVData, prev || []));
 
       // Fetch stockist stats
       const statsRes = await fetch(`${API_BASE}/stockists/${pData.id}/stats`);
@@ -5791,7 +5794,7 @@ export default function App() {
           if (res.ok) {
             showToast(`Wholesaler ${name} registered!`);
             setAdminNewVendor('');
-            fetchAdminVendors();
+            fetchAdminVendors(showInactiveVendorsRef.current);
             fetchDbState();
           } else {
             showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
@@ -5846,7 +5849,7 @@ export default function App() {
               } else {
                 showToast(t(`${vendor.name} deactivated.`, `${vendor.name} निष्क्रिय।`, `${vendor.name} নিষ্ক্রিয় করা হয়েছে।`));
               }
-              fetchAdminVendors();
+              fetchAdminVendors(showInactiveVendorsRef.current);
               fetchDbState();
             } else {
               showToast(data.message || data.error || `Request failed (${res.status})`, 'error');
@@ -5881,7 +5884,7 @@ export default function App() {
               const res = await adminFetch(`/admin/vendors/${vendor.id}`, { method: 'DELETE' });
               if (res.ok) {
                 showToast(t('Wholesaler deleted', 'थोक व्यापारी हटा दिया गया', 'পাইকারি বিক্রেতা মুছে ফেলা হয়েছে'));
-                fetchAdminVendors();
+                fetchAdminVendors(showInactiveVendorsRef.current);
               } else {
                 const data = await res.json().catch(() => ({}));
                 showToast(data.message || data.error || 'Delete failed', 'error');
@@ -5929,7 +5932,7 @@ export default function App() {
           const data = await res.json().catch(() => ({}));
           if (res.ok) {
             showToast(t(`Wholesaler ${vendor.name} reactivated.`, `थोक व्यापारी ${vendor.name} पुनः सक्रिय हो गया।`, `পাইকারি বিক্রেতা ${vendor.name} পুনরায় সক্রিয় করা হয়েছে।`));
-            fetchAdminVendors();
+            fetchAdminVendors(showInactiveVendorsRef.current);
             fetchDbState();
           } else {
             showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
@@ -5972,7 +5975,7 @@ export default function App() {
         if (res.ok) {
           showToast('Wholesaler updated successfully.');
           setEditingVendor(null);
-          fetchAdminVendors();
+          fetchAdminVendors(showInactiveVendorsRef.current);
           fetchDbState();
         } else {
           showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
@@ -13240,7 +13243,7 @@ export default function App() {
                         
                         <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           <div><span style={{color: 'var(--text-muted)'}}>{t('Region','क्षेत्र','অঞ্চল')}: </span><strong>{regions.find(r => r.id === stockistProfile.region_id)?.name || stockistProfile.region_id}</strong></div>
-                          <div><span style={{color: 'var(--text-muted)'}}>{t('Wholesaler','थोक विक्रेता','পাইকারি বিক্রেতা')}: </span><strong>{vendors.find(v => v.id === stockistProfile.vendor_id)?.name || stockistProfile.vendor_id}</strong></div>
+                          <div><span style={{color: 'var(--text-muted)'}}>{t('Wholesaler','थोक विक्रेता','পাইকারি বিক্রেতা')}: </span><strong>{(stockistAvailableVendors.length > 0 ? stockistAvailableVendors : stockistApprovedVendors).find(v => v.id === stockistProfile.vendor_id)?.name || stockistProfile.vendor_id}</strong></div>
                           <div><span style={{color: 'var(--text-muted)'}}>{t('Current Commission Rate','वर्तमान कमीशन दर','বর্তমান কমিশন হার')}: </span><strong>{stockistProfile.commission_rate != null ? `${stockistProfile.commission_rate}%` : '-'}</strong></div>
                           <div><span style={{color: 'var(--text-muted)'}}>{t('Minimum Order','न्यूनतम ऑर्डर','সর্বনিম্ন অর্ডার')}: </span><strong>₹{stockistProfile.min_order_value}</strong></div>
                           <p style={{ fontSize: '0.65rem', color: 'var(--accent)', marginTop: '0.2rem', marginBottom: 0 }}>
@@ -13645,7 +13648,7 @@ export default function App() {
                 {showAdvanced && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.35rem', paddingLeft: '0.25rem' }}>
 
-                    <button className={`admin-nav-item ${adminTab === 'vendors' ? 'active' : ''}`} onClick={() => goToAdminTab('vendors')}>
+                    <button className={`admin-nav-item ${adminTab === 'vendors' ? 'active' : ''}`} onClick={() => goToAdminTab('vendors', () => fetchAdminVendors(showInactiveVendorsRef.current))}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <ShoppingBag size={16} /> Wholesalers ({vendors.length})
                         {isUnread('vendors') && <span className="unread-dot" aria-label="Unread wholesalers" />}
@@ -14175,7 +14178,7 @@ export default function App() {
                             <td>{c.total_orders || 0}</td>
                             <td>{c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A'}</td>
                             <td>
-                              <span className={`badge ${c.is_active !== false ? 'badge-success' : 'badge-secondary'}`}>
+                              <span className={`badge ${c.is_active !== false ? 'badge-success' : 'badge-inactive'}`}>
                                 {c.is_active !== false ? 'Active' : 'Inactive'}
                               </span>
                             </td>
@@ -14797,7 +14800,7 @@ export default function App() {
                                 <td>{p.region_count ?? [...new Set((p.regions || []).map(r => r.region_id))].length}</td>
                                 <td>{(p.packages || []).length}</td>
                                 <td>{p.bound_customers_count || 0}</td>
-                                <td><span className={`badge ${p.is_active !== false ? 'badge-success' : 'badge-secondary'}`}>{p.is_active !== false ? 'Active' : 'Inactive'}</span></td>
+                                <td><span className={`badge ${p.is_active !== false ? 'badge-success' : 'badge-inactive'}`}>{p.is_active !== false ? 'Active' : 'Inactive'}</span></td>
                                 <td style={{ fontSize: '0.7rem' }}>{p.onboarded_at ? new Date(p.onboarded_at).toLocaleDateString() : 'N/A'}</td>
                                 <td style={{ whiteSpace: 'nowrap' }}>
                                   <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'nowrap' }}>
@@ -16478,7 +16481,7 @@ export default function App() {
                               </td>
                               <td>
                                 {v.is_active === false ? (
-                                  <span className="badge" style={{ background: 'var(--text-muted)', color: 'var(--text-main)' }}>INACTIVE</span>
+                                  <span className="badge badge-inactive">INACTIVE</span>
                                 ) : (
                                   <span className="badge badge-success">ACTIVE</span>
                                 )}
@@ -16595,7 +16598,7 @@ export default function App() {
                               {untilText}
                               {isExpired && <span className="badge badge-secondary" style={{ marginLeft: '0.35rem' }}>Expired</span>}
                             </td>
-                            <td>{r.is_active ? <span className="badge badge-primary">Active</span> : <span className="badge badge-secondary">Inactive</span>}</td>
+                            <td>{r.is_active ? <span className="badge badge-primary">Active</span> : <span className="badge badge-inactive">Inactive</span>}</td>
                             <td>
                               <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => { 
                                 setEditingGenericReward(r); 
@@ -18824,7 +18827,7 @@ export default function App() {
                 {(selectedPartnerDetail.regions || []).map(r => (
                   <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}>
                     <span>{(regions.find(reg => reg.id === r.region_id) || adminRegionsList.find(reg => reg.id === r.region_id) || {}).name || r.region_id || '-'} ({getServiceTypeLabel(r.service_type)})</span>
-                    <span className={`badge ${r.is_active ? 'badge-success' : 'badge-secondary'}`}>{r.is_active ? 'Active' : 'Inactive'}</span>
+                    <span className={`badge ${r.is_active ? 'badge-success' : 'badge-inactive'}`}>{r.is_active ? 'Active' : 'Inactive'}</span>
                   </div>
                 ))}
               </div>
@@ -18837,7 +18840,7 @@ export default function App() {
                       <strong>{pkg.package_name}</strong> ({getServiceTypeLabel(pkg.service_type)}) <br/>
                       <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Face: ₹{pkg.face_value_rupees} | Cost: {pkg.point_cost} pts</span>
                     </div>
-                    <span className={`badge ${pkg.is_active ? 'badge-success' : 'badge-secondary'}`}>{pkg.is_active ? 'Active' : 'Inactive'}</span>
+                    <span className={`badge ${pkg.is_active ? 'badge-success' : 'badge-inactive'}`}>{pkg.is_active ? 'Active' : 'Inactive'}</span>
                   </div>
                 ))}
               </div>

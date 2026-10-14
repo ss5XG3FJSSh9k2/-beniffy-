@@ -637,6 +637,11 @@ select option:disabled {
 .badge-success { background: var(--success-glow); color: var(--success-text); }
 .badge-warning { background: var(--warning-glow); color: var(--warning-text); }
 .badge-danger { background: var(--danger-bg); color: var(--danger-text); }
+.badge-inactive {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border: 1px solid var(--danger);
+}
 
 .text-input:-webkit-autofill, .text-input:-webkit-autofill:hover, .text-input:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--text-main);
