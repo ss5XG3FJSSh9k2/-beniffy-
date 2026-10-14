@@ -3805,7 +3805,7 @@ export default function App() {
       if (res.ok) {
         setOtpSent(true);
         setLoginErrorMessage('');
-        showToast(demoOtpMode ? 'OTP sent successfully! Enter 123456' : t('OTP sent to ' + loginPhone, loginPhone + ' ?? OTP ???? ???', loginPhone + ' ???? OTP ?????? ???'));
+        showToast(demoOtpMode ? t('OTP sent successfully! Enter 123456', 'OTP सफलतापूर्वक भेजा गया! 123456 दर्ज करें', 'OTP সফলভাবে পাঠানো হয়েছে! 123456 লিখুন') : t('OTP sent to ' + loginPhone, `${loginPhone} पर OTP भेजा गया`, `${loginPhone} নম্বরে OTP পাঠানো হয়েছে`));
       } else {
         setOtpSent(false);
         const errText = data.message || data.error || 'Failed to send OTP';
@@ -7181,15 +7181,16 @@ export default function App() {
           </>
         ) : (
           <>
-            <div className="input-group" style={{ background: 'var(--primary-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.75rem', textAlign: 'center' }}>
-              OTP sent to <strong>{loginPhone}</strong>.{demoOtpMode && <span> Demo code: <strong>123456</strong></span>}
+            <div style={{ background: 'var(--primary-glow)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-main)', marginBottom: '1rem' }}>
+              {t('OTP sent to', 'OTP भेजा गया', 'OTP পাঠানো হয়েছে')} <strong>{loginPhone}</strong>
+              {demoOtpMode && <span> · {t('Demo code', 'डेमो कोड', 'ডেমো কোড')}: <strong>123456</strong></span>}
             </div>
             <div className="input-group">
-              <label className="input-label">Enter 6-Digit OTP</label>
+              <label className="input-label">{t('Enter 6-Digit OTP', '6-अंकीय OTP दर्ज करें', '৬ অঙ্কের OTP লিখুন')}</label>
               <OtpInput 
                 length={6}
-                placeholder={demoOtpMode ? "Enter 123456" : "Enter 6-digit OTP"} 
-                className="text-input" 
+                placeholder={t('Enter 6-digit OTP', '6-अंकीय OTP दर्ज करें', '৬ অঙ্কের OTP লিখুন')} 
+                className="text-input otp-input" 
                 value={loginOtp}
                 onChange={e => setLoginOtp(e.target.value)}
                 style={{ textAlign: 'center', letterSpacing: '0.5em', fontSize: '1.2rem', fontWeight: 'bold' }}
@@ -7478,7 +7479,7 @@ export default function App() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setPartnerOtpSent(true);
-        showToast(demoOtpMode ? 'OTP sent (demo code 123456)' : t('OTP sent to ' + partnerLoginPhone, partnerLoginPhone + ' ?? OTP ???? ???', partnerLoginPhone + ' ???? OTP ?????? ???'), 'info');
+        showToast(demoOtpMode ? t('OTP sent (demo code 123456)', 'OTP भेजा गया (डेमो कोड 123456)', 'OTP পাঠানো হয়েছে (ডেমো কোড 123456)') : t('OTP sent to ' + partnerLoginPhone, `${partnerLoginPhone} पर OTP भेजा गया`, `${partnerLoginPhone} নম্বরে OTP পাঠানো হয়েছে`), 'info');
       } else {
         showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
       }
@@ -8138,7 +8139,7 @@ export default function App() {
               <>
                 <div className="input-group">
                   <label className="input-label">{demoOtpMode ? 'Enter OTP (Demo: 123456)' : 'Enter OTP'}</label>
-                  <OtpInput length={6} placeholder="6-digit OTP" className="text-input" value={partnerLoginOtp} onChange={e => setPartnerLoginOtp(e.target.value)} />
+                  <OtpInput length={6} placeholder={t('Enter 6-digit OTP', '6-अंकीय OTP दर्ज करें', '৬ অঙ্কের OTP লিখুন')} className="text-input otp-input" value={partnerLoginOtp} onChange={e => setPartnerLoginOtp(e.target.value)} />
                 </div>
                 <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} onClick={handlePartnerVerifyOtp}>
                   Verify
@@ -17899,7 +17900,7 @@ export default function App() {
                 
                 <div className="input-group" style={{ marginTop: '0.5rem' }}>
                   <label className="input-label">{demoOtpMode ? t('OTP (Demo: 123456)', 'ओटीपी (डेमो: 123456)', 'ওটিপি (ডেমো: 123456)') : t('OTP', 'ओटीपी', 'ওটিপি')}</label>
-                  <OtpInput length={6} className="text-input" placeholder="123456" value={changePhoneCurrentOtp} onChange={e => setChangePhoneCurrentOtp(e.target.value)} />
+                  <OtpInput length={6} className="text-input otp-input" placeholder={t('Enter 6-digit OTP', '6-अंकीय OTP दर्ज करें', '৬ অঙ্কের OTP লিখুন')} value={changePhoneCurrentOtp} onChange={e => setChangePhoneCurrentOtp(e.target.value)} />
                 </div>
                 
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
@@ -17917,7 +17918,7 @@ export default function App() {
                 
                 <div className="input-group" style={{ marginTop: '0.5rem' }}>
                   <label className="input-label">{demoOtpMode ? t('New Phone OTP (Demo: 123456)', 'नए फ़ोन का ओटीपी (डेमो: 123456)', 'নতুন ফোনের ওটিপি (ডেমো: 123456)') : t('New Phone OTP', 'नए फ़ोन का ओटीपी', 'নতুন ফোনের ওটিপি')}</label>
-                  <OtpInput length={6} className="text-input" placeholder="123456" value={changePhoneNewOtp} onChange={e => setChangePhoneNewOtp(e.target.value)} />
+                  <OtpInput length={6} className="text-input otp-input" placeholder={t('Enter 6-digit OTP', '6-अंकीय OTP दर्ज करें', '৬ অঙ্কের OTP লিখুন')} value={changePhoneNewOtp} onChange={e => setChangePhoneNewOtp(e.target.value)} />
                 </div>
                 
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
@@ -19175,15 +19176,16 @@ export default function App() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  6-digit codes were sent to <strong>{currentUser?.phone}</strong> and <strong>{selfServiceNewPhone}</strong>.{demoOtpMode && ' (Mock OTP: 123456)'}
-                </p>
+                <div style={{ background: 'var(--primary-glow)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-main)' }}>
+                  {t('OTP sent to', 'OTP भेजा गया', 'OTP পাঠানো হয়েছে')} <strong>{currentUser?.phone}</strong> {t('and', 'और', 'এবং')} <strong>{selfServiceNewPhone}</strong>
+                  {demoOtpMode && <span> · {t('Demo code', 'डेमो कोड', 'ডেমো কোড')}: <strong>123456</strong></span>}
+                </div>
                 <div className="input-group">
                   <label className="input-label">Verification Code (Current Phone OTP)</label>
                   <OtpInput
                     length={6}
-                    className="text-input"
-                    placeholder="123456"
+                    className="text-input otp-input"
+                    placeholder={t('Enter 6-digit OTP', '6-अंकीय OTP दर्ज करें', '৬ অঙ্কের OTP লিখুন')}
                     value={selfServiceOtp}
                     onChange={e => setSelfServiceOtp(e.target.value)}
                   />
@@ -19192,8 +19194,8 @@ export default function App() {
                   <label className="input-label">Verification Code (New Phone OTP)</label>
                   <OtpInput
                     length={6}
-                    className="text-input"
-                    placeholder="123456"
+                    className="text-input otp-input"
+                    placeholder={t('Enter 6-digit OTP', '6-अंकीय OTP दर्ज करें', '৬ অঙ্কের OTP লিখুন')}
                     value={selfServiceNewOtp}
                     onChange={e => setSelfServiceNewOtp(e.target.value)}
                   />

@@ -497,6 +497,8 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 0 0 2px var(--primary-glow);
 }
 
+.otp-input::placeholder { letter-spacing: normal; font-size: 0.9rem; font-weight: 500; }
+
 select.text-input {
   color-scheme: light;
 }
