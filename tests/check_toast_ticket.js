@@ -298,6 +298,264 @@ async function runToastChecks() {
     await context.close();
   }
 
+  // --- 4. Placement & Sideways Scrollbar checks ---
+  console.log('\n--- [CHECK 4] Toast Placement and Sideways Scrollbar ---');
+  {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 }
+    });
+    const page = await context.newPage();
+
+    // 4.1 Stockist App: submit "Open a Shop" registration
+    console.log('  Testing: Stockist App -> Submit "Open a Shop" registration...');
+    await fetch('http://localhost:3001/api/admin/clear-rate-limits', { method: 'POST' }).catch(() => {});
+    await page.goto('http://localhost:5173/?role=stockist');
+    await page.waitForTimeout(500);
+
+    const splash = page.locator('.cs-splash');
+    if (await splash.count() > 0) {
+      await splash.waitFor({ state: 'hidden', timeout: 4000 }).catch(() => {});
+    }
+
+    const openShopBtn = page.locator('button:has-text("Open a Shop"), button:has-text("दुकान खोलें"), button:has-text("দোকান খুলুন")').first();
+    await openShopBtn.click();
+    await page.waitForTimeout(400);
+
+    const phone = '98' + Math.floor(10000000 + Math.random() * 90000000);
+    await page.locator('input[placeholder*="9876543210"]').fill(phone);
+    await page.locator('input[placeholder*="Rafiq Ahmed"]').fill('Subir Das');
+    await page.locator('input[placeholder*="example@beniffy.com"]').fill(`subir_${Date.now()}@example.com`);
+    await page.locator('input[placeholder*="Ahmed General Store"]').fill('Das Supermart');
+    await page.locator('.input-group select').first().selectOption({ index: 1 });
+    await page.locator('input[placeholder="1234-5678-9012"]').fill('123456789012');
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'doc.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('fake image content')
+    });
+    await page.locator('input[placeholder*="Shop 5"]').fill('Shop 10, Garia Station Road');
+
+    const submitBtn = page.locator('button:has-text("Submit for KYC Review")');
+    await page.waitForFunction(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Submit for KYC Review'));
+      return btn && !btn.disabled;
+    }, { timeout: 5000 });
+    await submitBtn.click();
+
+    const stockistToast = page.locator('.toast-msg');
+    await stockistToast.waitFor({ state: 'visible', timeout: 6000 });
+    await page.waitForTimeout(300);
+
+    const stockistMetrics = await page.evaluate(() => {
+      const t = document.querySelector('.toast-msg');
+      const p = document.querySelector('.phone-mockup');
+      const ps = document.querySelector('.phone-screen');
+      if (!t || !p) return null;
+      const tr = t.getBoundingClientRect();
+      const pr = p.getBoundingClientRect();
+      const tCenter = tr.left + tr.width / 2;
+      const pCenter = pr.left + pr.width / 2;
+      return {
+        centerDiff: Math.abs(tCenter - pCenter),
+        inside: tr.left >= pr.left - 1 && tr.right <= pr.right + 1,
+        hasSidewaysScroll: ps ? ps.scrollWidth > ps.clientWidth : false
+      };
+    });
+
+    console.log(`    - Stockist center within 2px (diff: ${stockistMetrics?.centerDiff}px): ${stockistMetrics && stockistMetrics.centerDiff <= 2 ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Stockist toast fully inside phone box: ${stockistMetrics && stockistMetrics.inside ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Stockist phone has no sideways scroll: ${stockistMetrics && !stockistMetrics.hasSidewaysScroll ? 'PASS' : 'FAIL'}`);
+    if (!stockistMetrics || stockistMetrics.centerDiff > 2 || !stockistMetrics.inside || stockistMetrics.hasSidewaysScroll) {
+      allPassed = false;
+    }
+
+    const stockistShot = 'toast_stockist_placement.png';
+    await page.screenshot({ path: `tests/${stockistShot}` });
+    fs.copyFileSync(`tests/${stockistShot}`, path.join(ARTIFACTS_DIR, stockistShot));
+    console.log(`    - Captured screenshot: ${stockistShot}`);
+
+    // Dismiss toast
+    if ((await stockistToast.count()) > 0) {
+      const dismiss = stockistToast.locator('.toast-dismiss-btn');
+      if (await dismiss.count() > 0) await dismiss.click();
+      await stockistToast.waitFor({ state: 'detached', timeout: 2000 }).catch(() => {});
+    }
+
+    // 4.2 Customer App
+    console.log('  Testing: Customer App toast placement...');
+    await page.goto('http://localhost:5173/?role=customer');
+    await page.waitForTimeout(500);
+    const csSplash = page.locator('.cs-splash');
+    if (await csSplash.count() > 0) {
+      await csSplash.waitFor({ state: 'hidden', timeout: 4000 }).catch(() => {});
+    }
+
+    await page.evaluate(() => window.__fastnet_show_toast('Welcome to Beniffy Customer App!', 'info'));
+    const customerToast = page.locator('.toast-msg');
+    await customerToast.waitFor({ state: 'visible', timeout: 4000 });
+    await page.waitForTimeout(300);
+
+    const customerMetrics = await page.evaluate(() => {
+      const t = document.querySelector('.toast-msg');
+      const p = document.querySelector('.phone-mockup');
+      const ps = document.querySelector('.phone-screen');
+      if (!t || !p) return null;
+      const tr = t.getBoundingClientRect();
+      const pr = p.getBoundingClientRect();
+      const tCenter = tr.left + tr.width / 2;
+      const pCenter = pr.left + pr.width / 2;
+      return {
+        centerDiff: Math.abs(tCenter - pCenter),
+        inside: tr.left >= pr.left - 1 && tr.right <= pr.right + 1,
+        hasSidewaysScroll: ps ? ps.scrollWidth > ps.clientWidth : false
+      };
+    });
+
+    console.log(`    - Customer center within 2px (diff: ${customerMetrics?.centerDiff}px): ${customerMetrics && customerMetrics.centerDiff <= 2 ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Customer toast fully inside phone box: ${customerMetrics && customerMetrics.inside ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Customer phone has no sideways scroll: ${customerMetrics && !customerMetrics.hasSidewaysScroll ? 'PASS' : 'FAIL'}`);
+    if (!customerMetrics || customerMetrics.centerDiff > 2 || !customerMetrics.inside || customerMetrics.hasSidewaysScroll) {
+      allPassed = false;
+    }
+
+    const customerShot = 'toast_customer_placement.png';
+    await page.screenshot({ path: `tests/${customerShot}` });
+    fs.copyFileSync(`tests/${customerShot}`, path.join(ARTIFACTS_DIR, customerShot));
+    console.log(`    - Captured screenshot: ${customerShot}`);
+
+    if ((await customerToast.count()) > 0) {
+      const dismiss = customerToast.locator('.toast-dismiss-btn');
+      if (await dismiss.count() > 0) await dismiss.click();
+      await customerToast.waitFor({ state: 'detached', timeout: 2000 }).catch(() => {});
+    }
+
+    // 4.3 Partner App
+    console.log('  Testing: Partner App toast placement...');
+    await page.goto('http://localhost:5173/?role=partner');
+    await page.waitForTimeout(500);
+
+    await page.evaluate(() => window.__fastnet_show_toast('Partner portal ready for orders.', 'info'));
+    const partnerToast = page.locator('.toast-msg');
+    await partnerToast.waitFor({ state: 'visible', timeout: 4000 });
+    await page.waitForTimeout(300);
+
+    const partnerMetrics = await page.evaluate(() => {
+      const t = document.querySelector('.toast-msg');
+      const p = document.querySelector('.phone-mockup');
+      const ps = document.querySelector('.phone-screen');
+      if (!t || !p) return null;
+      const tr = t.getBoundingClientRect();
+      const pr = p.getBoundingClientRect();
+      const tCenter = tr.left + tr.width / 2;
+      const pCenter = pr.left + pr.width / 2;
+      return {
+        centerDiff: Math.abs(tCenter - pCenter),
+        inside: tr.left >= pr.left - 1 && tr.right <= pr.right + 1,
+        hasSidewaysScroll: ps ? ps.scrollWidth > ps.clientWidth : false
+      };
+    });
+
+    console.log(`    - Partner center within 2px (diff: ${partnerMetrics?.centerDiff}px): ${partnerMetrics && partnerMetrics.centerDiff <= 2 ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Partner toast fully inside phone box: ${partnerMetrics && partnerMetrics.inside ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Partner phone has no sideways scroll: ${partnerMetrics && !partnerMetrics.hasSidewaysScroll ? 'PASS' : 'FAIL'}`);
+    if (!partnerMetrics || partnerMetrics.centerDiff > 2 || !partnerMetrics.inside || partnerMetrics.hasSidewaysScroll) {
+      allPassed = false;
+    }
+
+    const partnerShot = 'toast_partner_placement.png';
+    await page.screenshot({ path: `tests/${partnerShot}` });
+    fs.copyFileSync(`tests/${partnerShot}`, path.join(ARTIFACTS_DIR, partnerShot));
+    console.log(`    - Captured screenshot: ${partnerShot}`);
+
+    if ((await partnerToast.count()) > 0) {
+      const dismiss = partnerToast.locator('.toast-dismiss-btn');
+      if (await dismiss.count() > 0) await dismiss.click();
+      await partnerToast.waitFor({ state: 'detached', timeout: 2000 }).catch(() => {});
+    }
+
+    // 4.4 Long message (~120 chars) wrapping onto 2-3 lines
+    console.log('  Testing: Long message (~120 chars) wrapping onto multiple lines...');
+    const longMsg = 'This is an important notification regarding your Beniffy order status. Please review all details and confirmation carefully.';
+    await page.evaluate((m) => window.__fastnet_show_toast(m, 'info'), longMsg);
+
+    const longToast = page.locator('.toast-msg');
+    await longToast.waitFor({ state: 'visible', timeout: 4000 });
+    await page.waitForTimeout(300);
+
+    const longMetrics = await page.evaluate(() => {
+      const t = document.querySelector('.toast-msg');
+      const p = document.querySelector('.phone-mockup');
+      const ps = document.querySelector('.phone-screen');
+      if (!t || !p) return null;
+      const tr = t.getBoundingClientRect();
+      const pr = p.getBoundingClientRect();
+      const tCenter = tr.left + tr.width / 2;
+      const pCenter = pr.left + pr.width / 2;
+      return {
+        centerDiff: Math.abs(tCenter - pCenter),
+        inside: tr.left >= pr.left - 1 && tr.right <= pr.right + 1,
+        hasSidewaysScroll: ps ? ps.scrollWidth > ps.clientWidth : false,
+        height: tr.height,
+        isMultiLine: tr.height >= 50
+      };
+    });
+
+    console.log(`    - Long toast center within 2px (diff: ${longMetrics?.centerDiff}px): ${longMetrics && longMetrics.centerDiff <= 2 ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Long toast fully inside phone box: ${longMetrics && longMetrics.inside ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Long toast has no sideways scroll: ${longMetrics && !longMetrics.hasSidewaysScroll ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Long toast height wraps to multiple lines (height: ${longMetrics?.height}px): ${longMetrics && longMetrics.isMultiLine ? 'PASS' : 'FAIL'}`);
+    if (!longMetrics || longMetrics.centerDiff > 2 || !longMetrics.inside || longMetrics.hasSidewaysScroll || !longMetrics.isMultiLine) {
+      allPassed = false;
+    }
+
+    const longShot = 'toast_long_wrapped.png';
+    await page.screenshot({ path: `tests/${longShot}` });
+    fs.copyFileSync(`tests/${longShot}`, path.join(ARTIFACTS_DIR, longShot));
+    console.log(`    - Captured screenshot: ${longShot}`);
+
+    if ((await longToast.count()) > 0) {
+      const dismiss = longToast.locator('.toast-dismiss-btn');
+      if (await dismiss.count() > 0) await dismiss.click();
+      await longToast.waitFor({ state: 'detached', timeout: 2000 }).catch(() => {});
+    }
+
+    // 4.5 Admin App: toast sits bottom-right of page
+    console.log('  Testing: Admin App -> toast sits bottom-right of the page...');
+    await page.goto('http://localhost:5173/?role=admin');
+    await page.waitForTimeout(500);
+
+    await page.evaluate(() => window.__fastnet_show_toast('Admin action executed successfully.', 'success'));
+    const adminToast = page.locator('.toast-msg');
+    await adminToast.waitFor({ state: 'visible', timeout: 4000 });
+    await page.waitForTimeout(300);
+
+    const adminMetrics = await page.evaluate(() => {
+      const t = document.querySelector('.toast-msg');
+      if (!t) return null;
+      const tr = t.getBoundingClientRect();
+      const rightDist = window.innerWidth - tr.right;
+      const bottomDist = window.innerHeight - tr.bottom;
+      return {
+        rightDist,
+        bottomDist,
+        isBottomRight: rightDist >= 10 && rightDist <= 35 && bottomDist >= 10 && bottomDist <= 35
+      };
+    });
+
+    console.log(`    - Admin toast distance from right: ${adminMetrics?.rightDist}px, bottom: ${adminMetrics?.bottomDist}px`);
+    console.log(`    - Admin toast placed bottom-right: ${adminMetrics && adminMetrics.isBottomRight ? 'PASS' : 'FAIL'}`);
+    if (!adminMetrics || !adminMetrics.isBottomRight) {
+      allPassed = false;
+    }
+
+    const adminShot = 'toast_admin_placement.png';
+    await page.screenshot({ path: `tests/${adminShot}` });
+    fs.copyFileSync(`tests/${adminShot}`, path.join(ARTIFACTS_DIR, adminShot));
+    console.log(`    - Captured screenshot: ${adminShot}`);
+
+    await context.close();
+  }
+
   await browser.close();
 
   console.log('\n========================================================================');

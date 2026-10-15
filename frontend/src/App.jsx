@@ -392,6 +392,71 @@ const ModalLayer = ({ children }) => {
   return inPhone && phoneEl ? createPortal(children, phoneEl) : children;
 };
 
+const ToastView = ({ toast, onDismiss, onPointerEnter, onPointerLeave, toastPaused, signedIn = true, t }) => {
+  const { inPhone } = React.useContext(ModalLayerContext);
+  if (!toast) return null;
+
+  return (
+    <div 
+      className={`toast-msg ${inPhone ? 'toast-msg--phone' : ''} ${!signedIn ? 'toast-msg--signed-out' : ''}`}
+      role={toast.type === 'error' ? 'alert' : 'status'}
+      aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      style={{
+        pointerEvents: 'auto',
+        borderLeft: `4px solid ${toast.type === 'error' ? 'var(--danger)' : 'var(--accent)'}`,
+        zIndex: 'var(--z-toast)',
+        background: 'var(--bg-surface)',
+        paddingLeft: '44px',
+        minHeight: '44px',
+        boxSizing: 'border-box'
+      }}>
+      <button
+        type="button"
+        className="toast-dismiss-btn"
+        aria-label={t ? t('Dismiss', 'बंद करें', 'বন্ধ করুন') : 'Dismiss'}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (onDismiss) onDismiss();
+        }}
+      >
+        <X size={14} />
+      </button>
+      {toast.type === 'error' ? (
+        <AlertCircle size={16} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+      ) : toast.type === 'info' ? (
+        <Info size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+      ) : (
+        <CheckCircle2 size={16} style={{ color: 'var(--success-text)', flexShrink: 0 }} />
+      )}
+      <span role={toast.type === 'error' ? 'alert' : undefined}>{toast.message}</span>
+      {toast.action && (
+        <button 
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            toast.action.onClick(); 
+            if (onDismiss) onDismiss(); 
+          }} 
+          className="btn-accent" 
+          style={{ marginLeft: '10px', padding: '4px 8px', fontSize: '0.8em', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          {toast.action.label}
+        </button>
+      )}
+      <div
+        key={toast.id}
+        className="toast-countdown-bar"
+        style={{
+          backgroundColor: toast.type === 'error' ? 'var(--danger)' : 'var(--primary)',
+          animationDuration: `${toast.duration}ms`,
+          animationPlayState: toastPaused ? 'paused' : undefined
+        }}
+      />
+    </div>
+  );
+};
+
 const TimePicker = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState({ hour12: '12', minute: '00', meridiem: 'AM' });
@@ -2817,18 +2882,28 @@ export default function App() {
     ].slice(0, 50));
   };
 
-  const showToast = (message, type = 'success', action = null) => {
+  const toastKeepOnScreenChangeIdRef = useRef(0);
+  const showToast = (message, type = 'success', action = null, options = null) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     const id = ++toastIdRef.current;
     const duration = action ? 6000 : (type === 'error' ? 5000 : 4000);
     toastStartTimeRef.current = Date.now();
     toastRemainingRef.current = duration;
+    if (options?.keepOnScreenChange) {
+      toastKeepOnScreenChangeIdRef.current = id;
+    } else {
+      toastKeepOnScreenChangeIdRef.current = 0;
+    }
     setToastPaused(false);
     setToast({ id, message, type, action, duration });
     toastTimerRef.current = setTimeout(() => {
       setToast(null);
     }, duration);
   };
+
+  if (typeof window !== 'undefined' && (import.meta.env?.DEV || window.__FASTNET_TEST__)) {
+    window.__fastnet_show_toast = showToast;
+  }
 
   const handleToastPointerEnter = (e) => {
     if (e.pointerType !== 'mouse') return;
@@ -2855,10 +2930,32 @@ export default function App() {
     }
   };
 
+  const prevToastScreenRef = useRef(null);
   useEffect(() => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = null;
-    setToast(null);
+    if (!prevToastScreenRef.current) {
+      prevToastScreenRef.current = { activeRole, customerAppTab, stockistActiveTab, partnerAppTab, adminTab, showCustomerSignup, showStockistSignup };
+      return;
+    }
+    const prev = prevToastScreenRef.current;
+    const changed = prev.activeRole !== activeRole ||
+      prev.customerAppTab !== customerAppTab ||
+      prev.stockistActiveTab !== stockistActiveTab ||
+      prev.partnerAppTab !== partnerAppTab ||
+      prev.adminTab !== adminTab ||
+      prev.showCustomerSignup !== showCustomerSignup ||
+      prev.showStockistSignup !== showStockistSignup;
+
+    prevToastScreenRef.current = { activeRole, customerAppTab, stockistActiveTab, partnerAppTab, adminTab, showCustomerSignup, showStockistSignup };
+
+    if (changed) {
+      if (toastKeepOnScreenChangeIdRef.current === toastIdRef.current && toastIdRef.current > 0) {
+        toastKeepOnScreenChangeIdRef.current = 0;
+        return;
+      }
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+      setToast(null);
+    }
   }, [activeRole, customerAppTab, stockistActiveTab, partnerAppTab, adminTab, showCustomerSignup, showStockistSignup]);
 
   const formatPoints = (value) => {
@@ -4494,14 +4591,14 @@ export default function App() {
       logApi('POST', endpoint.replace(API_BASE, ''), payload, res.status, data);
       if (res.ok) {
         if (!data.token) {
-          showToast('Account created. Please sign in.', 'success');
+          showToast('Account created. Please sign in.', 'success', null, { keepOnScreenChange: true });
           setShowCustomerSignup(false);
           return;
         }
         persistSession(data.user, data.token);
         setSelectedRegionId(data.user.region_id);
         fetchCustomerProfileData();
-        showToast(t(`Welcome, ${data.user.name}!`, `स्वागत, ${data.user.name}!`, `স্বাগতম, ${data.user.name}!`));
+        showToast(t(`Welcome, ${data.user.name}!`, `स्वागत, ${data.user.name}!`, `স্বাগতম, ${data.user.name}!`), 'success', null, { keepOnScreenChange: true });
         setShowCustomerSignup(false);
         resetAuthForm();
       } else {
@@ -4621,7 +4718,7 @@ export default function App() {
       logApi('POST', '/auth/register-stockist', { phone: loginPhone, email: regEmail, name: regName, shopName: regShopName }, res.status, data);
       if (res.ok) {
         setStockistPendingUser(data.user);
-        showToast(t('Registration submitted! Awaiting admin approval.', 'पंजीकरण सबमिट!', 'নিবন্ধন জমা হয়েছে!'), 'warning');
+        showToast(t('Registration submitted! Awaiting admin approval.', 'पंजीकरण सबमिट!', 'নিবন্ধন জমা হয়েছে!'), 'warning', null, { keepOnScreenChange: true });
         resetAuthForm();
       } else {
         showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
@@ -17125,73 +17222,22 @@ export default function App() {
       {/* Toast popup */}
       {toast && (
         <ModalLayer>
-          <div className="modal-overlay" style={{ background: 'transparent', pointerEvents: 'none', padding: 0 }}>
-            <div 
-              className="toast-msg" 
-              role={toast.type === 'error' ? 'alert' : 'status'}
-              aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
-              onPointerEnter={handleToastPointerEnter}
-              onPointerLeave={handleToastPointerLeave}
-              style={{
-                pointerEvents: 'auto',
-                borderLeft: `4px solid ${toast.type === 'error' ? 'var(--danger)' : 'var(--accent)'}`,
-                position: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'absolute' : 'fixed',
-                bottom: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? '72px' : '20px',
-                left: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? '50%' : 'auto',
-                transform: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'translateX(-50%)' : 'none',
-                maxWidth: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'calc(100% - 2rem)' : 'none',
-                width: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'max-content' : 'auto',
-                right: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'auto' : '20px',
-                zIndex: 'var(--z-toast)',
-                background: 'var(--bg-surface)',
-                paddingLeft: '44px',
-                minHeight: '44px',
-                boxSizing: 'border-box'
-              }}>
-              <button
-                type="button"
-                className="toast-dismiss-btn"
-                aria-label={t('Dismiss', 'बंद करें', 'বন্ধ করুন')}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (toastTimerRef.current) {
-                    clearTimeout(toastTimerRef.current);
-                    toastTimerRef.current = null;
-                  }
-                  setToastPaused(false);
-                  setToast(null);
-                }}
-              >
-                <X size={14} />
-              </button>
-              {toast.type === 'error' ? (
-                <AlertCircle size={16} style={{ color: 'var(--danger)', flexShrink: 0 }} />
-              ) : toast.type === 'info' ? (
-                <Info size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-              ) : (
-                <CheckCircle2 size={16} style={{ color: 'var(--success-text)', flexShrink: 0 }} />
-              )}
-              <span role={toast.type === 'error' ? 'alert' : undefined}>{toast.message}</span>
-              {toast.action && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); toast.action.onClick(); setToast(null); }} 
-                  className="btn-accent" 
-                  style={{ marginLeft: '10px', padding: '4px 8px', fontSize: '0.8em', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                >
-                  {toast.action.label}
-                </button>
-              )}
-              <div
-                key={toast.id}
-                className="toast-countdown-bar"
-                style={{
-                  backgroundColor: toast.type === 'error' ? 'var(--danger)' : 'var(--primary)',
-                  animationDuration: `${toast.duration}ms`,
-                  animationPlayState: toastPaused ? 'paused' : undefined
-                }}
-              />
-            </div>
-          </div>
+          <ToastView
+            toast={toast}
+            onDismiss={() => {
+              if (toastTimerRef.current) {
+                clearTimeout(toastTimerRef.current);
+                toastTimerRef.current = null;
+              }
+              setToastPaused(false);
+              setToast(null);
+            }}
+            onPointerEnter={handleToastPointerEnter}
+            onPointerLeave={handleToastPointerLeave}
+            toastPaused={toastPaused}
+            signedIn={!!currentUser}
+            t={t}
+          />
         </ModalLayer>
       )}
       {/* Global Confirm Modal */}
