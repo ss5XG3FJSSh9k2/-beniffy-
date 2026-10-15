@@ -221,6 +221,62 @@ async function repairProductRegions(dbInterface) {
   }
 }
 
+async function repairStockistVendors(dbInterface) {
+  try {
+    const stockists = await dbInterface.getTable('stockists');
+    const vendors = await dbInterface.getTable('vendors');
+    const stockistVendors = await dbInterface.getTable('stockist_vendors');
+
+    const vendorMap = new Map();
+    for (const v of vendors) vendorMap.set(v.id, v);
+
+    let clearedCount = 0;
+    let addedCount = 0;
+    let stockistsModified = false;
+    let svModified = false;
+
+    for (const s of stockists) {
+      if (!s.vendor_id) continue;
+      if (!vendorMap.has(s.vendor_id)) {
+        s.vendor_id = null;
+        clearedCount++;
+        stockistsModified = true;
+      } else {
+        const hasLink = stockistVendors.some(sv => sv.stockist_id === s.id && sv.vendor_id === s.vendor_id);
+        if (!hasLink) {
+          stockistVendors.push({
+            id: 'sv-' + Math.random().toString(36).substring(2, 11),
+            stockist_id: s.id,
+            vendor_id: s.vendor_id,
+            approved_at: new Date().toISOString()
+          });
+          addedCount++;
+          svModified = true;
+        }
+      }
+    }
+
+    if (stockistsModified) {
+      if (dbInterface && typeof dbInterface.saveTable === 'function') {
+        await dbInterface.saveTable('stockists', stockists);
+      } else {
+        await saveTable('stockists', stockists);
+      }
+    }
+    if (svModified) {
+      if (dbInterface && typeof dbInterface.saveTable === 'function') {
+        await dbInterface.saveTable('stockist_vendors', stockistVendors);
+      } else {
+        await saveTable('stockist_vendors', stockistVendors);
+      }
+    }
+    console.log(`[Data repair] Repaired stockist wholesalers: added ${addedCount} missing stockist_vendors link(s), cleared ${clearedCount} non-existent vendor_id(s).`);
+    return { addedCount, clearedCount };
+  } catch (e) {
+    console.error('[Data repair] Error repairing stockist vendors:', e);
+  }
+}
+
 let initPromise = null;
 
 async function init() {
@@ -298,6 +354,7 @@ async function init() {
     await dedupeStockists(dbInterface);
     await normalizeClosingTimes(dbInterface);
     await repairProductRegions(dbInterface);
+    await repairStockistVendors(dbInterface);
   })();
   return initPromise;
 }
@@ -328,6 +385,7 @@ async function resetForTest() {
     await dedupeStockists(dbInterface);
     await normalizeClosingTimes(dbInterface);
     await repairProductRegions(dbInterface);
+    await repairStockistVendors(dbInterface);
   }
 }
 
@@ -590,5 +648,6 @@ module.exports = {
   deleteRow,
   transaction,
   getAll,
-  repairProductRegions
+  repairProductRegions,
+  repairStockistVendors
 };

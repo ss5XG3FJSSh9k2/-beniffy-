@@ -1863,11 +1863,12 @@ export default function App() {
   const [showCreateStockistModal, setShowCreateStockistModal] = useState(false);
   const [createStkName, setCreateStkName] = useState('');
   const [createStkRegion, setCreateStkRegion] = useState('');
-  const [createStkVendor, setCreateStkVendor] = useState('v1');
+  const [createStkVendor, setCreateStkVendor] = useState('');
   const [createStkPhone, setCreateStkPhone] = useState('');
   const [createStkRadius, setCreateStkRadius] = useState('3.0');
   const [createStkOpen, setCreateStkOpen] = useState('08:00');
   const [createStkClose, setCreateStkClose] = useState('20:00');
+  const [editStkKeepOldVendor, setEditStkKeepOldVendor] = useState(false);
   const [createStkEta, setCreateStkEta] = useState('15');
   const [createStkRate, setCreateStkRate] = useState('10.0');
   const [showEditStockistModal, setShowEditStockistModal] = useState(false);
@@ -5142,6 +5143,10 @@ export default function App() {
       showToast('Name and phone are required', 'error');
       return;
     }
+    if (!createStkVendor) {
+      showToast(t('Wholesaler is required', 'थोक विक्रेता आवश्यक है', 'হোলসেলার প্রয়োজন'), 'error');
+      return;
+    }
     if (!createStkPhone || createStkPhone.length !== 10 || !/^[6-9]\d{9}$/.test(createStkPhone)) {
       showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
       return;
@@ -5175,7 +5180,7 @@ export default function App() {
       if (res.ok) {
         showToast('New stockist created successfully', 'success');
         setShowCreateStockistModal(false);
-        setCreateStkName(''); setCreateStkPhone('');
+        setCreateStkName(''); setCreateStkPhone(''); setCreateStkVendor('');
         fetchDbState();
       } else {
         const d = await res.json().catch(() => ({}));
@@ -5222,6 +5227,7 @@ export default function App() {
           delivery_radius_km: editStkRadius,
           region_id: editStkRegion,
           vendor_id: editStkVendor,
+          keep_old_vendor: editStkKeepOldVendor,
           min_order_value: editStkMinOrder,
           kyc_id_type: editStkIdType,
           kyc_id_number: editStkIdNumber,
@@ -5236,6 +5242,7 @@ export default function App() {
         if (res.ok) {
           showToast('Stockist details updated', 'success');
           setShowEditStockistModal(false);
+          setEditStkKeepOldVendor(false);
           fetchDbState();
         } else {
           const d = await res.json().catch(() => ({}));
@@ -15059,6 +15066,7 @@ export default function App() {
                                         setEditStkIdNumber(kyc?.id_number || detail.user?.kyc_id_number || '');
                                         setEditStkOwnerName(detail.user?.name || detail.name || '');
                                         setEditStkPhone(detail.user?.phone || detail.phone || '');
+                                        setEditStkKeepOldVendor(false);
                                         
                                         setShowEditStockistModal(true);
                                       }
@@ -17149,18 +17157,37 @@ export default function App() {
                               <td style={{ color: v.is_active === false ? 'var(--text-muted)' : 'inherit' }}>{(regions.find(r => r.id === v.region_id) || adminRegionsList.find(r => r.id === v.region_id) || {}).name || v.region_id || '-'}</td>
                               <td>
                                 {v.approved_count > 0 ? (
-                                  <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                                    onClick={() => {
-                                      setStockistModalSearch('');
-                                      setStockistListModal({ vendorName: v.name, stockists: v.approved_stockists });
-                                    }}
-                                  >
-                                    <span className="badge" style={{ background: 'var(--accent)', color: 'var(--on-primary)', borderRadius: '999px', padding: '0 0.4rem' }}>{v.approved_count}</span>
-                                    {t('View', 'देखें', 'দেখুন')}
-                                  </button>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                      <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        style={{ padding: '0.15rem 0.4rem', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                                        onClick={() => {
+                                          setStockistModalSearch('');
+                                          setStockistListModal({ vendorName: v.name, stockists: v.approved_stockists });
+                                        }}
+                                      >
+                                        <span className="badge" style={{ background: 'var(--accent)', color: 'var(--on-primary)', borderRadius: '999px', padding: '0 0.4rem' }}>{v.approved_count}</span>
+                                        {t('View', 'देखें', 'দেখুন')}
+                                      </button>
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                      {(v.approved_stockists || []).slice(0, 3).map(s => (
+                                        <span key={s.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <span>{s.shop_name || s.name}</span>
+                                          {s.is_main && (
+                                            <span className="badge badge-primary" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem', borderRadius: '4px' }}>
+                                              {t('main', 'मुख्य', 'প্রধান')}
+                                            </span>
+                                          )}
+                                        </span>
+                                      ))}
+                                      {(v.approved_stockists || []).length > 3 && (
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>+{v.approved_stockists.length - 3} {t('more', 'और', 'আরও')}</span>
+                                      )}
+                                    </div>
+                                  </div>
                                 ) : (
                                   <span style={{ color: 'var(--text-muted)' }}>{t('None','कोई नहीं','কোনোটি নয়')}</span>
                                 )}
@@ -18801,9 +18828,10 @@ export default function App() {
                   )}
                 </div>
                 <div className="input-group">
-                  <label className="input-label">Assigned Wholesaler</label>
+                  <label className="input-label">{t('Assigned Wholesaler', 'सौंपा गया थोक विक्रेता', 'নিযুক্ত হোলসেলার')} <span style={{ color: 'var(--danger-text)' }}>*</span></label>
                   <select className="text-input" value={createStkVendor} onChange={e => setCreateStkVendor(e.target.value)}>
-                    {vendors.filter(v => v.is_active !== false).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    <option value="">{t('-- Select Wholesaler --', '-- थोक विक्रेता चुनें --', '-- হোলসেলার নির্বাচন করুন --')}</option>
+                    {vendors.filter(v => v.is_active !== false && (!createStkRegion || v.region_id === createStkRegion)).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                   </select>
                 </div>
               </div>
@@ -18831,7 +18859,7 @@ export default function App() {
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                 <button className="btn btn-secondary" onClick={() => setShowCreateStockistModal(false)}>Cancel</button>
-                <button className="btn btn-accent" onClick={handleCreateStockist} disabled={regions.length === 0}>Create Stockist</button>
+                <button className="btn btn-accent" onClick={handleCreateStockist} disabled={regions.length === 0 || !createStkVendor}>Create Stockist</button>
               </div>
             </div>
             </PanelErrorBoundary>
@@ -18942,6 +18970,30 @@ export default function App() {
                   <NumberStepper value={editStkMinOrder} onChange={v => setEditStkMinOrder(parseFloat(v))} min={0} step={50} decimals={0} suffix="₹" />
                 </div>
               </div>
+
+              {editStkVendor && selectedStockistDetail?.vendor_id && editStkVendor !== selectedStockistDetail.vendor_id && (() => {
+                const oldV = vendors.find(v => v.id === selectedStockistDetail.vendor_id);
+                const oldNameEn = oldV?.name || 'old wholesaler';
+                const oldNameHi = oldV?.name || 'पुराना थोक विक्रेता';
+                const oldNameBn = oldV?.name || 'পুরোনো হোলসেলার';
+                return (
+                  <div style={{ marginTop: '0.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.6rem', background: 'var(--surface-overlay)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                    <input
+                      type="checkbox"
+                      id="keep-old-vendor-checkbox"
+                      checked={editStkKeepOldVendor}
+                      onChange={e => setEditStkKeepOldVendor(e.target.checked)}
+                    />
+                    <label htmlFor="keep-old-vendor-checkbox" style={{ fontSize: '0.8rem', cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+                      {t(
+                        `Keep ${oldNameEn} as an extra supplier`,
+                        `${oldNameHi} को एक अतिरिक्त आपूर्तिकर्ता के रूप में रखें`,
+                        `${oldNameBn}-কে अतिरिक्त সরবরাহকারী হিসেবে রাখুন`
+                      )}
+                    </label>
+                  </div>
+                );
+              })()}
 
               <div className="input-group" style={{ padding: '0.75rem', background: 'var(--surface-overlay)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                 <label className="input-label">{t('Commission Rate (Versioned)', 'कमीशन दर (संस्करणित)', 'কমিশন হার (সংস্করণযুক্ত)')}</label>
@@ -20337,8 +20389,13 @@ export default function App() {
               {stockistListModal.stockists
                 .filter(s => (s.shop_name || s.name || '').toLowerCase().includes(stockistModalSearch.toLowerCase()))
                 .map(s => (
-                  <div key={s.id} style={{ padding: '0.4rem 0.5rem', background: 'var(--surface-overlay)', borderRadius: 6, fontSize: '0.85rem' }}>
-                    {s.shop_name || s.name}
+                  <div key={s.id} style={{ padding: '0.4rem 0.5rem', background: 'var(--surface-overlay)', borderRadius: 6, fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{s.shop_name || s.name}</span>
+                    {s.is_main && (
+                      <span className="badge badge-primary" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
+                        {t('main', 'मुख्य', 'প্রধান')}
+                      </span>
+                    )}
                   </div>
                 ))}
             </div>

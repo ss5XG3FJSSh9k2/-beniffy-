@@ -2235,6 +2235,30 @@ const isCustomerVisible = (stockist, users, products) => {
   return getCustomerVisibility(stockist, users, products).visible;
 };
 
+async function setMainWholesaler(stockistId, vendorId) {
+  const stockists = await db.getTable('stockists');
+  const stockist = stockists.find(s => s.id === stockistId);
+  if (!stockist) return null;
+
+  stockist.vendor_id = vendorId;
+  await db.saveTable('stockists', stockists);
+
+  if (vendorId) {
+    const stockistVendors = await db.getTable('stockist_vendors');
+    if (!stockistVendors.some(sv => sv.stockist_id === stockistId && sv.vendor_id === vendorId)) {
+      stockistVendors.push({
+        id: 'sv-' + generateId(),
+        stockist_id: stockistId,
+        vendor_id: vendorId,
+        approved_at: new Date().toISOString()
+      });
+      await db.saveTable('stockist_vendors', stockistVendors);
+    }
+  }
+
+  return stockist;
+}
+
 function getRegionDeliveryFee(regionRow) {
   if (!regionRow || regionRow.delivery_fee === null || regionRow.delivery_fee === undefined) return null;
   const val = parseFloat(regionRow.delivery_fee);
@@ -5211,7 +5235,6 @@ app.post('/api/admin/approve-kyc', async (req, res) => {
     };
     stockists.push(targetStockist);
   } else {
-    targetStockist.vendor_id = vendorId;
     targetStockist.is_active = true;
     if (deliveryRadius) targetStockist.delivery_radius_km = parseFloat(deliveryRadius) || targetStockist.delivery_radius_km || 5.0;
     if (minOrderValue !== undefined) targetStockist.min_order_value = parseFloat(minOrderValue) || 0;
@@ -5219,10 +5242,8 @@ app.post('/api/admin/approve-kyc', async (req, res) => {
   }
   await db.saveTable('stockists', stockists);
 
-  const stockistVendors = await db.getTable('stockist_vendors');
-  if (!stockistVendors.some(sv => sv.stockist_id === targetStockist.id && sv.vendor_id === vendorId)) {
-    stockistVendors.push({ id: 'sv-' + generateId(), stockist_id: targetStockist.id, vendor_id: vendorId, approved_at: new Date().toISOString() });
-    await db.saveTable('stockist_vendors', stockistVendors);
+  if (vendorId) {
+    await setMainWholesaler(targetStockist.id, vendorId);
   }
 
   const products = (await db.getTable('products')).filter(p => p.region_id === user.region_id);
@@ -5326,6 +5347,10 @@ app.post('/api/admin/kyc/:userId/approve', async (req, res) => {
   } else {
     stockist.is_active = true;
     await db.saveTable('stockists', stockists);
+  }
+
+  if (vendorId) {
+    await setMainWholesaler(stockist.id, vendorId);
   }
 
   await appendAudit(req, 'APPROVE_KYC', 'user', userId, { kyc_status: 'PENDING' }, { kyc_status: 'APPROVED' });
@@ -5883,6 +5908,13 @@ app.post('/api/admin/stockist-vendors', async (req, res) => {
     stockistVendors.push({ id: 'sv-' + generateId(), stockist_id: stockistId, vendor_id: vendorId, approved_at: new Date().toISOString() });
     await db.saveTable('stockist_vendors', stockistVendors);
   }
+
+  const stockists = await db.getTable('stockists');
+  const stockist = stockists.find(s => s.id === stockistId);
+  if (stockist && !stockist.vendor_id) {
+    await setMainWholesaler(stockistId, vendorId);
+  }
+
   return res.json({ success: true, stockistVendors });
 });
 
@@ -5987,15 +6019,21 @@ app.get('/api/admin/vendors/load', async (req, res) => {
 
   const vendors = await db.getTable('vendors');
   const stockists = await db.getTable('stockists');
+  const stockistVendors = await db.getTable('stockist_vendors');
 
   const activeVendors = vendors.filter(v => v.region_id === region_id && v.is_active !== false);
 
   const loadData = activeVendors.map(v => {
-    const count = stockists.filter(s => s.vendor_id === v.id && s.is_active !== false).length;
+    const approved_stockists = stockistVendors
+      .filter(sv => sv.vendor_id === v.id)
+      .map(sv => stockists.find(st => st.id === sv.stockist_id))
+      .filter(s => s && s.is_active !== false)
+      .filter((s, i, arr) => arr.findIndex(x => x.id === s.id) === i);
+
     return {
       id: v.id,
       name: v.name,
-      stockist_count: count
+      stockist_count: approved_stockists.length
     };
   });
 
@@ -6017,7 +6055,12 @@ app.get('/api/admin/vendors', async (req, res) => {
       .filter(s => s && s.is_active !== false)
       // dedupe in case of duplicate join rows:
       .filter((s, i, arr) => arr.findIndex(x => x.id === s.id) === i)
-      .map(s => ({ id: s.id, name: s.name, shop_name: s.shop_name }));
+      .map(s => ({
+        id: s.id,
+        name: s.name,
+        shop_name: s.shop_name,
+        is_main: s.vendor_id === v.id
+      }));
 
     return { 
       ...v, 
@@ -6806,7 +6849,6 @@ app.post('/api/admin/stockists', async (req, res) => {
   if (!validPhone) return;
   phone = validPhone;
 
-
   const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
   if (opening_time && (opening_time === '24:00' || !timeRegex.test(opening_time))) {
     return res.status(400).json({ error: 'Opening time must be between 00:00 and 23:59' });
@@ -6821,6 +6863,18 @@ app.post('/api/admin/stockists', async (req, res) => {
   const clash = stockists.find(s => s.phone === cleanPhone || s.contact_phone === cleanPhone);
   const userClash = users.find(u => u.phone === cleanPhone && u.role === 'STOCKIST');
   if (clash || userClash) return res.status(409).json({ error: 'Stockist already exists for this phone' });
+
+  if (!vendor_id) {
+    return res.status(400).json({ error: 'Wholesaler is required' });
+  }
+  const vendors = await db.getTable('vendors');
+  const vendor = vendors.find(v => v.id === vendor_id);
+  if (!vendor) {
+    return res.status(400).json({ error: 'Selected wholesaler does not exist' });
+  }
+  if (vendor.region_id !== region_id) {
+    return res.status(400).json({ error: 'Selected wholesaler is in a different region' });
+  }
 
   const newUserId = 'u-stk-' + generateId();
   const newUser = {
@@ -6848,7 +6902,7 @@ app.post('/api/admin/stockists', async (req, res) => {
     phone: cleanPhone,
     contact_phone: cleanPhone,
     contact_name: name.trim(),
-    vendor_id: vendor_id || 'v1',
+    vendor_id,
     delivery_radius_km: parseFloat(delivery_radius_km) || 3.0,
     min_order_value: 0,
     is_active: true,
@@ -6865,11 +6919,7 @@ app.post('/api/admin/stockists', async (req, res) => {
   rates.push({ id: 'scr-' + generateId(), stockist_id: newStockistId, rate_percent: rateVal, created_at: new Date().toISOString() });
   await db.saveTable('stockist_commission_rates', rates);
   
-  if (vendor_id) {
-    const sv = await db.getTable('stockist_vendors');
-    sv.push({ id: 'sv-' + generateId(), stockist_id: newStockistId, vendor_id, approved_at: new Date().toISOString() });
-    await db.saveTable('stockist_vendors', sv);
-  }
+  await setMainWholesaler(newStockistId, vendor_id);
   
   await appendAudit(req, 'CREATE_STOCKIST', 'stockist', newStockistId, null, newStockist);
   return res.json({ success: true, stockist: newStockist, user: sanitizeUser(newUser) });
@@ -6905,6 +6955,8 @@ app.post('/api/admin/stockists/:id', async (req, res) => {
   
   let updatedProductsCount = 0;
   const regionChanged = region_id !== undefined && region_id !== beforeStockist.region_id;
+  const beforeVendorId = stockist.vendor_id;
+  const vendorChanged = vendor_id !== undefined && vendor_id !== beforeVendorId;
 
   if (name) stockist.name = name.trim();
   if (opening_time) stockist.opening_time = opening_time;
@@ -6915,6 +6967,27 @@ app.post('/api/admin/stockists/:id', async (req, res) => {
   if (vendor_id !== undefined) stockist.vendor_id = vendor_id;
   if (min_order_value !== undefined) stockist.min_order_value = parseFloat(min_order_value);
   await db.saveTable('stockists', stockists);
+
+  if (vendorChanged) {
+    const keepOld = req.body.keep_old_vendor === true || req.body.keepOldVendor === true;
+    await setMainWholesaler(id, vendor_id);
+
+    if (beforeVendorId && beforeVendorId !== vendor_id) {
+      if (keepOld) {
+        await appendAudit(req, 'KEEP_EXTRA_SUPPLIER', 'stockist_vendors', id, { vendor_id: beforeVendorId }, { vendor_id: beforeVendorId }, 'Kept old wholesaler as extra supplier');
+      } else {
+        const stockistVendors = await db.getTable('stockist_vendors');
+        const filtered = stockistVendors.filter(sv => !(sv.stockist_id === id && sv.vendor_id === beforeVendorId));
+        if (filtered.length !== stockistVendors.length) {
+          await db.saveTable('stockist_vendors', filtered);
+          await appendAudit(req, 'REMOVE_STOCKIST_VENDOR', 'stockist_vendors', id, { vendor_id: beforeVendorId }, null, 'Removed old wholesaler link on main wholesaler change');
+        }
+      }
+      await appendAudit(req, 'CHANGE_MAIN_WHOLESALER', 'stockist', id, { vendor_id: beforeVendorId }, { vendor_id }, 'Changed main wholesaler');
+    }
+  } else if (vendor_id) {
+    await setMainWholesaler(id, vendor_id);
+  }
   
   if (regionChanged) {
     const products = await db.getTable('products');
@@ -10602,7 +10675,8 @@ module.exports = {
   getCustomerVisibleProducts,
   findStockistOwner,
   getCustomerVisibility,
-  isCustomerVisible
+  isCustomerVisible,
+  setMainWholesaler
 };
 
 

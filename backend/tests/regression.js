@@ -6464,6 +6464,149 @@ async function main() {
   assert(serverGetVisibility(noProdStockist, activeOwnerUser, []).reason === 'no products', 'Visibility reason when shop has 0 products is "no products"');
   assert(serverGetVisibility(noProdStockist, activeOwnerUser, [{ stockist_id: 's-no-prod', is_active: true, is_sellable: true }]).visible === true, 'Visibility is true when active owner has products');
 
+  // --- Section 48: BF-WHOLESALER-SYNC-AND-MAIN: Shop Wholesaler One Source of Truth ---
+  console.log('\n--- Section 48: BF-WHOLESALER-SYNC-AND-MAIN: Shop Wholesaler One Source of Truth ---');
+
+  loginAs('u-admin', 'ADMIN');
+
+  // (c) Admin create with no wholesaler is rejected
+  // 1. Missing vendor_id -> 400
+  const createNoVendorRes = await post('http://localhost:3001/api/admin/stockists', {
+    name: 'Reject Shop No Vendor',
+    phone: '9876543210',
+    region_id: 'r1'
+  });
+  assert(createNoVendorRes.status === 400 && createNoVendorRes.body.error === 'Wholesaler is required', 'Admin create stockist with no wholesaler returns 400');
+
+  // 2. Non-existent vendor_id -> 400
+  const createBadVendorRes = await post('http://localhost:3001/api/admin/stockists', {
+    name: 'Reject Shop Bad Vendor',
+    phone: '9876543211',
+    region_id: 'r1',
+    vendor_id: 'v-nonexistent'
+  });
+  assert(createBadVendorRes.status === 400 && createBadVendorRes.body.error === 'Selected wholesaler does not exist', 'Admin create stockist with non-existent wholesaler returns 400');
+
+  // 3. vendor_id in different region -> 400 (v2 is in r2, shop in r1)
+  const createDiffRegionRes = await post('http://localhost:3001/api/admin/stockists', {
+    name: 'Reject Shop Diff Region',
+    phone: '9876543212',
+    region_id: 'r1',
+    vendor_id: 'v2'
+  });
+  assert(createDiffRegionRes.status === 400 && createDiffRegionRes.body.error === 'Selected wholesaler is in a different region', 'Admin create stockist with cross-region wholesaler returns 400');
+
+  // (a) Edit a shop from wholesaler A to B: B's count and list both show it, A's don't, and restock from B succeeds
+  // Create Wholesaler A and B in region r1
+  const createVendorARes = await post('http://localhost:3001/api/admin/vendors', { name: 'Wholesaler A Test', regionId: 'r1' });
+  assert(createVendorARes.status === 200, 'Created Wholesaler A');
+  const vendorAId = createVendorARes.body.vendor.id;
+
+  const createVendorBRes = await post('http://localhost:3001/api/admin/vendors', { name: 'Wholesaler B Test', regionId: 'r1' });
+  assert(createVendorBRes.status === 200, 'Created Wholesaler B');
+  const vendorBId = createVendorBRes.body.vendor.id;
+
+  // Create test shop under Wholesaler A
+  const testShopPhone = '9811122233';
+  const createShopRes = await post('http://localhost:3001/api/admin/stockists', {
+    name: 'Saha Variety Sync Test',
+    phone: testShopPhone,
+    region_id: 'r1',
+    vendor_id: vendorAId
+  });
+  assert(createShopRes.status === 200, 'Created test shop under Wholesaler A');
+  const testShopId = createShopRes.body.stockist.id;
+
+  // Verify Wholesaler A has test shop and B does not
+  let vList = await get('http://localhost:3001/api/admin/vendors');
+  let vA = vList.body.find(v => v.id === vendorAId);
+  let vB = vList.body.find(v => v.id === vendorBId);
+  assert(vA && vA.approved_count === 1 && vA.approved_stockists.some(s => s.id === testShopId && s.is_main), 'Wholesaler A has shop in approved_stockists with is_main=true');
+  assert(vB && vB.approved_count === 0, 'Wholesaler B has 0 approved stockists initially');
+
+  // Now edit shop from Wholesaler A to B (keep_old_vendor = false)
+  const editShopRes = await post(`http://localhost:3001/api/admin/stockists/${testShopId}`, {
+    name: 'Saha Variety Sync Test',
+    region_id: 'r1',
+    vendor_id: vendorBId,
+    keep_old_vendor: false
+  });
+  assert(editShopRes.status === 200, 'Edited test shop to Wholesaler B without keeping old wholesaler');
+
+  // Verify: B's count and list both show it with is_main=true; A's count and list don't
+  vList = await get('http://localhost:3001/api/admin/vendors');
+  vA = vList.body.find(v => v.id === vendorAId);
+  vB = vList.body.find(v => v.id === vendorBId);
+  assert(vB && vB.approved_count === 1 && vB.approved_stockists.some(s => s.id === testShopId && s.is_main), "Wholesaler B count=1 and list shows shop with is_main=true");
+  assert(vA && vA.approved_count === 0 && !vA.approved_stockists.some(s => s.id === testShopId), "Wholesaler A count=0 and list does not show shop");
+
+  // Verify restocking from B succeeds, and restocking from A fails
+  // Find user for this stockist
+  const stkOwnerUsers = await get('http://localhost:3001/api/admin/customers');
+  const shopOwner = stkOwnerUsers.body.find(u => u.phone === testShopPhone) || { id: 'u-admin', role: 'ADMIN' };
+  loginAs(shopOwner.id, shopOwner.role || 'STOCKIST');
+
+  const restockBRes = await post('http://localhost:3001/api/stockists/restock', {
+    stockistId: testShopId,
+    vendorId: vendorBId,
+    items: [{ productId: 'p1', quantity: 5 }]
+  });
+  assert(restockBRes.status === 200, 'Restock from Wholesaler B succeeds');
+
+  const restockARes = await post('http://localhost:3001/api/stockists/restock', {
+    stockistId: testShopId,
+    vendorId: vendorAId,
+    items: [{ productId: 'p1', quantity: 5 }]
+  });
+  assert(restockARes.status === 400 && restockARes.body.error === 'Selected wholesaler is not approved for this store.', 'Restock from Wholesaler A fails with not approved error');
+
+  // (b) Approve Association on a shop with no main sets it as main
+  loginAs('u-admin', 'ADMIN');
+  // Clear shop's vendor_id in db
+  const dbInst = require('../db.js');
+  const curStockists = await dbInst.getTable('stockists');
+  const targetStk = curStockists.find(s => s.id === testShopId);
+  if (targetStk) {
+    targetStk.vendor_id = null;
+    await dbInst.saveTable('stockists', curStockists);
+  }
+
+  // Also remove stockist_vendors links for this shop
+  let curSV = await dbInst.getTable('stockist_vendors');
+  curSV = curSV.filter(sv => sv.stockist_id !== testShopId);
+  await dbInst.saveTable('stockist_vendors', curSV);
+
+  // Call POST /api/admin/stockist-vendors
+  const approveAssocRes = await post('http://localhost:3001/api/admin/stockist-vendors', {
+    stockistId: testShopId,
+    vendorId: vendorAId
+  });
+  assert(approveAssocRes.status === 200, 'POST /api/admin/stockist-vendors succeeds');
+
+  // Check that the shop now has vendorAId as its main wholesaler
+  const reloadedStockists = await dbInst.getTable('stockists');
+  const updatedShop = reloadedStockists.find(s => s.id === testShopId);
+  assert(updatedShop && updatedShop.vendor_id === vendorAId, 'Approve Association on shop with no main sets it as main wholesaler');
+
+  // (d) For every wholesaler, load count == approved_count
+  const syncVendorsRes = await get('http://localhost:3001/api/admin/vendors');
+  const syncVendors = syncVendorsRes.body;
+  const regionsInTest = Array.from(new Set(syncVendors.map(v => v.region_id).filter(Boolean)));
+
+  let allLoadCountsMatch = true;
+  for (const rId of regionsInTest) {
+    const loadRes = await get(`http://localhost:3001/api/admin/vendors/load?region_id=${rId}`);
+    if (loadRes.status === 200 && Array.isArray(loadRes.body)) {
+      for (const lv of loadRes.body) {
+        const vMatch = syncVendors.find(v => v.id === lv.id);
+        if (vMatch && vMatch.approved_count !== lv.stockist_count) {
+          allLoadCountsMatch = false;
+        }
+      }
+    }
+  }
+  assert(allLoadCountsMatch === true, 'For every wholesaler, load count == approved_count');
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
