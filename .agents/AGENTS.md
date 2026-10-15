@@ -70,3 +70,9 @@ These rules are law. They were each earned by a real failure in this project. Vi
 - **Recovering work:** Always check `git reflog | head -30` and `git fsck --lost-found` before re-implementing anything that previously worked.
 - Every ticket report must end with: `Commit: <hash> pushed to master`. If work is not pushed, state why. Do not report a ticket as DONE while its code exists only in an uncommitted working tree.
 - If work vanishes without a reset, report the output of `git status`, `git log --oneline -5`, and `git reflog | head -20` before rebuilding.
+
+## 10. PRESERVE SAVED DEV DATABASE
+- **NEVER reset, delete or overwrite `backend/data/dev-db.json`**. That file is Saheel's own test data.
+- Run all checks with `npm run dev:seed`, the regression suite (`SEED_MODE=test`), or Playwright, which use in-memory data (`POSTGRES_MODE=mem`).
+- Never call `POST /api/admin/reset-db` against a running `npm run dev` server (which persists to `backend/data/dev-db.json`).
+- If a task truly needs the saved data reset, **STOP AND ASK FIRST**.
