@@ -940,7 +940,9 @@ select option:disabled {
   background: var(--bg-surface-elevated);
   border: 1px solid var(--primary);
   border-radius: 8px;
-  padding: 0.75rem;
+  padding: 0.75rem 1rem 0.75rem 44px;
+  min-height: 44px;
+  box-sizing: border-box;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
   font-size: 0.8rem;
   display: flex;
@@ -948,6 +950,60 @@ select option:disabled {
   gap: 0.5rem;
   animation: slideUp 0.3s forwards;
   z-index: 999;
+  overflow: hidden;
+}
+
+.toast-dismiss-btn {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.toast-dismiss-btn:hover,
+.toast-dismiss-btn:focus {
+  color: var(--text-main);
+}
+
+.toast-dismiss-btn:focus-visible {
+  color: var(--text-main);
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.toast-countdown-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  animation: toast-countdown linear forwards;
+}
+
+@keyframes toast-countdown {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+.toast-msg:hover .toast-countdown-bar {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-countdown-bar {
+    display: none !important;
+  }
 }
 
 @keyframes slideUp {

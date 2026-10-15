@@ -23,6 +23,7 @@ import {
   RotateCcw,
   Download,
   AlertCircle,
+  Info,
   Gift,
   Truck,
   Store,
@@ -2776,6 +2777,10 @@ export default function App() {
   const [apiLogs, setApiLogs] = useState([]);
   const [toast, setToast] = useState(null);
   const toastTimerRef = useRef(null);
+  const toastIdRef = useRef(0);
+  const toastStartTimeRef = useRef(0);
+  const toastRemainingRef = useRef(0);
+  const [toastPaused, setToastPaused] = useState(false);
 
   // Auth fields
   const [loginPhone, setLoginPhone] = useState('');
@@ -2813,20 +2818,48 @@ export default function App() {
   };
 
   const showToast = (message, type = 'success', action = null) => {
-    setToast({ message, type, action });
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    const duration = type === 'error' ? 5000 : 3000;
-    toastTimerRef.current = setTimeout(() => setToast(null), action ? 6000 : duration);
+    const id = ++toastIdRef.current;
+    const duration = action ? 6000 : (type === 'error' ? 5000 : 4000);
+    toastStartTimeRef.current = Date.now();
+    toastRemainingRef.current = duration;
+    setToastPaused(false);
+    setToast({ id, message, type, action, duration });
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+    }, duration);
   };
 
-  const handleToastMouseEnter = () => {
+  const handleToastPointerEnter = (e) => {
+    if (e.pointerType !== 'mouse') return;
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    const elapsed = Date.now() - toastStartTimeRef.current;
+    toastRemainingRef.current = Math.max(0, toastRemainingRef.current - elapsed);
+    setToastPaused(true);
+  };
+
+  const handleToastPointerLeave = (e) => {
+    if (e.pointerType !== 'mouse') return;
+    setToastPaused(false);
+    if (toastRemainingRef.current > 0) {
+      toastStartTimeRef.current = Date.now();
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => {
+        setToast(null);
+      }, toastRemainingRef.current);
+    } else {
+      setToast(null);
+    }
+  };
+
+  useEffect(() => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-  };
-  
-  const handleToastMouseLeave = () => {
-    const duration = toast?.type === 'error' ? 5000 : 3000;
-    toastTimerRef.current = setTimeout(() => setToast(null), toast?.action ? 6000 : duration);
-  };
+    toastTimerRef.current = null;
+    setToast(null);
+  }, [activeRole, customerAppTab, stockistActiveTab, partnerAppTab, adminTab, showCustomerSignup, showStockistSignup]);
 
   const formatPoints = (value) => {
     const num = parseFloat(value) || 0;
@@ -17097,8 +17130,8 @@ export default function App() {
               className="toast-msg" 
               role={toast.type === 'error' ? 'alert' : 'status'}
               aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
-              onMouseEnter={handleToastMouseEnter}
-              onMouseLeave={handleToastMouseLeave}
+              onPointerEnter={handleToastPointerEnter}
+              onPointerLeave={handleToastPointerLeave}
               style={{
                 pointerEvents: 'auto',
                 borderLeft: `4px solid ${toast.type === 'error' ? 'var(--danger)' : 'var(--accent)'}`,
@@ -17111,9 +17144,34 @@ export default function App() {
                 right: ['customer', 'stockist', 'partner'].includes(activeRole) && phoneRef.current ? 'auto' : '20px',
                 zIndex: 'var(--z-toast)',
                 background: 'var(--bg-surface)',
+                paddingLeft: '44px',
+                minHeight: '44px',
+                boxSizing: 'border-box'
               }}>
-              <CheckCircle2 size={16} style={{ color: toast.type === 'error' ? 'var(--danger)' : 'var(--accent)' }} />
-              <span>{toast.message}</span>
+              <button
+                type="button"
+                className="toast-dismiss-btn"
+                aria-label={t('Dismiss', 'बंद करें', 'বন্ধ করুন')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (toastTimerRef.current) {
+                    clearTimeout(toastTimerRef.current);
+                    toastTimerRef.current = null;
+                  }
+                  setToastPaused(false);
+                  setToast(null);
+                }}
+              >
+                <X size={14} />
+              </button>
+              {toast.type === 'error' ? (
+                <AlertCircle size={16} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+              ) : toast.type === 'info' ? (
+                <Info size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+              ) : (
+                <CheckCircle2 size={16} style={{ color: 'var(--success-text)', flexShrink: 0 }} />
+              )}
+              <span role={toast.type === 'error' ? 'alert' : undefined}>{toast.message}</span>
               {toast.action && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); toast.action.onClick(); setToast(null); }} 
@@ -17123,6 +17181,15 @@ export default function App() {
                   {toast.action.label}
                 </button>
               )}
+              <div
+                key={toast.id}
+                className="toast-countdown-bar"
+                style={{
+                  backgroundColor: toast.type === 'error' ? 'var(--danger)' : 'var(--primary)',
+                  animationDuration: `${toast.duration}ms`,
+                  animationPlayState: toastPaused ? 'paused' : undefined
+                }}
+              />
             </div>
           </div>
         </ModalLayer>
