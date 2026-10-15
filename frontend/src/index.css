@@ -948,11 +948,43 @@ select option:disabled {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
   font-size: 0.8rem;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   animation: slideUp 0.3s forwards;
   z-index: 999;
   overflow: hidden;
+}
+
+.toast-body {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toast-text {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.toast-action-btn {
+  background: var(--primary);
+  color: var(--on-primary);
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.toast-action-btn:hover {
+  opacity: 0.9;
 }
 
 .phone-mockup .toast-msg,
@@ -967,6 +999,38 @@ select option:disabled {
   white-space: normal;
   overflow-wrap: break-word;
   animation: slideUpPhone 0.3s forwards;
+}
+
+.phone-mockup .toast-msg:has(.toast-action-btn),
+.toast-msg.toast-msg--phone:has(.toast-action-btn) {
+  width: calc(100% - 2rem);
+}
+
+.phone-mockup .toast-body,
+.toast-msg.toast-msg--phone .toast-body {
+  width: 100%;
+  flex: 1 1 100%;
+}
+
+.phone-mockup .toast-action-btn,
+.toast-msg.toast-msg--phone .toast-action-btn {
+  width: 100%;
+  margin-top: 0.35rem;
+  display: block;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .toast-msg .toast-body {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+  .toast-msg .toast-action-btn {
+    width: 100%;
+    margin-top: 0.35rem;
+    display: block;
+    text-align: center;
+  }
 }
 
 .phone-mockup:not(:has(.phone-footer)) .toast-msg,

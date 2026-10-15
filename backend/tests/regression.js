@@ -6199,6 +6199,25 @@ async function main() {
   const badPickupPin = await post('http://localhost:3001/api/orders/ord-fake-123/verify-pickup', { pin: '12' });
   assert(badPickupPin.status === 400, 'verify-pickup with 2-digit PIN returns 400');
 
+  // Helpful No Account Found verification tests
+  const unregPhone = '9199990001';
+  await post('http://localhost:3001/api/auth/login-otp-request', { phone: unregPhone });
+  const unregCustomerVerify = await post('http://localhost:3001/api/auth/verify-otp', { phone: unregPhone, otp: '123456', expected_role: 'CUSTOMER' });
+  assert(unregCustomerVerify.status === 404, 'verify-otp for unregistered customer returns 404');
+  assert(unregCustomerVerify.body?.error === 'No account found', 'verify-otp for unregistered customer error is No account found');
+
+  const unregStockistVerify = await post('http://localhost:3001/api/auth/verify-otp', { phone: unregPhone, otp: '123456', expected_role: 'STOCKIST' });
+  assert(unregStockistVerify.status === 404, 'verify-otp for unregistered stockist returns 404');
+  assert(unregStockistVerify.body?.error === 'No account found', 'verify-otp for unregistered stockist error is No account found');
+
+  const unregAdminVerify = await post('http://localhost:3001/api/auth/verify-otp', { phone: unregPhone, otp: '123456', expected_role: 'ADMIN' });
+  assert(unregAdminVerify.status === 403, 'verify-otp for unregistered admin returns 403');
+
+  const unregPartnerPhone = '9199990002';
+  const unregPartnerVerify = await post('http://localhost:3001/api/partner/auth/login-otp-verify', { phone: unregPartnerPhone, otp: '123456' });
+  assert(unregPartnerVerify.status === 404, 'partner login-otp-verify for unregistered partner returns 404');
+  assert(unregPartnerVerify.body?.error === 'No account found', 'partner login-otp-verify for unregistered partner returns No account found');
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 

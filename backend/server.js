@@ -7188,7 +7188,7 @@ const handlePartnerOtpVerify = async (req, res) => {
   const users = await db.getTable('users');
   const user = users.find(u => u.role === 'PARTNER_ADMIN' && u.phone === phone && u.is_active !== false);
 
-  if (!user) return res.status(401).json({ error: 'Invalid credentials or OTP' });
+  if (!user) return res.status(404).json({ error: 'No account found' });
   const vRes = verifyOtp('login:' + phone, otp);
   if (!vRes.ok) {
     if (vRes.reason === 'locked') return res.status(429).json({ error: 'Too many failed attempts.' });

@@ -423,23 +423,25 @@ const ToastView = ({ toast, onDismiss, onPointerEnter, onPointerLeave, toastPaus
       >
         <X size={14} />
       </button>
-      {toast.type === 'error' ? (
-        <AlertCircle size={16} style={{ color: 'var(--danger)', flexShrink: 0 }} />
-      ) : toast.type === 'info' ? (
-        <Info size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-      ) : (
-        <CheckCircle2 size={16} style={{ color: 'var(--success-text)', flexShrink: 0 }} />
-      )}
-      <span role={toast.type === 'error' ? 'alert' : undefined}>{toast.message}</span>
+      <div className="toast-body">
+        {toast.type === 'error' ? (
+          <AlertCircle size={16} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+        ) : toast.type === 'info' ? (
+          <Info size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+        ) : (
+          <CheckCircle2 size={16} style={{ color: 'var(--success-text)', flexShrink: 0 }} />
+        )}
+        <span role={toast.type === 'error' ? 'alert' : undefined} className="toast-text">{toast.message}</span>
+      </div>
       {toast.action && (
         <button 
+          type="button"
           onClick={(e) => { 
             e.stopPropagation(); 
             toast.action.onClick(); 
             if (onDismiss) onDismiss(); 
           }} 
-          className="btn-accent" 
-          style={{ marginLeft: '10px', padding: '4px 8px', fontSize: '0.8em', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          className="toast-action-btn"
         >
           {toast.action.label}
         </button>
@@ -1294,6 +1296,7 @@ export default function App() {
   const resetAuthForm = () => {
     setShowCustomerSignup(false);
     setShowStockistSignup(false);
+    setShowPartnerApply(false);
     setOtpSent(false);
     setLoginPhone('');
     setLoginErrorMessage('');
@@ -2004,6 +2007,7 @@ export default function App() {
   // Customer signup flow (separate from stockist signup)
   const [showCustomerSignup, setShowCustomerSignup] = useState(false);
   const [showStockistSignup, setShowStockistSignup] = useState(false);
+  const [showPartnerApply, setShowPartnerApply] = useState(false);
   const [regShopName, setRegShopName] = useState('');
   const [regKycType2, setRegKycType2] = useState('Aadhaar');
   const [regKycNumber2, setRegKycNumber2] = useState('');
@@ -2903,6 +2907,7 @@ export default function App() {
 
   if (typeof window !== 'undefined' && (import.meta.env?.DEV || window.__FASTNET_TEST__)) {
     window.__fastnet_show_toast = showToast;
+    window.__fastnet_set_lang = setLang;
   }
 
   const handleToastPointerEnter = (e) => {
@@ -2933,7 +2938,7 @@ export default function App() {
   const prevToastScreenRef = useRef(null);
   useEffect(() => {
     if (!prevToastScreenRef.current) {
-      prevToastScreenRef.current = { activeRole, customerAppTab, stockistActiveTab, partnerAppTab, adminTab, showCustomerSignup, showStockistSignup };
+      prevToastScreenRef.current = { activeRole, customerAppTab, stockistActiveTab, partnerAppTab, adminTab, showCustomerSignup, showStockistSignup, showPartnerApply };
       return;
     }
     const prev = prevToastScreenRef.current;
@@ -2943,9 +2948,10 @@ export default function App() {
       prev.partnerAppTab !== partnerAppTab ||
       prev.adminTab !== adminTab ||
       prev.showCustomerSignup !== showCustomerSignup ||
-      prev.showStockistSignup !== showStockistSignup;
+      prev.showStockistSignup !== showStockistSignup ||
+      prev.showPartnerApply !== showPartnerApply;
 
-    prevToastScreenRef.current = { activeRole, customerAppTab, stockistActiveTab, partnerAppTab, adminTab, showCustomerSignup, showStockistSignup };
+    prevToastScreenRef.current = { activeRole, customerAppTab, stockistActiveTab, partnerAppTab, adminTab, showCustomerSignup, showStockistSignup, showPartnerApply };
 
     if (changed) {
       if (toastKeepOnScreenChangeIdRef.current === toastIdRef.current && toastIdRef.current > 0) {
@@ -2956,7 +2962,7 @@ export default function App() {
       toastTimerRef.current = null;
       setToast(null);
     }
-  }, [activeRole, customerAppTab, stockistActiveTab, partnerAppTab, adminTab, showCustomerSignup, showStockistSignup]);
+  }, [activeRole, customerAppTab, stockistActiveTab, partnerAppTab, adminTab, showCustomerSignup, showStockistSignup, showPartnerApply]);
 
   const formatPoints = (value) => {
     const num = parseFloat(value) || 0;
@@ -3996,7 +4002,57 @@ export default function App() {
           setLoginOtp('');
         }
       } else {
-        showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
+        const errText = data.error || data.message || '';
+        const isNoAccount = res.status === 404 ||
+          errText === 'No account found' ||
+          (activeRole === 'admin' && (res.status === 403 || errText.includes('not registered as an administrator') || errText.includes('No admin account')));
+
+        if (isNoAccount) {
+          if (activeRole === 'stockist') {
+            showToast(
+              t('No shop is registered with this number. New here? Register your shop.', 'इस नंबर से कोई दुकान पंजीकृत नहीं है। नए हैं? अपनी दुकान पंजीकृत करें।', 'এই নম্বরে কোনো দোকান নিবন্ধিত নেই। নতুন? আপনার দোকান নিবন্ধন করুন।'),
+              'error',
+              {
+                label: t('Open a' + ' Shop', 'दुकान खोलें', 'দোকান খুলুন'),
+                onClick: () => {
+                  setOtpSent(false);
+                  setLoginOtp('');
+                  if (loginPhone.includes('@')) {
+                    setRegEmail(loginPhone.trim().toLowerCase());
+                  }
+                  setShowStockistSignup(true);
+                  setShowCustomerSignup(false);
+                }
+              }
+            );
+          } else if (activeRole === 'customer') {
+            showToast(
+              t('No account with this number. New here? Create one in a minute.', 'इस नंबर से कोई खाता नहीं है। नए हैं? एक मिनट में खाता बनाएं।', 'এই নম্বরে কোনো অ্যাকাউন্ট নেই। নতুন? এক মিনিটে অ্যাকাউন্ট খুলুন।'),
+              'error',
+              {
+                label: t('Sign Up', 'साइन अप करें', 'সাইন আপ করুন'),
+                onClick: () => {
+                  setOtpSent(false);
+                  setLoginOtp('');
+                  if (loginPhone.includes('@')) {
+                    setRegEmail(loginPhone.trim().toLowerCase());
+                  }
+                  setShowCustomerSignup(true);
+                  setShowStockistSignup(false);
+                }
+              }
+            );
+          } else if (activeRole === 'admin') {
+            showToast(
+              t('No admin account with this number.', 'इस नंबर से कोई एडमिन खाता नहीं है।', 'এই নম্বরে কোনো অ্যাডমিন অ্যাকাউন্ট নেই।'),
+              'error'
+            );
+          } else {
+            showToast(errText || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
+          }
+        } else {
+          showToast(errText || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
+        }
       }
     } catch (err) {
       showToast('Authentication service error', 'error');
@@ -7403,6 +7459,7 @@ export default function App() {
         setPartnerEmail('');
         setPartnerServiceTypes(['CABLE']);
         setPartnerRegionId('');
+        setShowPartnerApply(false);
         fetchDbState();
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -7674,7 +7731,32 @@ export default function App() {
           showToast('Logged in successfully!', 'success');
         }
       } else {
-        showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
+        const errText = data.error || data.message || '';
+        const isNoAccount = res.status === 404 || res.status === 401 ||
+          errText === 'No account found' ||
+          errText === 'Invalid credentials or OTP';
+
+        if (isNoAccount) {
+          showToast(
+            t('No partner account with this number. Want to partner with Beniffy? Apply here.', 'इस नंबर से कोई पार्टनर खाता नहीं है। Beniffy के साथ जुड़ना चाहते हैं? यहाँ आवेदन करें।', 'এই নম্বরে কোনো পার্টনার অ্যাকাউন্ট নেই। Beniffy-র সাথে যুক্ত হতে চান? এখানে আবেদন করুন।'),
+            'error',
+            {
+              label: t('Apply', 'आवेदन करें', 'আবেদন করুন'),
+              onClick: () => {
+                setPartnerOtpSent(false);
+                setPartnerLoginOtp('');
+                if (partnerLoginPhone.includes('@')) {
+                  setPartnerEmail(partnerLoginPhone.trim().toLowerCase());
+                } else {
+                  setPartnerPhone(partnerLoginPhone);
+                }
+                setShowPartnerApply(true);
+              }
+            }
+          );
+        } else {
+          showToast(errText || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
+        }
       }
     } catch (err) {
       showToast('Network error verifying OTP', 'error');
@@ -8226,6 +8308,120 @@ export default function App() {
       );
     }
 
+    if (showPartnerApply) {
+      return (
+        <div style={{ padding: '1.25rem 1rem', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <button 
+              type="button"
+              className="btn btn-secondary" 
+              style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} 
+              onClick={() => setShowPartnerApply(false)}
+            >
+              <ArrowLeft size={14} /> {t('Back', 'पीछे', 'পেছনে')}
+            </button>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+              {t('Partner Application', 'पार्टनर आवेदन', 'পার্টনার আবেদন')}
+            </span>
+          </div>
+          <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+            <BeniffyWordmark size={36} role="PARTNER" />
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginTop: '0.75rem', marginBottom: '0.35rem' }}>
+              {t('Partner with Beniffy', 'Beniffy के साथ पार्टनर बनें', 'Beniffy-র সাথে পার্টনার হন')}
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>
+              {t("Turn your subscriber base into a local marketplace. Leave your details and we'll get in touch.",
+                "अपने ग्राहक आधार को एक स्थानीय बाज़ार में बदलें। अपना विवरण छोड़ें और हम आपसे संपर्क करेंगे।",
+                "আপনার গ্রাহক ভিত্তিকে একটি স্থানীয় বাজারে রূপান্তর করুন। আপনার বিবরণ দিন এবং আমরা যোগাযোগ করব।")}
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div className="input-group">
+              <label className="input-label">{t('Operator / Company Name', 'ऑपरेटर / कंपनी का नाम', 'অপারেটর / কোম্পানির নাম')} *</label>
+              <input 
+                type="text" 
+                placeholder={t('e.g. Metro Cable Network', 'उदा. मेट्रो केबल नेटवर्क', 'যেমন মেট্রো কেবল নেটওয়ার্ক')} 
+                className="text-input" 
+                value={partnerName}
+                onChange={(e) => setPartnerName(e.target.value)}
+              />
+            </div>
+            <div className="input-group">
+              <label className="input-label">{t('Contact Person Name', 'संपर्क व्यक्ति का नाम', 'যোগাযোগের ব্যক্তির নাম')}</label>
+              <input 
+                type="text" 
+                placeholder={t('e.g. Ramesh Kumar', 'उदा. रमेश कुमार', 'যেমন रमेश कुमार')} 
+                className="text-input" 
+                value={partnerContactName}
+                onChange={(e) => setPartnerContactName(e.target.value)}
+              />
+            </div>
+            <div className="input-group">
+              <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'ফোন নম্বর (১০ সংখ্যা)')} *</label>
+              <PhoneInput 
+                placeholder="10-digit mobile number" 
+                className="text-input" 
+                value={partnerPhone} 
+                onChange={(e) => setPartnerPhone(e.target.value)} 
+              />
+            </div>
+            <div className="input-group">
+              <label className="input-label">{t('Email Address (Optional)', 'ईमेल पता (वैकल्पिक)', 'ইমেল ঠিকানা (ঐচ্ছিক)')}</label>
+              <input 
+                type="email" 
+                placeholder="partner@example.com" 
+                className="text-input" 
+                value={partnerEmail}
+                onChange={(e) => setPartnerEmail(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', margin: '0.25rem 0' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                {t('Services Offered:', 'दी जाने वाली सेवाएं:', 'প্রদত্ত পরিষেবা:')}
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                {SERVICE_TYPES.map(st => (
+                  <label key={st.value} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8rem' }}>
+                    <input
+                      type="checkbox"
+                      value={st.value}
+                      checked={partnerServiceTypes.includes(st.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setPartnerServiceTypes([...partnerServiceTypes, st.value]);
+                        } else {
+                          setPartnerServiceTypes(partnerServiceTypes.filter(s => s !== st.value));
+                        }
+                      }}
+                    />
+                    {st.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="input-group">
+              <label className="input-label">{t('Region', 'क्षेत्र', 'অঞ্চল')}</label>
+              <select className="text-input"
+                value={partnerRegionId}
+                onChange={(e) => setPartnerRegionId(e.target.value)}
+              >
+                <option value="">{t('Select Region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</option>
+                {regions.map(r => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={handlePartnerSubmit} disabled={partnerPhone.length !== 10}>
+              {t('Get in touch', 'संपर्क करें', 'যোগাযোগ করুন')}
+            </button>
+            <button className="btn btn-secondary" style={{ width: '100%', fontSize: '0.75rem' }} onClick={() => setShowPartnerApply(false)}>
+              {t('Back to Login', 'लॉगिन पर वापस जाएं', 'লগইনে ফিরে যান')}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={{ padding: '1.5rem 1.25rem', position: 'relative' }}>
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
@@ -8386,7 +8582,14 @@ export default function App() {
             {t("Are you a cable or broadband operator?", "क्या आप केबल या ब्रॉडबैंड ऑपरेटर हैं?", "আপনি কি কেবল বা ব্রডব্যান্ড অপারেটর?")}{' '}
             <button 
               style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: '0.75rem', fontWeight: 'bold' }}
-              onClick={() => setActiveRole('marketing')}
+              onClick={() => {
+                if (partnerLoginPhone.includes('@')) {
+                  setPartnerEmail(partnerLoginPhone.trim().toLowerCase());
+                } else {
+                  setPartnerPhone(partnerLoginPhone);
+                }
+                setShowPartnerApply(true);
+              }}
             >
               {t("Apply to partner with us", "हमारे साथ पार्टनर बनने के लिए आवेदन करें", "আমাদের সাথে পার্টনার হওয়ার জন্য আবেদন করুন")}
             </button>

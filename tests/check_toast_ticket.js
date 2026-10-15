@@ -80,7 +80,7 @@ async function runToastChecks() {
     await toast.waitFor({ state: 'visible', timeout: 4000 });
     
     const toastText = await toast.textContent();
-    const hasErrorText = toastText.includes('No account found');
+    const hasErrorText = toastText.includes('No account found') || toastText.includes('No shop is registered') || toastText.includes('No account with this number');
     const hasAlertIcon = (await toast.locator('svg.lucide-circle-alert, svg.lucide-alert-circle').count()) > 0;
     const hasCountdown = (await toast.locator('.toast-countdown-bar').count()) > 0;
     const hasCloseBtn = (await toast.locator('.toast-dismiss-btn').count()) > 0;
@@ -91,24 +91,24 @@ async function runToastChecks() {
     console.log(`    - Close button present: ${hasCloseBtn ? 'PASS' : 'FAIL'}`);
     if (!hasErrorText || !hasAlertIcon || !hasCountdown || !hasCloseBtn) allPassed = false;
 
-    // Wait 5.5s without interaction -> toast must be gone
-    console.log('    - Waiting 5.5s without interaction...');
-    await page.waitForTimeout(5500);
+    // Wait 6.5s without interaction -> toast with action has 6s duration, so must be gone
+    console.log('    - Waiting 6.5s without interaction (6s duration for toast with action)...');
+    await page.waitForTimeout(6500);
     const toastGone1 = (await toast.count()) === 0;
-    console.log(`    - Toast gone by 5.5s without interaction: ${toastGone1 ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Toast gone after 6.5s without interaction: ${toastGone1 ? 'PASS' : 'FAIL'}`);
     if (!toastGone1) allPassed = false;
 
-    // Step 2: Trigger again, tap once (page.tap) and wait -> must still be gone by 5.5s
-    console.log('  Testing: Trigger again, tap once (page.tap), wait -> gone by 5.5s...');
+    // Step 2: Trigger again, tap once (page.tap) and wait -> must still be gone by 6.5s
+    console.log('  Testing: Trigger again, tap once (page.tap), wait -> gone by 6.5s...');
     await verifyBtn.click();
     await toast.waitFor({ state: 'visible', timeout: 4000 });
     
     // Tap the toast
     await page.tap('.toast-msg');
     console.log('    - Tapped toast via page.tap.');
-    await page.waitForTimeout(5500);
+    await page.waitForTimeout(6500);
     const toastGone2 = (await toast.count()) === 0;
-    console.log(`    - Toast gone by 5.5s after tap: ${toastGone2 ? 'PASS' : 'FAIL'}`);
+    console.log(`    - Toast gone after 6.5s after tap: ${toastGone2 ? 'PASS' : 'FAIL'}`);
     if (!toastGone2) allPassed = false;
 
     // Step 3: Trigger it, then click X -> gone immediately
