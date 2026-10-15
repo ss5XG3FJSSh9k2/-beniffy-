@@ -6705,6 +6705,8 @@ export default function App() {
     setEditProdPrice(prod.price.toString());
     setEditProdCostPrice((prod.cost_price !== undefined && prod.cost_price !== null ? prod.cost_price : prod.price * 0.75).toString());
     setEditProdBillFile(null);
+    setEditProdImageFile(null);
+    setEditProdImagePreview(prod.image_url || null);
   };
 
   const handleSaveEditProduct = async () => {
@@ -6736,6 +6738,7 @@ export default function App() {
     try {
       const formData = new FormData();
       if (editProdBillFile) formData.append('bill_photo', editProdBillFile);
+      if (editProdImageFile) formData.append('imageFile', editProdImageFile);
       formData.append('name', editProdName);
       formData.append('description', editProdDescription || '');
       formData.append('price', priceNum);
@@ -6751,6 +6754,8 @@ export default function App() {
         showToast('Product updated successfully!', 'success');
         setEditingProduct(null);
         setEditProdBillFile(null);
+        setEditProdImageFile(null);
+        setEditProdImagePreview(null);
         loadStockistData();
         fetchDbState();
       } else {
@@ -13454,8 +13459,9 @@ export default function App() {
                             }}
                           />
                           {newProdBillFile && (
-                            <div style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: '0.2rem' }}>
-                              Selected: {newProdBillFile.name} ({(newProdBillFile.size / 1024).toFixed(1)} KB)
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Check size={14} style={{ color: 'var(--success-text)', flexShrink: 0 }} />
+                              <span>Selected: {newProdBillFile.name} ({(newProdBillFile.size / 1024).toFixed(1)} KB)</span>
                             </div>
                           )}
                           <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', margin: '0.35rem 0 0 0' }}>
@@ -13520,6 +13526,64 @@ export default function App() {
                         </div>
 
                         <div className="input-group">
+                          <label className="input-label">Product Image</label>
+                          <p style={{ fontSize: '0.65rem', margin: '0 0 0.35rem 0' }}>
+                            Square image works best. At least 400×400 pixels. JPG, PNG or WebP. Maximum 5 MB.
+                          </p>
+                          <input 
+                            type="file" 
+                            accept=".jpg,.jpeg,.png,.webp"
+                            className="text-input" 
+                            onChange={async e => {
+                              const file = e.target.files[0];
+                              if (!file) {
+                                setEditProdImageFile(null);
+                                setEditProdImagePreview(editingProduct?.image_url || null);
+                                return;
+                              }
+                              if (file.size > 5 * 1024 * 1024) {
+                                const sizeMb = (file.size / (1024 * 1024)).toFixed(1).replace('.0', '');
+                                showToast(`That image is ${sizeMb} MB. Please use one under 5 MB.`, 'error');
+                                return;
+                              }
+                              if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                                showToast('Please use a JPG, PNG or WebP image.', 'error');
+                                return;
+                              }
+                              // read dimensions first for the sane floor
+                              const dims = await new Promise(res => {
+                                const u = URL.createObjectURL(file); const im = new window.Image();
+                                im.onload = () => { res({ w: im.width, h: im.height }); URL.revokeObjectURL(u); };
+                                im.onerror = () => { res(null); URL.revokeObjectURL(u); };
+                                im.src = u;
+                              });
+                              if (!dims) { showToast('Please use a JPG, PNG or WebP image.', 'error'); return; }
+                              if (dims.w < 200 || dims.h < 200) {
+                                showToast(`That image is ${dims.w}×${dims.h}. Please use one at least 200×200.`, 'error');
+                                return;
+                              }
+                              try {
+                                const { blob, previewUrl } = await resizeImageToSquare(file, 512, 0.85);
+                                // wrap blob as a File so the existing formData.append sends exactly what it expects
+                                const processed = new window.File([blob], (file.name.replace(/\.[^.]+$/, '') || 'product') + '.jpg', { type: 'image/jpeg' });
+                                setEditProdImageFile(processed);
+                                setEditProdImagePreview(previewUrl);
+                              } catch {
+                                showToast('Could not process that image. Try another.', 'error');
+                              }
+                            }}
+                          />
+                          {editProdImagePreview && (
+                            <div style={{ marginTop: '0.5rem', textAlign: 'center' }}>
+                              <img src={editProdImagePreview} alt="Preview" style={{ width: '90px', height: '90px', objectFit: 'cover', objectPosition: 'center', borderRadius: '8px', border: '1px solid var(--border-color)' }} />
+                              <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                This is how it will appear. Use a square image if anything important is cut off.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="input-group">
                           {!editProdBillFile && (
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                               <span>✓ A bill photo is already on file. You only need to upload a new one if you change the price.</span>
@@ -13542,8 +13606,9 @@ export default function App() {
                             }}
                           />
                           {editProdBillFile && (
-                            <div style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: '0.2rem' }}>
-                              Selected: {editProdBillFile.name} ({(editProdBillFile.size / 1024).toFixed(1)} KB)
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Check size={14} style={{ color: 'var(--success-text)', flexShrink: 0 }} />
+                              <span>Selected: {editProdBillFile.name} ({(editProdBillFile.size / 1024).toFixed(1)} KB)</span>
                             </div>
                           )}
                           {!priceChanged && !editProdBillFile && (
@@ -13572,7 +13637,7 @@ export default function App() {
                           <button className="btn btn-accent" style={{ flex: 1 }} onClick={handleSaveEditProduct}>
                             {t('Save Changes', 'परिवर्तन सहेजें', 'পরিবর্তন সংরক্ষণ করুন')}
                           </button>
-                          <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingProduct(null)}>
+                          <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setEditingProduct(null); setEditProdImageFile(null); setEditProdImagePreview(null); }}>
                             {t('Cancel', 'रद्द करें', 'বাতিল করুন')}
                           </button>
                         </div>
