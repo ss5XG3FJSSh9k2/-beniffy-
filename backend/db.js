@@ -191,6 +191,36 @@ async function normalizeClosingTimes(dbInterface) {
   }
 }
 
+async function repairProductRegions(dbInterface) {
+  try {
+    const products = await dbInterface.getTable('products');
+    const stockists = await dbInterface.getTable('stockists');
+    const stockistMap = new Map();
+    for (const s of stockists) {
+      stockistMap.set(s.id, s);
+    }
+    let fixedCount = 0;
+    for (const p of products) {
+      const s = stockistMap.get(p.stockist_id);
+      if (s && s.region_id && p.region_id !== s.region_id) {
+        p.region_id = s.region_id;
+        fixedCount++;
+      }
+    }
+    if (fixedCount > 0) {
+      if (dbInterface && typeof dbInterface.saveTable === 'function') {
+        await dbInterface.saveTable('products', products);
+      } else {
+        await saveTable('products', products);
+      }
+    }
+    console.log(`[Data repair] Repaired region_id on ${fixedCount} product(s) to match stockist region.`);
+    return fixedCount;
+  } catch (e) {
+    console.error('[Data repair] Error repairing product regions:', e);
+  }
+}
+
 let initPromise = null;
 
 async function init() {
@@ -211,7 +241,7 @@ async function init() {
       isMemMode = true;
     }
 
-    const dbInterface = { query, getTable, insertRow, updateRow, deleteRow };
+    const dbInterface = { query, getTable, insertRow, updateRow, deleteRow, saveTable };
     await migrations.runMigrations(dbInterface);
 
     const isDevLauncher = process.env.DEV_LAUNCHER === 'true';
@@ -224,6 +254,7 @@ async function init() {
         for (const table of Object.keys(savedData)) {
           for (const row of savedData[table]) {
             try {
+              if (table === 'products') delete row.is_active;
               const keys = Object.keys(row);
               if (keys.length === 0) continue;
               const cols = keys.map(k => `"${k}"`).join(', ');
@@ -266,6 +297,7 @@ async function init() {
 
     await dedupeStockists(dbInterface);
     await normalizeClosingTimes(dbInterface);
+    await repairProductRegions(dbInterface);
   })();
   return initPromise;
 }
@@ -288,13 +320,14 @@ async function resetForTest() {
     replaceSeq.set(table, (replaceSeq.get(table) || 0) + 1);
   }
 
-  const dbInterface = { query, getTable, insertRow, updateRow, deleteRow };
+  const dbInterface = { query, getTable, insertRow, updateRow, deleteRow, saveTable };
   const seedMode = process.env.SEED_MODE || 'production';
   if (seedMode === 'test') {
     await seedRunner.seedDatabase(dbInterface);
     await backfillReferralCodes(dbInterface);
     await dedupeStockists(dbInterface);
     await normalizeClosingTimes(dbInterface);
+    await repairProductRegions(dbInterface);
   }
 }
 
@@ -556,5 +589,6 @@ module.exports = {
   updateRow,
   deleteRow,
   transaction,
-  getAll
+  getAll,
+  repairProductRegions
 };

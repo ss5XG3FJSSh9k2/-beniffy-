@@ -1353,22 +1353,45 @@ app.post('/api/auth/register-stockist', uploadBillMiddleware, async (req, res) =
 // PRODUCT & INVENTORY ENDPOINTS
 // ----------------------------------------------------
 
+function getCustomerVisibleProducts(stockist, products) {
+  if (!stockist || !Array.isArray(products)) return [];
+  const stockistId = typeof stockist === 'object' && stockist !== null ? stockist.id : stockist;
+  return products.filter(p =>
+    p.stockist_id === stockistId &&
+    !p.deleted_at &&
+    p.is_active !== false &&
+    p.is_sellable !== false
+  );
+}
+
 app.get('/api/products', async (req, res) => {
   const { regionId, stockistId } = req.query;
   const products = await db.getTable('products');
   const inventory = await db.getTable('stockist_inventory');
 
-  let filtered = products.filter(p => !p.deleted_at);
-  if (req.query.customer === 'true') {
-    filtered = filtered.filter(p => p.is_sellable !== false);
-  }
-  
-  if (regionId) {
-    filtered = filtered.filter(p => p.region_id === regionId);
+  let filtered;
+  if (req.query.customer === 'true' && stockistId) {
+    const stockists = await db.getTable('stockists');
+    const stockist = stockists.find(s => s.id === stockistId);
+    if (regionId && (!stockist || stockist.region_id !== regionId)) {
+      filtered = [];
+    } else {
+      filtered = getCustomerVisibleProducts(stockist || stockistId, products);
+    }
+  } else {
+    filtered = products.filter(p => !p.deleted_at);
+    if (req.query.customer === 'true') {
+      filtered = filtered.filter(p => p.is_sellable !== false);
+    }
+    if (regionId) {
+      filtered = filtered.filter(p => p.region_id === regionId);
+    }
+    if (stockistId) {
+      filtered = filtered.filter(p => p.stockist_id === stockistId);
+    }
   }
 
   if (stockistId) {
-    filtered = filtered.filter(p => p.stockist_id === stockistId);
     const billPhotos = await db.getTable('product_bill_photos');
     filtered = filtered.map(p => {
       const inv = inventory.find(i => i.stockist_id === stockistId && i.product_id === p.id);
@@ -2361,7 +2384,7 @@ app.get('/api/stockists', async (req, res) => {
     const finished = shopOrders.filter(o => ['DELIVERED', 'CANCELLED'].includes(o.status));
     const delivered = finished.filter(o => o.status === 'DELIVERED').length;
     const totalFinished = finished.length;
-    const shopProducts = products.filter(p => p.stockist_id === s.id && p.is_active !== false && p.is_sellable !== false);
+    const shopProducts = getCustomerVisibleProducts(s, products);
 
     let reliabilityBadge = 'Active Partner';
     if (totalFinished > 0) {
@@ -6842,6 +6865,9 @@ app.post('/api/admin/stockists/:id', async (req, res) => {
 
   const beforeStockist = { name: stockist.name, opening_time: stockist.opening_time, closing_time: stockist.closing_time, prep_eta_minutes: stockist.prep_eta_minutes, delivery_radius_km: stockist.delivery_radius_km, region_id: stockist.region_id, vendor_id: stockist.vendor_id, min_order_value: stockist.min_order_value };
   
+  let updatedProductsCount = 0;
+  const regionChanged = region_id !== undefined && region_id !== beforeStockist.region_id;
+
   if (name) stockist.name = name.trim();
   if (opening_time) stockist.opening_time = opening_time;
   if (closing_time) stockist.closing_time = closing_time;
@@ -6852,6 +6878,21 @@ app.post('/api/admin/stockists/:id', async (req, res) => {
   if (min_order_value !== undefined) stockist.min_order_value = parseFloat(min_order_value);
   await db.saveTable('stockists', stockists);
   
+  if (regionChanged) {
+    const products = await db.getTable('products');
+    let productsModified = false;
+    for (const p of products) {
+      if (p.stockist_id === id) {
+        p.region_id = region_id;
+        updatedProductsCount++;
+        productsModified = true;
+      }
+    }
+    if (productsModified) {
+      await db.saveTable('products', products);
+    }
+  }
+
   const users = await db.getTable('users');
   const user = users.find(u => u.id === stockist.user_id);
   
@@ -6918,7 +6959,8 @@ app.post('/api/admin/stockists/:id', async (req, res) => {
     }
   }
   
-  await appendAudit(req, 'EDIT_STOCKIST', 'stockist', id, beforeStockist, stockist);
+  const auditReason = regionChanged ? `Updated products count: ${updatedProductsCount}` : '';
+  await appendAudit(req, 'EDIT_STOCKIST', 'stockist', id, beforeStockist, stockist, auditReason);
   return res.json({ success: true, stockist });
 });
 
@@ -6990,8 +7032,22 @@ app.post('/api/admin/stockists/:id/region', async (req, res) => {
   const user = users.find(u => u.id === stockist.user_id);
   if (user) { user.region_id = region_id; await db.saveTable('users', users); }
   
-  await appendAudit(req, 'CHANGE_STOCKIST_REGION', 'stockist', id, { region_id: oldRegion }, { region_id }, `Bound active customers count: ${activeBindingsCount}`);
-  return res.json({ success: true, active_customer_bindings_count: activeBindingsCount, stockist });
+  const products = await db.getTable('products');
+  let updatedProductsCount = 0;
+  let productsModified = false;
+  for (const p of products) {
+    if (p.stockist_id === id) {
+      p.region_id = region_id;
+      updatedProductsCount++;
+      productsModified = true;
+    }
+  }
+  if (productsModified) {
+    await db.saveTable('products', products);
+  }
+
+  await appendAudit(req, 'CHANGE_STOCKIST_REGION', 'stockist', id, { region_id: oldRegion }, { region_id }, `Bound active customers count: ${activeBindingsCount}; Updated products count: ${updatedProductsCount}`);
+  return res.json({ success: true, active_customer_bindings_count: activeBindingsCount, updated_products_count: updatedProductsCount, stockist });
 });
 
 app.post('/api/admin/stockists/:id/deactivate', async (req, res) => {
@@ -10504,7 +10560,8 @@ module.exports = {
   clearOtpRateLimit,
   checkOtpRateLimit,
   otpRateLimitMap,
-  otpHourlyLimitMap
+  otpHourlyLimitMap,
+  getCustomerVisibleProducts
 };
 
 

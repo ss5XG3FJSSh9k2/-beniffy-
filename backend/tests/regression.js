@@ -6310,6 +6310,96 @@ async function main() {
   const noImgProd = noImgProdRes.body.product || noImgProdRes.body;
   assert(noImgProd.image_url === null, 'Newly created product without image has image_url null, not an unsplash URL');
 
+  // --- 46. BF-SHOP-ITEM-COUNT-AND-REGION-SYNC ---
+  console.log('\n--- 46. BF-SHOP-ITEM-COUNT-AND-REGION-SYNC ---');
+  loginAs('u-admin', 'ADMIN');
+  const syncStkRes = await post('http://localhost:3001/api/admin/stockists', {
+    name: 'Region Sync Shop',
+    phone: '9830099881',
+    email: 'sync_test_9830099881@fastnet.test',
+    region_id: 'r1',
+    vendor_id: 'v1'
+  });
+  assert(syncStkRes.status === 200, 'Admin creates stockist in region r1');
+  const syncStkId = syncStkRes.body.stockist.id;
+
+  const sp1Res = await postMultipart('http://localhost:3001/api/products', {
+    name: 'Sync Prod 1',
+    price: 100,
+    costPrice: 80,
+    category: 'groceries',
+    initialStock: 10,
+    stockistId: syncStkId,
+    regionId: 'r1'
+  }, { fieldName: 'bill_photo', filename: 'bill.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock') });
+  assert(sp1Res.status === 200, 'Product 1 created for sync shop');
+  const sp1Id = (sp1Res.body.product || sp1Res.body).id;
+
+  const sp2Res = await postMultipart('http://localhost:3001/api/products', {
+    name: 'Sync Prod 2',
+    price: 200,
+    costPrice: 150,
+    category: 'groceries',
+    initialStock: 10,
+    stockistId: syncStkId,
+    regionId: 'r1'
+  }, { fieldName: 'bill_photo', filename: 'bill.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock') });
+  assert(sp2Res.status === 200, 'Product 2 created for sync shop');
+  const sp2Id = (sp2Res.body.product || sp2Res.body).id;
+
+  // Verify initial count in region r1
+  const stkListR1 = await get('http://localhost:3001/api/stockists?regionId=r1');
+  const shopInR1 = stkListR1.body.find(s => s.id === syncStkId);
+  assert(shopInR1 && shopInR1.product_count === 2, 'Shop in region r1 shows product_count 2');
+
+  const prodsInR1 = await get(`http://localhost:3001/api/products?regionId=r1&stockistId=${syncStkId}&customer=true`);
+  assert(prodsInR1.status === 200 && Array.isArray(prodsInR1.body) && prodsInR1.body.length === 2, 'GET /api/products returns 2 items in region r1');
+
+  // (a) Move shop from region r1 to region r2 via admin /region endpoint
+  const moveRes = await post(`http://localhost:3001/api/admin/stockists/${syncStkId}/region`, { region_id: 'r2' });
+  assert(moveRes.status === 200, 'Admin moves stockist to region r2');
+  assert(moveRes.body.updated_products_count === 2, 'move response includes updated_products_count: 2');
+
+  // Verify audit log has the updated product count
+  const auditTable = await dbModule.getTable('admin_audit_log');
+  const moveAudit = auditTable.slice().reverse().find(a => a.entity_id === syncStkId && a.action === 'CHANGE_STOCKIST_REGION');
+  assert(moveAudit && moveAudit.reason.includes('Updated products count: 2'), 'Audit log includes updated products count for /region');
+
+  // Customer in B (r2) sees product_count 2
+  const stkListR2 = await get('http://localhost:3001/api/stockists?regionId=r2');
+  const shopInR2 = stkListR2.body.find(s => s.id === syncStkId);
+  assert(shopInR2 && shopInR2.product_count === 2, 'Customer in B sees product_count 2 after shop moves to B');
+
+  // GET /api/products in B returns 2
+  const prodsInR2 = await get(`http://localhost:3001/api/products?regionId=r2&stockistId=${syncStkId}&customer=true`);
+  assert(prodsInR2.status === 200 && Array.isArray(prodsInR2.body) && prodsInR2.body.length === 2, 'GET /api/products returns 2 items for customer in B');
+
+  // (b) Soft delete one product -> excluded from both count and list
+  await dbModule.updateRow('products', sp2Id, { deleted_at: new Date().toISOString() });
+
+  const stkListAfterDel = await get('http://localhost:3001/api/stockists?regionId=r2');
+  const shopAfterDel = stkListAfterDel.body.find(s => s.id === syncStkId);
+  assert(shopAfterDel && shopAfterDel.product_count === 1, 'Deleted product is excluded from product_count (now 1)');
+
+  const prodsAfterDel = await get(`http://localhost:3001/api/products?regionId=r2&stockistId=${syncStkId}&customer=true`);
+  assert(prodsAfterDel.status === 200 && Array.isArray(prodsAfterDel.body) && prodsAfterDel.body.length === 1 && prodsAfterDel.body[0].id === sp1Id, 'Deleted product is excluded from GET /api/products (only prod 1 returned)');
+
+  // Also test moving shop via POST /api/admin/stockists/:id (the second endpoint) to region r3
+  const editMoveRes = await post(`http://localhost:3001/api/admin/stockists/${syncStkId}`, { region_id: 'r3' });
+  assert(editMoveRes.status === 200, 'POST /api/admin/stockists/:id with region_id r3 succeeds');
+
+  const editAudit = (await dbModule.getTable('admin_audit_log')).slice().reverse().find(a => a.entity_id === syncStkId && a.action === 'EDIT_STOCKIST');
+  assert(editAudit && editAudit.reason.includes('Updated products count: 2'), 'Audit log includes updated products count for EDIT_STOCKIST');
+
+  const stkListR3 = await get('http://localhost:3001/api/stockists?regionId=r3');
+  const shopInR3 = stkListR3.body.find(s => s.id === syncStkId);
+  assert(shopInR3 && shopInR3.product_count === 1, 'Shop in region r3 has product_count 1');
+
+  const prodsInR3 = await get(`http://localhost:3001/api/products?regionId=r3&stockistId=${syncStkId}&customer=true`);
+  assert(prodsInR3.status === 200 && Array.isArray(prodsInR3.body) && prodsInR3.body.length === 1, 'GET /api/products in region r3 returns 1 product');
+
+  clearLogin();
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 
