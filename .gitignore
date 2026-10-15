@@ -11,6 +11,7 @@ frontend/dist/
 backend/.env
 backend/uploads/
 backend/data/dev-db.json
+backend/data/dev-jwt-secret
 scratch/
 frontend/scratch/
 frontend/scratch_fix_app.cjs
