@@ -229,6 +229,24 @@ const DEFAULT_DB = {
     { id: 'pec1', region_id: 'r1', stockist_id: null, earn_rate_percent: 45.0, created_at: new Date().toISOString() },
     { id: 'pec2', region_id: 'r2', stockist_id: null, earn_rate_percent: 45.0, created_at: new Date().toISOString() }
   ],
+  registration_flags: [
+    {
+      id: 'rf-seed-1',
+      user_id: 'u-stk3',
+      flag_type: 'DUPLICATE_PHONE',
+      severity: 'MEDIUM',
+      detail: 'Phone matches another registered account',
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'rf-seed-2',
+      user_id: 'u-stk5',
+      flag_type: 'SUSPICIOUS_DOCUMENT',
+      severity: 'HIGH',
+      detail: 'Aadhaar photo quality check required',
+      created_at: new Date().toISOString()
+    }
+  ],
   stockist_vendors: [
     { id: 'sv1', stockist_id: 's1', vendor_id: 'v1', approved_at: new Date().toISOString() },
     { id: 'sv2', stockist_id: 's2', vendor_id: 'v2', approved_at: new Date().toISOString() },
@@ -290,6 +308,7 @@ async function seedDatabase(db) {
     'stockist_commission_rates',
     'points_earn_config',
     'stockist_vendors',
+    'registration_flags',
     'points_ledger'
   ];
 

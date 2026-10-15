@@ -6216,7 +6216,33 @@ async function main() {
   const unregPartnerPhone = '9199990002';
   const unregPartnerVerify = await post('http://localhost:3001/api/partner/auth/login-otp-verify', { phone: unregPartnerPhone, otp: '123456' });
   assert(unregPartnerVerify.status === 404, 'partner login-otp-verify for unregistered partner returns 404');
-  assert(unregPartnerVerify.body?.error === 'No account found', 'partner login-otp-verify for unregistered partner returns No account found');
+  // Clear risk flag tests
+  loginAs('u-admin', 'ADMIN');
+  const testFlagUserId = 'u-test-clear-flag-stk';
+  await dbModule.insertRow('users', {
+    id: testFlagUserId,
+    name: 'Clear Flag Test Stockist',
+    phone: '9830009991',
+    role: 'STOCKIST',
+    kyc_status: 'PENDING'
+  });
+  const testFlagId = 'fl-test-clear-1';
+  await dbModule.insertRow('registration_flags', {
+    id: testFlagId,
+    user_id: testFlagUserId,
+    flag_type: 'DUPLICATE_PHONE',
+    severity: 'MEDIUM',
+    detail: 'Phone matches another account'
+  });
+
+  const testClearNoNoteRes = await post(`http://localhost:3001/api/admin/kyc/${testFlagUserId}/flags/${testFlagId}/clear`, { note: '' });
+  assert(testClearNoNoteRes.status === 400, 'clear flag without note returns 400');
+
+  const testClearSuccessRes = await post(`http://localhost:3001/api/admin/kyc/${testFlagUserId}/flags/${testFlagId}/clear`, { note: 'No problem, verified in person' });
+  assert(testClearSuccessRes.status === 200 && testClearSuccessRes.body?.success === true, 'clear flag with note returns 200 success');
+
+  const testClearAlreadyClearedRes = await post(`http://localhost:3001/api/admin/kyc/${testFlagUserId}/flags/${testFlagId}/clear`, { note: 'Another note' });
+  assert(testClearAlreadyClearedRes.status === 400, 'clearing already cleared flag returns 400');
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);

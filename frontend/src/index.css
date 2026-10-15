@@ -484,7 +484,19 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: 0.05em;
 }
 
-.text-input {
+input:not([type=checkbox]):not([type=radio]):not([type=range]),
+textarea,
+select {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.text-input,
+input:not([type=checkbox]):not([type=radio]):not([type=range]).text-input,
+textarea.text-input,
+select.text-input {
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-color);
   color: var(--text-main);
@@ -1647,10 +1659,8 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .table-scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
 .admin-table th:first-child, .admin-table td:first-child { min-width: 140px; }
-.admin-table td { overflow-wrap: break-word; }
+.admin-table th, .admin-table td { word-break: normal; overflow-wrap: normal; }
 .admin-table.stockist-table th, .admin-table.stockist-table td { padding: 0.75rem 0.5rem; }
-
-input { color: var(--text-main); }
 
 
 

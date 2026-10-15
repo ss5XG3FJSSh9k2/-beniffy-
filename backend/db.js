@@ -280,7 +280,7 @@ async function resetForTest() {
     'partners', 'partner_regions', 'partner_packages', 'partner_users',
     'customer_partner_bindings', 'redemption_approvals', 'partner_feedback',
     'partner_notifications', 'feedback_reports', 'user_blacklist', 'support_tickets',
-    'stockist_cod_commissions'
+    'stockist_cod_commissions', 'registration_flags'
   ];
 
   for (const table of tables) {

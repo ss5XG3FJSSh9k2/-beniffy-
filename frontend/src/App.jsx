@@ -886,6 +886,7 @@ const PhoneInput = ({ value, onChange, onKeyDown, onPaste, ...rest }) => {
   return (
     <input
       {...rest}
+      className={`text-input ${rest.className || ''}`.trim()}
       type="tel"
       inputMode="numeric"
       autoComplete="tel-national"
@@ -941,6 +942,7 @@ const OtpInput = ({ length = 6, value, onChange, onKeyDown, onPaste, ...rest }) 
   return (
     <input
       {...rest}
+      className={`text-input ${rest.className || ''}`.trim()}
       type="text"
       inputMode="numeric"
       autoComplete="one-time-code"
@@ -2424,24 +2426,35 @@ export default function App() {
 
   const handleClearFlag = async () => {
     if (!flagClearData || !flagClearNote) return;
+    if (flagClearNote.replace(/\s/g, '').length < 5) return;
     const { userId, flagId } = flagClearData;
     const adminId = currentUser?.id || 'admin';
     try {
+      const token = (() => { try { return localStorage.getItem('token'); } catch { return null; } })();
       const res = await fetch(`${API_BASE}/admin/kyc/${userId}/flags/${flagId}/clear`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer `, 'x-admin-user-id': adminId, 'x-admin-id': adminId },
-        body: JSON.stringify({ note: flagClearNote })
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'x-admin-user-id': adminId,
+          'x-admin-id': adminId
+        },
+        body: JSON.stringify({ note: flagClearNote.trim() })
       });
       if (res.ok) {
         fetchDbState();
         setFlagClearData(null);
         setFlagClearNote('');
+        setFlagClearError(null);
       } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Failed to clear flag', 'error');
+        const errMsg = data.error || 'Failed to clear flag';
+        setFlagClearError(errMsg);
+        showToast(errMsg, 'error');
       }
     } catch (e) {
       console.error(e);
+      setFlagClearError('Error clearing flag');
       showToast('Error clearing flag', 'error');
     }
   };
@@ -2799,6 +2812,7 @@ export default function App() {
   const [expandedKycRow, setExpandedKycRow] = useState(null);
   const [flagClearData, setFlagClearData] = useState(null);
   const [flagClearNote, setFlagClearNote] = useState('');
+  const [flagClearError, setFlagClearError] = useState(null);
   const [commissionRates, setCommissionRates] = useState([]);
   const [anomalies, setAnomalies] = useState([]);
   const [pendingRedemptions, setPendingRedemptions] = useState([]);
@@ -13895,7 +13909,7 @@ export default function App() {
               <button className={`admin-nav-item ${adminTab === 'home' ? 'active' : ''}`} onClick={() => goToAdminTab('home')}>
                 <Home size={16} /> Home
               </button>
-              <button className={`admin-nav-item ${adminTab === 'kyc' ? 'active' : ''}`} onClick={() => goToAdminTab('kyc')}>
+              <button className={`admin-nav-item ${adminTab === 'kyc' ? 'active' : ''}`} onClick={() => goToAdminTab('kyc', fetchDbState)}>
                 <UserCheck size={16} /> Pending KYC {pendingKyc.length > 0 && <span className="badge badge-danger" style={{ marginLeft: '0.25rem', fontSize: '0.65rem' }}>{pendingKyc.length}</span>}
               </button>
               <button className={`admin-nav-item ${adminTab === 'customers' ? 'active' : ''}`} onClick={() => goToAdminTab('customers')}>
@@ -15204,7 +15218,7 @@ export default function App() {
                         <th>Document</th>
                         <th>Shop Name</th>
                         <th>Shop Address</th>
-                        <th>Actions</th>
+                        <th style={{ minWidth: '260px' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -15227,10 +15241,10 @@ export default function App() {
                         return (
                           <React.Fragment key={u.id}>
                             <tr>
-                              <td>{u.name}</td>
-                              <td>{u.phone}</td>
-                              <td>{regions.find(r => r.id === u.region_id)?.name || u.region_id || '-'}</td>
-                              <td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{u.name}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{u.phone}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{regions.find(r => r.id === u.region_id)?.name || u.region_id || '-'}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>
                                 {activeFlags.length > 0 ? (
                                   <span className={`badge ${badgeClass}`} style={{ cursor: 'pointer' }} onClick={() => setExpandedKycRow(expandedKycRow === u.id ? null : u.id)}>
                                     {activeFlags.length} Flag{activeFlags.length > 1 ? 's' : ''} {expandedKycRow === u.id ? '▼' : '▶'}
@@ -15239,63 +15253,57 @@ export default function App() {
                                   <span className="badge badge-success">Clean</span>
                                 )}
                               </td>
-                              <td>{kyc.id_type || u.kyc_id_type || '-'}</td>
-                            <td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{kyc.id_type || u.kyc_id_type || '-'}</td>
+                            <td style={{ whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 <span>{revealedIds[u.id] ? formatAadhaar(revealedIds[u.id]) : maskAadhaar(kyc.id_number || u.kyc_id_number)}</span>
                                 {revealedIds[u.id] ? (
-                                  <button className="btn btn-secondary btn-sm" style={{ padding: '0.15rem 0.4rem', fontSize: '0.7rem' }} onClick={() => handleHideUnmaskedId(u.id)}>
+                                  <button className="btn btn-secondary btn-sm" style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} onClick={() => handleHideUnmaskedId(u.id)}>
                                     Hide
                                   </button>
                                 ) : (
-                                  <button className="btn btn-secondary btn-sm" style={{ padding: '0.15rem 0.4rem', fontSize: '0.7rem' }} onClick={() => handleShowUnmaskedId(u.id)}>
+                                  <button className="btn btn-secondary btn-sm" style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} onClick={() => handleShowUnmaskedId(u.id)}>
                                     Show
                                   </button>
                                 )}
                               </div>
                             </td>
-                            <td>
+                            <td style={{ whiteSpace: 'nowrap' }}>
                               {hasDocument ? (
-                                <button className="btn btn-secondary btn-sm" style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }} onClick={() => handleViewDocument(u)}>
-                                  View Document
+                                <button className="btn btn-secondary btn-sm" style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', padding: '0.35rem 0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => handleViewDocument(u)}>
+                                  <FileText size={13} style={{ flexShrink: 0 }} /> View Document
                                 </button>
                               ) : (
-                                <button className="btn btn-secondary btn-sm" disabled style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem', opacity: 0.5, cursor: 'not-allowed' }}>
-                                  No document
+                                <button className="btn btn-secondary btn-sm" disabled style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', padding: '0.35rem 0.6rem', opacity: 0.5, cursor: 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                                  <FileText size={13} style={{ flexShrink: 0 }} /> No document
                                 </button>
                               )}
                             </td>
                             <td>{kyc.shop_name || u.shop_name || `${u.name} Store`}</td>
                             <td>{kyc.shop_address || u.shop_address || u.address || '-'}</td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '0.3rem' }}>
-                                <button className="btn btn-accent" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => {
-                                  if (hasHigh) {
-                                    const flagListText = activeFlags.filter(f => f.severity === 'HIGH').map(f => `• ${f.flag_type}: ${f.detail}`).join('\n');
-                                    const highFlags = hasHigh ? activeFlags.filter(f => f.severity === 'HIGH') : [];
-                                    openKycApproveModal(u, highFlags);
-                                  } else {
-                                    const highFlags = hasHigh ? activeFlags.filter(f => f.severity === 'HIGH') : [];
-                                    openKycApproveModal(u, highFlags);
-                                  }
+                            <td style={{ minWidth: '260px' }}>
+                              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <button className="btn btn-accent" style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', padding: '0.35rem 0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => {
+                                  const highFlags = hasHigh ? activeFlags.filter(f => f.severity === 'HIGH') : [];
+                                  openKycApproveModal(u, highFlags);
                                 }}>
-                                  ✓ Approve
+                                  <Check size={13} style={{ flexShrink: 0 }} /> Approve
                                 </button>
-                                <button className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => {
+                                <button className="btn btn-secondary" style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', padding: '0.35rem 0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => {
                                   setKycActionUserId(u.id);
                                   setKycActionType('REJECT_APPEAL');
                                   setKycActionReason('');
                                   setShowKycActionModal(true);
                                 }}>
-                                  ✗ Reject
+                                  <X size={13} style={{ flexShrink: 0 }} /> Reject
                                 </button>
-                                <button className="btn btn-danger" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => {
+                                <button className="btn btn-danger" style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', padding: '0.35rem 0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => {
                                   setKycActionUserId(u.id);
                                   setKycActionType('BLACKLIST');
                                   setKycActionReason('');
                                   setShowKycActionModal(true);
                                 }}>
-                                  ⊗ Blacklist
+                                  <Ban size={13} style={{ flexShrink: 0 }} /> Blacklist
                                 </button>
                               </div>
                             </td>
@@ -15307,7 +15315,7 @@ export default function App() {
                                 {u.flags && u.flags.length > 0 ? (
                                   <ul style={{ paddingLeft: '1.2rem', margin: 0, fontSize: '0.85rem' }}>
                                     {u.flags.map(f => (
-                                      <li key={f.id} style={{ marginBottom: '0.4rem', opacity: f.cleared_at ? 0.6 : 1, textDecoration: f.cleared_at ? 'line-through' : 'none' }}>
+                                      <li key={f.id} style={{ marginBottom: '0.6rem', opacity: f.cleared_at ? 0.6 : 1, textDecoration: f.cleared_at ? 'line-through' : 'none' }}>
                                         <strong style={{ color: f.severity === 'HIGH' ? 'var(--danger-color)' : (f.severity === 'MEDIUM' ? 'var(--warning-text)' : 'inherit') }}>[{f.severity}] {f.flag_type}</strong>: {f.detail}
                                         {f.related_user_ids && f.related_user_ids.length > 0 && (
                                           <span style={{ marginLeft: '0.5rem', fontStyle: 'italic' }}>
@@ -15315,15 +15323,83 @@ export default function App() {
                                           </span>
                                         )}
                                         {!f.cleared_at ? (
-                                          <button className="btn btn-secondary btn-sm" style={{ marginLeft: '1rem', fontSize: '0.65rem', padding: '0.1rem 0.3rem' }} onClick={() => setFlagClearData({ userId: u.id, flagId: f.id })}>Clear</button>
+                                          <button
+                                            className="btn btn-secondary btn-sm"
+                                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem', marginLeft: '0.75rem' }}
+                                            onClick={() => {
+                                              setFlagClearData({ userId: u.id, flagId: f.id });
+                                              setFlagClearNote('');
+                                              setFlagClearError(null);
+                                            }}
+                                          >
+                                            Clear
+                                          </button>
                                         ) : (
-                                          <span style={{ marginLeft: '1rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>Cleared by {f.cleared_by} - {f.cleared_note}</span>
+                                          <span style={{ marginLeft: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Cleared by {f.cleared_by} – {f.cleared_note}</span>
                                         )}
                                         {flagClearData && flagClearData.flagId === f.id && (
-                                          <div style={{ display: 'inline-block', marginLeft: '0.5rem' }}>
-                                            <input type="text" placeholder="Note required" value={flagClearNote} onChange={e => setFlagClearNote(e.target.value)} style={{ padding: '0.1rem 0.3rem', fontSize: '0.7rem', width: '150px' }} />
-                                            <button className="btn btn-accent btn-sm" style={{ marginLeft: '0.3rem', fontSize: '0.65rem', padding: '0.1rem 0.3rem' }} onClick={handleClearFlag}>Confirm</button>
-                                            <button className="btn btn-secondary btn-sm" style={{ marginLeft: '0.3rem', fontSize: '0.65rem', padding: '0.1rem 0.3rem' }} onClick={() => { setFlagClearData(null); setFlagClearNote(''); }}>Cancel</button>
+                                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem', maxWidth: '650px' }}>
+                                            <label htmlFor={'flag-note-' + f.id} className="input-label" style={{ width: '100%', marginBottom: 0 }}>
+                                              Reason for clearing (required)
+                                            </label>
+                                            <input
+                                              type="text"
+                                              className="text-input"
+                                              id={'flag-note-' + f.id}
+                                              placeholder="e.g. ID verified in person"
+                                              value={flagClearNote}
+                                              onChange={e => {
+                                                setFlagClearNote(e.target.value);
+                                                if (flagClearError) setFlagClearError(null);
+                                              }}
+                                              onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                  e.preventDefault();
+                                                  if (flagClearNote.replace(/\s/g, '').length >= 5) {
+                                                    handleClearFlag();
+                                                  }
+                                                } else if (e.key === 'Escape') {
+                                                  e.preventDefault();
+                                                  setFlagClearData(null);
+                                                  setFlagClearNote('');
+                                                  setFlagClearError(null);
+                                                }
+                                              }}
+                                              maxLength={300}
+                                              autoFocus
+                                              style={{
+                                                fontSize: '0.85rem',
+                                                padding: '0.5rem 0.75rem',
+                                                flex: '1 1 260px',
+                                                minWidth: 0
+                                              }}
+                                            />
+                                            <button
+                                              type="button"
+                                              className="btn btn-primary"
+                                              disabled={flagClearNote.replace(/\s/g, '').length < 5}
+                                              style={{ fontSize: '0.8rem', padding: '0.45rem 0.9rem' }}
+                                              onClick={handleClearFlag}
+                                            >
+                                              Confirm
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="btn btn-secondary"
+                                              style={{ fontSize: '0.8rem', padding: '0.45rem 0.9rem' }}
+                                              onClick={() => {
+                                                setFlagClearData(null);
+                                                setFlagClearNote('');
+                                                setFlagClearError(null);
+                                              }}
+                                            >
+                                              Cancel
+                                            </button>
+                                            {flagClearError && (
+                                              <div style={{ color: 'var(--danger-text)', fontSize: '0.8rem', width: '100%', marginTop: '0.25rem' }}>
+                                                {flagClearError}
+                                              </div>
+                                            )}
                                           </div>
                                         )}
                                       </li>
