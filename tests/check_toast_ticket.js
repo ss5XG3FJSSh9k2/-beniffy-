@@ -519,8 +519,8 @@ async function runToastChecks() {
       await longToast.waitFor({ state: 'detached', timeout: 2000 }).catch(() => {});
     }
 
-    // 4.5 Admin App: toast sits bottom-right of page
-    console.log('  Testing: Admin App -> toast sits bottom-right of the page...');
+    // 4.5 Admin App: toast sits bottom-centre of page
+    console.log('  Testing: Admin App -> toast sits bottom-centre of the page...');
     await page.goto('http://localhost:5173/?role=admin');
     await page.waitForTimeout(500);
 
@@ -533,18 +533,18 @@ async function runToastChecks() {
       const t = document.querySelector('.toast-msg');
       if (!t) return null;
       const tr = t.getBoundingClientRect();
-      const rightDist = window.innerWidth - tr.right;
+      const centerDiff = Math.abs((tr.left + tr.width / 2) - window.innerWidth / 2);
       const bottomDist = window.innerHeight - tr.bottom;
       return {
-        rightDist,
+        centerDiff,
         bottomDist,
-        isBottomRight: rightDist >= 10 && rightDist <= 35 && bottomDist >= 10 && bottomDist <= 35
+        isBottomCentre: centerDiff <= 2 && bottomDist >= 20 && bottomDist <= 40
       };
     });
 
-    console.log(`    - Admin toast distance from right: ${adminMetrics?.rightDist}px, bottom: ${adminMetrics?.bottomDist}px`);
-    console.log(`    - Admin toast placed bottom-right: ${adminMetrics && adminMetrics.isBottomRight ? 'PASS' : 'FAIL'}`);
-    if (!adminMetrics || !adminMetrics.isBottomRight) {
+    console.log(`    - Admin toast center diff: ${adminMetrics?.centerDiff}px, bottom: ${adminMetrics?.bottomDist}px`);
+    console.log(`    - Admin toast placed bottom-centre: ${adminMetrics && adminMetrics.isBottomCentre ? 'PASS' : 'FAIL'}`);
+    if (!adminMetrics || !adminMetrics.isBottomCentre) {
       allPassed = false;
     }
 

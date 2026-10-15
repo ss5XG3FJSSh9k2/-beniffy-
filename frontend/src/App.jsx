@@ -408,9 +408,8 @@ const ToastView = ({ toast, onDismiss, onPointerEnter, onPointerLeave, toastPaus
         borderLeft: `4px solid ${toast.type === 'error' ? 'var(--danger)' : 'var(--accent)'}`,
         zIndex: 'var(--z-toast)',
         background: 'var(--bg-surface)',
-        paddingLeft: '44px',
-        minHeight: '44px',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        ...(inPhone ? { paddingLeft: '44px', minHeight: '44px' } : {})
       }}>
       <button
         type="button"
@@ -425,11 +424,11 @@ const ToastView = ({ toast, onDismiss, onPointerEnter, onPointerLeave, toastPaus
       </button>
       <div className="toast-body">
         {toast.type === 'error' ? (
-          <AlertCircle size={16} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+          <AlertCircle size={18} style={{ color: 'var(--danger)', flexShrink: 0 }} />
         ) : toast.type === 'info' ? (
-          <Info size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+          <Info size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
         ) : (
-          <CheckCircle2 size={16} style={{ color: 'var(--success-text)', flexShrink: 0 }} />
+          <CheckCircle2 size={18} style={{ color: 'var(--success-text)', flexShrink: 0 }} />
         )}
         <span role={toast.type === 'error' ? 'alert' : undefined} className="toast-text">{toast.message}</span>
       </div>
@@ -1499,6 +1498,7 @@ export default function App() {
   
 
   const [showDevSettings, setShowDevSettings] = useState(false);
+  const [devToolsEnabled, setDevToolsEnabled] = useState(false);
   const [discountApplied, setDiscountApplied] = useState(0);
   const [calculatorCollapsed, setCalculatorCollapsed] = useState(true);
 
@@ -3843,7 +3843,22 @@ export default function App() {
 
   // Handle active role triggers
   useEffect(() => {
-    if (!showDevSettings && activeRole === 'db') {
+    let isMounted = true;
+    fetch(`${API_BASE}/health`)
+      .then(res => res.json())
+      .then(data => {
+        if (isMounted && data) {
+          const allowed = Boolean(data.dev_tools_enabled);
+          setDevToolsEnabled(allowed);
+          if (!allowed) setShowDevSettings(false);
+        }
+      })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if ((!devToolsEnabled || !showDevSettings) && activeRole === 'db') {
       setActiveRole('marketing');
       return;
     }
@@ -3860,8 +3875,10 @@ export default function App() {
       fetchAdminPayouts();
       fetchAdminPayoutChanges();
     }
-    syncInspectorTable();
-  }, [currentUser, activeRole, showDevSettings]);
+    if (devToolsEnabled && showDevSettings) {
+      syncInspectorTable();
+    }
+  }, [currentUser, activeRole, showDevSettings, devToolsEnabled]);
 
   // Partner Notifications Polling (every 30s & on tab switch)
   useEffect(() => {
@@ -13735,7 +13752,7 @@ export default function App() {
                           </ModalLayer>
                         )}
 
-                        {showDevSettings && (
+                        {devToolsEnabled && showDevSettings && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', borderTop: '1px dashed var(--border-color)', paddingTop: '0.5rem' }}>
                             <div>
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Test Network Signal</span>
@@ -17690,7 +17707,7 @@ export default function App() {
           <button className={`role-tab ${activeRole === 'partner' ? 'active' : ''}`} onClick={() => switchViewToRole('partner')}>
             Partner App
           </button>
-          {showDevSettings && (
+          {devToolsEnabled && showDevSettings && (
             <button className={`role-tab ${activeRole === 'db' ? 'active' : ''}`} onClick={() => switchViewToRole('db')}>
               DB Inspector
             </button>
@@ -17740,7 +17757,7 @@ export default function App() {
         </main>
 
         {/* Left Side API Request Log stream */}
-        {showDevSettings && activeRole !== 'db' && (
+        {devToolsEnabled && showDevSettings && activeRole !== 'db' && (
           <aside className="inspector-panel">
             <div className="inspector-header">
               <span style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -19297,19 +19314,21 @@ export default function App() {
       )}
 
       {/* Developer Settings Toggle Switcher Footer */}
-      <footer className="dev-toggle-container">
-        <label className="dev-toggle-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
-          <input 
-            type="checkbox" 
-            checked={showDevSettings} 
-            onChange={e => setShowDevSettings(e.target.checked)} 
-            style={{ cursor: 'pointer' }}
-          />
-          <span style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-muted)' }}>
-            Show Developer Options (Live Gateway Log Stream & DB Row Inspector)
-          </span>
-        </label>
-      </footer>
+      {devToolsEnabled && (
+        <footer className="dev-toggle-container">
+          <label className="dev-toggle-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
+            <input 
+              type="checkbox" 
+              checked={showDevSettings} 
+              onChange={e => setShowDevSettings(e.target.checked)} 
+              style={{ cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-muted)' }}>
+              Show Developer Options (Live Gateway Log Stream & DB Row Inspector)
+            </span>
+          </label>
+        </footer>
+      )}
 
       {/* Bill History Modal */}
       {showBillHistoryModal && (
@@ -19880,84 +19899,6 @@ export default function App() {
         </ModalLayer>
       )}
 
-      
-      {/* KYC Approve Modal */}
-      {showKycApproveModal && kycApproveUser && (
-        <ModalLayer>
-        <div className="modal-overlay">
-          <div className="modal-content glass-card" style={{ maxWidth: '450px' }}>
-            <PanelErrorBoundary t={t}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1.1rem', margin: 0 }}>Approve {kycApproveUser.name} as Stockist</h3>
-              <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setShowKycApproveModal(false)}>
-                <X size={14} />
-              </button>
-            </div>
-
-            {kycApproveHighFlags.length > 0 && (
-              <div style={{ padding: '0.75rem', marginBottom: '1rem', background: 'rgba(255, 68, 68, 0.1)', borderLeft: '4px solid var(--danger-color)', borderRadius: '4px' }}>
-                <strong style={{ color: 'var(--danger-color)', display: 'block', marginBottom: '0.5rem' }}>
-                  Warning: {kycApproveHighFlags.length} High-Severity Flag(s)
-                </strong>
-                <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem' }}>
-                  {kycApproveHighFlags.map(f => (
-                    <li key={f.id}>{f.flag_type}: {f.detail}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <div className="input-group">
-                <label className="input-label">Assign Vendor (Region: {regions.find(r => r.id === kycApproveUser.region_id)?.name || kycApproveUser.region_id})</label>
-                
-                {kycApproveVendors === null ? (
-                  <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Loading vendors...</div>
-                ) : kycApproveVendors.length === 0 ? (
-                  <div style={{ padding: '1rem', background: 'rgba(255, 170, 0, 0.1)', border: '1px solid var(--warning)', borderRadius: '8px' }}>
-                    <p style={{ margin: '0 0 0.5rem 0', color: 'var(--warning-text)' }}>No active vendors found in this region.</p>
-                    <button className="btn btn-secondary btn-sm" onClick={() => {
-                      setShowKycApproveModal(false);
-                      handleSetAdminTab('vendors');
-                    }}>
-                      Go to Wholesalers
-                    </button>
-                  </div>
-                ) : (
-                  <select className="text-input"
-                    value={kycApproveSelectedVendor} 
-                    onChange={e => setKycApproveSelectedVendor(e.target.value)}
-                  >
-                    {kycApproveVendors.map(v => (
-                      <option key={v.id} value={v.id}>
-                        {v.name} ({v.stockist_count} stockist{v.stockist_count !== 1 ? 's' : ''})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                <button className="btn btn-secondary" onClick={() => setShowKycApproveModal(false)}>
-                  Cancel
-                </button>
-                <button 
-                  className="btn btn-primary"
-                  disabled={!kycApproveVendors || kycApproveVendors.length === 0 || !kycApproveSelectedVendor}
-                  onClick={() => {
-                    handleApproveKyc(kycApproveUser.id, kycApproveSelectedVendor);
-                    setShowKycApproveModal(false);
-                  }}
-                >
-                  Approve Application
-                </button>
-              </div>
-            </div>
-            </PanelErrorBoundary>
-          </div>
-        </div>
-        </ModalLayer>
-      )}
 
       {/* KYC Action Modal (Reject / Blacklist) */}
       {showKycActionModal && (

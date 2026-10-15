@@ -168,7 +168,7 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 1rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-  z-index: 9999;
+  z-index: var(--z-nav);
 }
 .cookie-banner-text {
   font-size: 0.875rem;
@@ -947,33 +947,36 @@ select option:disabled {
 /* Notification Popups */
 .toast-msg {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
-  left: auto;
-  max-width: min(420px, calc(100vw - 40px));
+  left: 50%;
+  right: auto;
+  bottom: 28px;
+  transform: translateX(-50%);
+  min-width: 320px;
+  max-width: min(560px, calc(100vw - 40px));
+  padding: 0.9rem 1.1rem;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
   background: var(--bg-surface-elevated);
   border: 1px solid var(--primary);
-  border-radius: 8px;
-  padding: 0.75rem 1rem 0.75rem 44px;
   min-height: 44px;
   box-sizing: border-box;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-  font-size: 0.8rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   animation: slideUp 0.3s forwards;
-  z-index: 999;
+  z-index: var(--z-toast);
   overflow: hidden;
 }
 
 .toast-body {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   flex: 1 1 auto;
   min-width: 0;
+  padding-right: 1.5rem;
 }
 
 .toast-text {
@@ -1054,10 +1057,11 @@ select option:disabled {
 
 .toast-dismiss-btn {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 32px;
-  height: 32px;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1068,6 +1072,16 @@ select option:disabled {
   cursor: pointer;
   padding: 0;
   flex-shrink: 0;
+}
+
+.phone-mockup .toast-dismiss-btn,
+.toast-msg.toast-msg--phone .toast-dismiss-btn {
+  top: 6px;
+  left: 6px;
+  right: auto;
+  transform: none;
+  width: 32px;
+  height: 32px;
 }
 
 .toast-dismiss-btn:hover,
@@ -1106,8 +1120,8 @@ select option:disabled {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: translate(-50%, 20px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
 }
 
 @keyframes slideUpPhone {
@@ -1457,15 +1471,6 @@ select option:disabled {
 /* Prevent scroll on body when a modal is open - small quality improvement */
 body:has(.modal-overlay:not(:has(.toast-msg))) {
   overflow: hidden;
-}
-
-/* Toast position logic: move to top center when a modal is open in the admin view */
-body:has(.admin-container):has(.modal-overlay:not(:has(.toast-msg))) .toast-msg {
-  bottom: auto !important;
-  top: 20px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  right: auto !important;
 }
 
 /* Field Error Component Styles */

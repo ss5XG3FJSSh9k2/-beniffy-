@@ -6242,7 +6242,50 @@ async function main() {
   assert(testClearSuccessRes.status === 200 && testClearSuccessRes.body?.success === true, 'clear flag with note returns 200 success');
 
   const testClearAlreadyClearedRes = await post(`http://localhost:3001/api/admin/kyc/${testFlagUserId}/flags/${testFlagId}/clear`, { note: 'Another note' });
-  assert(testClearAlreadyClearedRes.status === 400, 'clearing already cleared flag returns 400');
+  // --- 43. BF-DEV-TOOLS-PRODUCTION-GATE ---
+  console.log('\n--- 43. BF-DEV-TOOLS-PRODUCTION-GATE ---');
+  loginAs('u-admin', 'ADMIN');
+  const healthDevRes = await get('http://localhost:3001/api/health');
+  assert(healthDevRes.status === 200 && healthDevRes.body.dev_tools_enabled === true, 'GET /api/health exposes dev_tools_enabled=true in test/dev');
+
+  const configDevRes = await get('http://localhost:3001/api/config');
+  assert(configDevRes.status === 200 && configDevRes.body.dev_tools_enabled === true, 'GET /api/config exposes dev_tools_enabled=true in test/dev');
+
+  const inspectorDevRes = await get('http://localhost:3001/api/inspector');
+  assert(inspectorDevRes.status === 200 && inspectorDevRes.body.status === 'ok', 'GET /api/inspector returns 200 in dev/test');
+
+  const adminInspectorDevRes = await get('http://localhost:3001/api/admin/inspector');
+  assert(adminInspectorDevRes.status === 200 && adminInspectorDevRes.body.status === 'ok', 'GET /api/admin/inspector returns 200 in dev/test');
+
+  // Test production gating behavior
+  const origEnv = process.env.NODE_ENV;
+  const origSeed = process.env.SEED_MODE;
+  process.env.NODE_ENV = 'production';
+  delete process.env.SEED_MODE;
+
+  try {
+    const prodHeaders = { headers: { 'x-forwarded-proto': 'https' } };
+    const healthProdRes = await get('http://localhost:3001/api/health', prodHeaders);
+    assert(healthProdRes.status === 200 && healthProdRes.body.dev_tools_enabled === false, 'GET /api/health exposes dev_tools_enabled=false in production');
+
+    const configProdRes = await get('http://localhost:3001/api/config', prodHeaders);
+    assert(configProdRes.status === 200 && configProdRes.body.dev_tools_enabled === false, 'GET /api/config exposes dev_tools_enabled=false in production');
+
+    const inspectorProdRes = await get('http://localhost:3001/api/inspector', prodHeaders);
+    assert(inspectorProdRes.status === 403, 'GET /api/inspector returns 403 in production');
+
+    const adminInspectorProdRes = await get('http://localhost:3001/api/admin/inspector', prodHeaders);
+    assert(adminInspectorProdRes.status === 403, 'GET /api/admin/inspector returns 403 in production');
+
+    const insertProdRes = await post('http://localhost:3001/api/admin/insert-table', { table: 'regions', row: { name: 'Prod Block Test' } }, prodHeaders);
+    assert(insertProdRes.status === 403, 'POST /api/admin/insert-table returns 403 in production');
+
+    const overrideProdRes = await post('http://localhost:3001/api/admin/override-table', { table: 'users', id: 'u-cust1', patch: { role: 'ADMIN' } }, prodHeaders);
+    assert(overrideProdRes.status === 404, 'POST /api/admin/override-table returns 404 in production');
+  } finally {
+    process.env.NODE_ENV = origEnv;
+    process.env.SEED_MODE = origSeed;
+  }
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);

@@ -404,11 +404,22 @@ app.get('/api/health', async (req, res) => {
   } catch (e) {
     dbStatus = 'error';
   }
+  const isDevAllowed = process.env.SEED_MODE === 'test' || process.env.NODE_ENV !== 'production';
   res.json({
     status: 'ok',
     db: dbStatus,
     uptime_seconds: Math.floor(process.uptime()),
-    version: process.env.APP_VERSION || 'unknown'
+    version: process.env.APP_VERSION || 'unknown',
+    dev_tools_enabled: isDevAllowed
+  });
+});
+
+app.get('/api/config', (req, res) => {
+  const isDevAllowed = process.env.SEED_MODE === 'test' || process.env.NODE_ENV !== 'production';
+  res.json({
+    status: 'ok',
+    version: process.env.APP_VERSION || 'unknown',
+    dev_tools_enabled: isDevAllowed
   });
 });
 
@@ -1758,13 +1769,20 @@ app.get('/api/products/:id/bill-history', requireAuth, async (req, res) => {
 // --- ADMIN GATE ---
 app.use('/api/admin', (req, res, next) => {
   const p = req.path;
-  // reset-db and override-table exist only in explicit test mode. clear-rate-limits
-  // is open in test mode and otherwise needs a signed-in admin.
-  const isTestOnly = p === '/reset-db' || p === '/override-table';
-  if (isTestOnly) {
+  const isDevAllowed = process.env.SEED_MODE === 'test' || process.env.NODE_ENV !== 'production';
+
+  // reset-db and override-table exist only in explicit test mode.
+  if (p === '/reset-db' || p === '/override-table') {
     if (!require('./lib/env').isTestEnv()) return res.status(404).json({ error: 'Not found' });
     return next();
   }
+
+  // Developer and Inspector endpoints gated in production
+  if (p === '/insert-table' || p === '/inspector' || p.startsWith('/inspector/') || p.startsWith('/db-inspector')) {
+    if (!isDevAllowed) return res.status(403).json({ error: 'Forbidden', message: 'Endpoint disabled in production' });
+    if (require('./lib/env').isTestEnv()) return next();
+  }
+
   if (p === '/clear-rate-limits' && require('./lib/env').isTestEnv()) {
     return next();
   }
@@ -9987,6 +10005,24 @@ app.post('/api/admin/insert-table', async (req, res) => {
   rows.push(newRow);
   await db.saveTable(table, rows);
   return res.json({ success: true, row: newRow });
+});
+
+app.all(['/api/inspector', '/api/inspector/*', '/api/admin/inspector', '/api/admin/inspector/*'], async (req, res) => {
+  const isDevAllowed = process.env.SEED_MODE === 'test' || process.env.NODE_ENV !== 'production';
+  if (!isDevAllowed) {
+    return res.status(403).json({ error: 'Forbidden', message: 'Inspector endpoint disabled in production' });
+  }
+  const tables = ['users', 'orders', 'products', 'stockists', 'vendors', 'regions', 'points_ledger'];
+  const summary = {};
+  for (const t of tables) {
+    try {
+      const data = await db.getTable(t);
+      summary[t] = Array.isArray(data) ? data.length : 0;
+    } catch {
+      summary[t] = 0;
+    }
+  }
+  return res.json({ status: 'ok', tables: summary });
 });
 
 // Admin Analytics Dashboard Endpoint
