@@ -6992,9 +6992,10 @@ export default function App() {
                 {isStockistApp && (
                   <>
                     <div style={{ marginTop: '0.25rem' }}>• 7654321098 (Madan Shaw: Stockist Garia, Approved)</div>
-                    <div>• 4321098765 (Soumik Banerjee: Stockist Garia, Approved)</div>
+                    <div>• 9432109876 (Soumik Banerjee: Stockist Garia, Approved)</div>
                     <div>• 6543210987 (Prabhat Sarkar: Stockist Bishnupur, Approved)</div>
-                    <div>• 5432109876 (Gopal Joy: Stockist Bishnupur, Pending KYC)</div>
+                    <div>• 8432109876 (Gopal Joy: Stockist Bishnupur, Pending KYC)</div>
+                    <div>• 8432109999 (Ramesh Kumar: Stockist Garia, Pending KYC)</div>
                   </>
                 )}
                 {isAdminApp && (
