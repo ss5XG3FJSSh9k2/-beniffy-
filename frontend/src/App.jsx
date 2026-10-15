@@ -209,6 +209,7 @@ const asList = (res, data, fallback = []) => (res && res.ok && Array.isArray(dat
 const UI_ORDER_STATUS = { ACCEPTED: 'RECEIVED', PREPARING: 'RECEIVED', READY_FOR_PICKUP: 'READY', OUT_FOR_DELIVERY: 'READY' };
 const toUiOrder = (o) => (o && UI_ORDER_STATUS[o.status] ? { ...o, status: UI_ORDER_STATUS[o.status] } : o);
 const toUiOrders = (list) => (Array.isArray(list) ? list.map(toUiOrder) : list);
+const plural = (n, one, many) => (Number(n) === 1 ? one : many);
 
 // reCAPTCHA v3 loads only when a real site key is configured. Without one
 // (local development) the backend skips CAPTCHA checks outside production.
@@ -333,7 +334,7 @@ const MemoizedCustomerRow = React.memo(({ customer, regionName }) => {
       <td style={{ fontWeight: 'bold' }}>{customer.name}</td>
       <td>{customer.phone}</td>
       <td>{regionName}</td>
-      <td>{customer.points_balance || 0} pts</td>
+      <td>{customer.points_balance || 0} {plural(customer.points_balance || 0, 'pt', 'pts')}</td>
       <td>{customer.orders_count || 0}</td>
       <td>{customer.no_show_count || 0}</td>
     </tr>
@@ -3047,7 +3048,7 @@ export default function App() {
   const formatPoints = (value) => {
     const num = parseFloat(value) || 0;
     const formatted = num % 1 === 0 ? num.toFixed(0) : num.toFixed(1);
-    return `${formatted} pts`;
+    return `${formatted} ${plural(num, 'pt', 'pts')}`;
   };
 
   const ledgerAmountColor = (entry) => {
@@ -3651,7 +3652,7 @@ export default function App() {
       const data = await res.json().catch(() => ({}));
       logApi('POST', `/admin/redemption-approvals/${id}/reject`, { admin_id: currentUser.id, reason }, res.status, data);
       if (res.ok) {
-        showToast(`Refund of ${data.points_deducted} points appended to customer's ledger`);
+        showToast(`Refund of ${data.points_deducted} ${plural(data.points_deducted, 'point', 'points')} appended to customer's ledger`);
         setShowRejectRedemptionModal(false);
         fetchRedemptionApprovals();
         fetchAnalytics();
@@ -5804,7 +5805,7 @@ export default function App() {
           const pointsCount = data.references_by_table?.points_ledger || 0;
           msg = (
             <span>
-              <strong>{user.name || 'this user'}</strong> has {orderCount} order(s), {pointsCount} points entries and other records. Their account will be released rather than deleted. Their history is kept, and they can register again from scratch with the same phone number.
+              <strong>{user.name || 'this user'}</strong> has {orderCount} {plural(orderCount, 'order', 'orders')}, {pointsCount} {plural(pointsCount, 'points entry', 'points entries')} and other records. Their account will be released rather than deleted. Their history is kept, and they can register again from scratch with the same phone number.
             </span>
           );
         }
@@ -6123,7 +6124,7 @@ export default function App() {
         );
       } else {
         message = t(
-          `Deactivate ${vendor.name}? ${reference_count} shopkeeper(s) keep this supplier, but it cannot be assigned to anyone new. You can reactivate it any time.`,
+          `Deactivate ${vendor.name}? ${reference_count} ${plural(reference_count, 'shopkeeper', 'shopkeepers')} keep this supplier, but it cannot be assigned to anyone new. You can reactivate it any time.`,
           `क्या आप ${vendor.name} को निष्क्रिय करना चाहते हैं? ${reference_count} दुकानदार इस आपूर्तिकर्ता को रखते हैं, लेकिन इसे किसी नए को सौंपा नहीं जा सकता है। आप इसे किसी भी समय पुनः सक्रिय कर सकते हैं।`,
           `${vendor.name} কে নিষ্ক্রিয় করবেন? ${reference_count} জন দোকানদার এই সরবরাহকারী রাখেন, তবে এটি নতুন কাউকে বরাদ্দ করা যাবে না। আপনি যে কোনো সময় এটি পুনরায় সক্রিয় করতে পারেন।`
         );
@@ -6199,7 +6200,7 @@ export default function App() {
         );
       } else {
         const message = t(
-          `${vendor.name} is used by ${reference_count} shopkeeper(s) and cannot be deleted. Deactivate it instead.`,
+          `${vendor.name} is used by ${reference_count} ${plural(reference_count, 'shopkeeper', 'shopkeepers')} and cannot be deleted. Deactivate it instead.`,
           `${vendor.name} का उपयोग ${reference_count} दुकानदार(ओं) द्वारा किया जाता है और इसे हटाया नहीं जा सकता है। इसके बजाय इसे निष्क्रिय करें।`,
           `${vendor.name} ${reference_count} জন দোকানদার ব্যবহার করেন এবং এটি মুছে ফেলা যাবে না। পরিবর্তে এটি নিষ্ক্রিয় করুন।`
         );
@@ -6292,7 +6293,7 @@ export default function App() {
         if (reference_count > 0) {
           triggerConfirmModal(
             'Confirm Region Change',
-            <><strong>{editingVendor.name}</strong> is assigned to <strong>{reference_count}</strong> stockist(s). Are you sure you want to change its region?</>,
+            <><strong>{editingVendor.name}</strong> is assigned to <strong>{reference_count}</strong> {plural(reference_count, 'stockist', 'stockists')}. Are you sure you want to change its region?</>,
             executeSave,
             false,
             'Yes, Change Region',
@@ -9030,7 +9031,7 @@ export default function App() {
                           <td style={{ padding: '0.4rem' }}><span className="badge badge-secondary">{getServiceTypeLabel(pkg.service_type)}</span></td>
                           <td style={{ padding: '0.4rem' }}>{pkg.duration_days ? `${pkg.duration_days} ${t('days','दिन','দিন')}` : t('One-time','एक बार','একবার')}</td>
                           <td style={{ padding: '0.4rem' }}>₹{pkg.face_value_rupees}</td>
-                          <td style={{ padding: '0.4rem' }}>{pkg.point_cost} pts</td>
+                          <td style={{ padding: '0.4rem' }}>{pkg.point_cost} {plural(pkg.point_cost, 'pt', 'pts')}</td>
                           <td style={{ padding: '0.4rem' }}>
                             <span className={`badge ${pkg.is_active ? 'badge-success' : 'badge-danger'}`}>
                               {pkg.is_active ? t('Live', 'लाइव', 'লাইভ') : t('Inactive', 'निष्क्रिय', 'নিষ্ক্রিয়')}
@@ -10210,13 +10211,13 @@ export default function App() {
                                     ) : (
                                       o.margin && o.earnRatePercent ? (
                                         t(
-                                          `You earned ${o.pointsCredited || o.points_credited || 0} pts from ${o.stockist_name || 'Store'}. This order's margin was ₹${o.margin} at your ${o.earnRatePercent}% rate.`,
+                                          `You earned ${o.pointsCredited || o.points_credited || 0} ${plural(o.pointsCredited || o.points_credited || 0, 'pt', 'pts')} from ${o.stockist_name || 'Store'}. This order's margin was ₹${o.margin} at your ${o.earnRatePercent}% rate.`,
                                           `आपने ${o.stockist_name || 'Store'} से ${o.pointsCredited || o.points_credited || 0} pts कमाए हैं। इस ऑर्डर का मुनाफा ₹${o.margin} व आपकी दर ${o.earnRatePercent}% थी।`,
                                           `আপনি ${o.stockist_name || 'Store'} থেকে ${o.pointsCredited || o.points_credited || 0} pts পেয়েছেন। এই অর্ডারে লাভ ছিল ₹${o.margin} ও আপনার হার ${o.earnRatePercent}% ছিল।`
                                         )
                                       ) : (
                                         t(
-                                          `You earned ${o.pointsCredited || o.points_credited || 0} pts from ${o.stockist_name || 'Store'}.`,
+                                          `You earned ${o.pointsCredited || o.points_credited || 0} ${plural(o.pointsCredited || o.points_credited || 0, 'pt', 'pts')} from ${o.stockist_name || 'Store'}.`,
                                           `आपने ${o.stockist_name || 'Store'} से ${o.pointsCredited || o.points_credited || 0} pts कमाए हैं।`,
                                           `আপনি ${o.stockist_name || 'Store'} থেকে ${o.pointsCredited || o.points_credited || 0} pts পেয়েছেন।`
                                         )
@@ -10287,7 +10288,7 @@ export default function App() {
                       <div style={{ alignSelf: 'flex-start', background: 'var(--bg-surface-elevated)', color: 'var(--text-main)', padding: '0.5rem 0.75rem', borderRadius: '0 8px 8px 8px', maxWidth: '85%', fontSize: '0.7rem', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                         <span style={{ color: 'var(--success-text)', fontWeight: 'bold', fontSize: '0.65rem' }}>Beniffy</span>
                         <p style={{ margin: 0, whiteSpace: 'pre-line' }}>
-                          {`Hello ${simulatedWaMessage.customerName || 'Valued Customer'}!\n\nYour Beniffy order is confirmed at *${simulatedWaMessage.stockistName}*.\n\n*Order ID:* #${simulatedWaMessage.orderId.substring(2).toUpperCase()}\n*Total Price:* ₹${simulatedWaMessage.totalPrice}\n*Subtotal:* ₹${simulatedWaMessage.subtotal}\n*Rewards Earned:* +${simulatedWaMessage.points} pts\n\n${
+                          {`Hello ${simulatedWaMessage.customerName || 'Valued Customer'}!\n\nYour Beniffy order is confirmed at *${simulatedWaMessage.stockistName}*.\n\n*Order ID:* #${simulatedWaMessage.orderId.substring(2).toUpperCase()}\n*Total Price:* ₹${simulatedWaMessage.totalPrice}\n*Subtotal:* ₹${simulatedWaMessage.subtotal}\n*Rewards Earned:* +${simulatedWaMessage.points} ${plural(simulatedWaMessage.points, 'pt', 'pts')}\n\n${
                             simulatedWaMessage.fulfillmentType === 'PICKUP'
                               ? `*Fulfillment:* Store Pickup\n*Verification PIN:* ${simulatedWaMessage.pickupPin || '1234'}\n\nPlease share this PIN with the shopkeeper when picking up your items.`
                               : `*Fulfillment:* Home Delivery\n\nYour order will be delivered to your registered address shortly.`
@@ -10436,7 +10437,7 @@ export default function App() {
 
                                 const productCountLabel = (s.product_count !== undefined && s.product_count === 0)
                                   ? t('No items listed yet', 'अभी कोई उत्पाद सूचीबद्ध नहीं', 'এখনও কোনো পণ্য তালিকাভুক্ত নয়')
-                                  : `${s.product_count || 0} ${t('items', 'सामान', 'টি পণ্য')}`;
+                                  : `${s.product_count || 0} ${t(plural(s.product_count || 0, 'item', 'items'), 'सामान', 'টি পণ্য')}`;
 
                                 return (
                                   <div key={s.id} className="glass-card" style={{ padding: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -11010,7 +11011,7 @@ export default function App() {
                             )}
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                               <span>{t('Est. Rewards', 'अनुमानित पुरस्कार', 'সম্ভাব‍্য পয়েন্ট')}</span>
-                              <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>+{formatPoints(estimatedEarnPoints)} pts</span>
+                              <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>+{formatPoints(estimatedEarnPoints)}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 'bold', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem', marginTop: '0.25rem', color: 'var(--text-main)' }}>
                               <span>{t('Total', 'कुल', 'মোট')}</span>
@@ -12351,7 +12352,7 @@ export default function App() {
                     {Object.keys(customerCarts).length > 0 && (
                       <div style={{ alignSelf: 'center', background: 'var(--bg-surface)', color: 'var(--text-main)', padding: '0.35rem 0.75rem', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', border: '1px solid var(--border-color)' }} onClick={() => setShowCartsSheet(true)}>
                         <ShoppingBag size={12} />
-                        {Object.keys(customerCarts).length} {t('Carts', 'कार्ट', 'কার্ট')}
+                        {Object.keys(customerCarts).length} {t(plural(Object.keys(customerCarts).length, 'cart', 'carts'), 'कार्ट', 'কার্ট')}
                       </div>
                     )}
                     {currentCart.length > 0 && (
@@ -12361,8 +12362,8 @@ export default function App() {
                         borderRadius: '10px', cursor: 'pointer', boxShadow: '0 -4px 12px rgba(0,0,0,0.4)'
                       }} onClick={() => setCustomerAppTab('cart')}>
                         <div>
-                          <div style={{ fontWeight: 700 }}>{currentCart.reduce((n,i)=>n+i.quantity,0)} {t('items','आइटम','আইটেম')} · ₹{cartSubtotal.toFixed(2)}</div>
-                          <div style={{ fontSize: '0.6rem', opacity: 0.9 }}>{t('Est. rewards','अनुमानित','সম্ভাব্য')}: +{formatPoints(estimatedEarnPoints)} pts</div>
+                          <div style={{ fontWeight: 700 }}>{currentCart.reduce((n,i)=>n+i.quantity,0)} {t(plural(currentCart.reduce((n,i)=>n+i.quantity,0), 'item', 'items'), 'आइटम', 'আইটেম')} · ₹{cartSubtotal.toFixed(2)}</div>
+                          <div style={{ fontSize: '0.6rem', opacity: 0.9 }}>{t('Est. rewards','अनुमानित','সম্ভাব্য')}: +{formatPoints(estimatedEarnPoints)}</div>
                         </div>
                         <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>{t('View Cart','कार्ट देखें','কার্ট দেখুন')} <ArrowRight size={16} /></div>
                       </div>
@@ -12514,7 +12515,7 @@ export default function App() {
                       <div key={cart.stockistId} className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                           <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{cart.stockistName}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cart.items.reduce((n,i)=>n+i.quantity,0)} {t('items', 'आइटम', 'আইটেম')}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cart.items.reduce((n,i)=>n+i.quantity,0)} {t(plural(cart.items.reduce((n,i)=>n+i.quantity,0), 'item', 'items'), 'आइटम', 'আইটেম')}</span>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                           <button 
@@ -12685,7 +12686,7 @@ export default function App() {
                         >
                           <AlertTriangle size={16} />
                           <span style={{ fontWeight: 600 }}>
-                            {rejectedBillCount} product(s) not selling. Bill rejected. 
+                            {rejectedBillCount} {plural(rejectedBillCount, 'product', 'products')} not selling. Bill rejected. 
                             <span style={{ textDecoration: 'underline', marginLeft: '0.25rem', fontWeight: 'normal' }}>Tap to fix.</span>
                           </span>
                         </div>
@@ -12936,7 +12937,7 @@ export default function App() {
                                     </div>
                                   </div>
                                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                    <div>{o.customer_name || 'Customer'} • {o.items ? o.items.length : 0} items</div>
+                                    <div>{o.customer_name || 'Customer'} • {o.items ? o.items.length : 0} {t(plural(o.items ? o.items.length : 0, 'item', 'items'), 'आइटम', 'আইটেম')}</div>
                                     <div style={{ color: 'var(--text-main)', marginTop: '0.1rem' }}>Total: ₹{parseFloat(o.total_price || 0).toFixed(2)}</div>
                                     {o.status === 'CANCELLED' && o.cancelled_by && (
                                       <div style={{ marginTop: '0.2rem', color: 'var(--danger-text)' }}>
@@ -13122,7 +13123,7 @@ export default function App() {
                             <div className="glass-card" style={{ padding: '0.75rem', textAlign: 'center' }}>
                               <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t("Today's Sales", "आज की बिक्री", "আজকের বিক্রি")}</span>
                               <h3 style={{ fontSize: '1.2rem', color: 'var(--text-main)', margin: '0.15rem 0' }}>₹{stockistAnalytics.today_earnings.toFixed(2)}</h3>
-                              <span style={{ fontSize: '0.55rem', color: 'var(--accent)', fontWeight: 'bold' }}>{stockistAnalytics.today_order_count} orders</span>
+                              <span style={{ fontSize: '0.55rem', color: 'var(--accent)', fontWeight: 'bold' }}>{stockistAnalytics.today_order_count} {t(plural(stockistAnalytics.today_order_count, 'order', 'orders'), 'ऑर्डर', 'অর্ডার')}</span>
                               <button
                                 type="button"
                                 className={`shop-toggle ${(isWithinOpeningHours(stockistProfile) && !stockistProfile.manual_closed) ? 'is-open' : 'is-closed'}`}
@@ -14636,7 +14637,7 @@ export default function App() {
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Points Redeemed (Month)</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--accent)' }}>{analyticsData.redemptions?.total_points_redeemed_this_month || 0} pts</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--accent)' }}>{analyticsData.redemptions?.total_points_redeemed_this_month || 0} {plural(analyticsData.redemptions?.total_points_redeemed_this_month || 0, 'pt', 'pts')}</div>
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Partner Payout Owed (Month 88%)</div>
@@ -14663,7 +14664,7 @@ export default function App() {
                           </div>
                           <div style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Referral Bonuses Paid</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--secondary)' }}>{analyticsData.points?.total_referral_bonuses_paid || 0} pts</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--secondary)' }}>{analyticsData.points?.total_referral_bonuses_paid || 0} {plural(analyticsData.points?.total_referral_bonuses_paid || 0, 'pt', 'pts')}</div>
                           </div>
                         </div>
                       </div>
@@ -16150,7 +16151,7 @@ export default function App() {
                               {b.held_points > 0 ? (
                                 <div style={{ color: 'var(--warning-text)', fontWeight: 'bold' }}>{formatPoints(b.held_points)}</div>
                               ) : <div style={{ color: 'var(--text-muted)' }}>0</div>}
-                              {b.affected_orders > 0 && <div style={{ fontSize: '0.65rem' }}>{b.affected_orders} order(s)</div>}
+                              {b.affected_orders > 0 && <div style={{ fontSize: '0.65rem' }}>{b.affected_orders} {t(plural(b.affected_orders, 'order', 'orders'), 'ऑर्डर', 'অর্ডার')}</div>}
                             </td>
                             <td>
                               <span className={`badge ${b.bill_status === 'REJECTED' ? 'badge-danger' : b.bill_status === 'VERIFIED' ? 'badge-success' : 'badge-warning'}`}>
@@ -18033,7 +18034,7 @@ export default function App() {
             <PanelErrorBoundary t={t}>
             <h3>Confirm Points Redemption</h3>
             <p style={{ margin: '1rem 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Are you sure you want to redeem {redeemAmount} points for broadband bill discount?
+              Are you sure you want to redeem {redeemAmount} {plural(redeemAmount, 'point', 'points')} for broadband bill discount?
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button className="btn btn-secondary" onClick={() => setShowRedeemConfirmModal(false)}>Cancel</button>
@@ -18485,7 +18486,7 @@ export default function App() {
                   </optgroup>
                   <optgroup label="Points Ledger Entries">
                     {customerLedger.slice(0, 10).map(l => (
-                      <option key={l.id} value={l.id}>{l.type} - {l.amount} pts ({new Date(l.created_at).toLocaleDateString()})</option>
+                      <option key={l.id} value={l.id}>{l.type} - {l.amount} {plural(l.amount, 'pt', 'pts')} ({new Date(l.created_at).toLocaleDateString()})</option>
                     ))}
                   </optgroup>
                 </select>
@@ -18714,7 +18715,7 @@ export default function App() {
               <div><strong>Email:</strong> {selectedCustomerDetail.email || 'N/A'}</div>
               <div><strong>{t('Region','क्षेत्र','অঞ্চল')}:</strong> {selectedCustomerDetail.region_id}</div>
               <div><strong>Status:</strong> {selectedCustomerDetail.is_active !== false ? 'Active' : 'Deactivated'}</div>
-              <div><strong>Points Balance:</strong> {selectedCustomerDetail.points_balance || 0} pts</div>
+              <div><strong>Points Balance:</strong> {selectedCustomerDetail.points_balance || 0} {plural(selectedCustomerDetail.points_balance || 0, 'pt', 'pts')}</div>
               <div><strong>Joined:</strong> {new Date(selectedCustomerDetail.created_at).toLocaleDateString()}</div>
             </div>
 
@@ -19085,7 +19086,7 @@ export default function App() {
             {stockistBindingsCount > 0 && (
               <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid var(--warning)', borderRadius: '6px', padding: '0.65rem', margin: '0.75rem 0', fontSize: '0.75rem', color: 'var(--warning-text)' }}>
                 <AlertTriangle size={14} style={{ display: 'inline', marginRight: '0.35rem' }} />
-                <strong>Warning:</strong> Moving this stockist will affect <strong>{stockistBindingsCount}</strong> existing customer binding(s).
+                <strong>Warning:</strong> Moving this stockist will affect <strong>{stockistBindingsCount}</strong> existing customer {plural(stockistBindingsCount, 'binding', 'bindings')}.
               </div>
             )}
 
@@ -19373,7 +19374,7 @@ export default function App() {
               <div><strong>Customer:</strong> {selectedRedemptionToApprove.customer_name} ({selectedRedemptionToApprove.customer_phone})</div>
               <div><strong>Partner:</strong> {selectedRedemptionToApprove.partner_name}</div>
               <div><strong>Package:</strong> {selectedRedemptionToApprove.package_name}</div>
-              <div><strong>Face Value:</strong> ₹{selectedRedemptionToApprove.face_value_rupees} ({selectedRedemptionToApprove.points_deducted} points)</div>
+              <div><strong>Face Value:</strong> ₹{selectedRedemptionToApprove.face_value_rupees} ({selectedRedemptionToApprove.points_deducted} {plural(selectedRedemptionToApprove.points_deducted, 'point', 'points')})</div>
             </div>
             <div className="input-group" style={{ marginBottom: '1rem' }}>
               <label className="input-label">Admin Notes (Optional)</label>
@@ -19400,7 +19401,7 @@ export default function App() {
               <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setShowRejectRedemptionModal(false)}><X size={14} /></button>
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              Rejecting will credit back <strong>{selectedRedemptionToReject.points_deducted} points</strong> to customer {selectedRedemptionToReject.customer_name}'s ledger as REDEEM_REFUND.
+              Rejecting will credit back <strong>{selectedRedemptionToReject.points_deducted} {plural(selectedRedemptionToReject.points_deducted, 'point', 'points')}</strong> to customer {selectedRedemptionToReject.customer_name}'s ledger as REDEEM_REFUND.
             </p>
             <div className="input-group" style={{ marginBottom: '1rem' }}>
               <label className="input-label">Rejection Reason (Mandatory, min 10 chars)</label>
@@ -19486,7 +19487,7 @@ export default function App() {
                   <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', borderBottom: '1px dashed var(--border-color)' }}>
                     <div>
                       <strong>{pkg.package_name}</strong> ({getServiceTypeLabel(pkg.service_type)}) <br/>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Face: ₹{pkg.face_value_rupees} | Cost: {pkg.point_cost} pts</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Face: ₹{pkg.face_value_rupees} | Cost: {pkg.point_cost} {plural(pkg.point_cost, 'pt', 'pts')}</span>
                     </div>
                     <span className={`badge ${pkg.is_active ? 'badge-success' : 'badge-inactive'}`}>{pkg.is_active ? 'Active' : 'Inactive'}</span>
                   </div>
@@ -20138,7 +20139,7 @@ export default function App() {
             {kycApproveHighFlags.length > 0 && (
               <div style={{ padding: '0.75rem', marginBottom: '1rem', background: 'rgba(255, 68, 68, 0.1)', borderLeft: '4px solid var(--danger-color)', borderRadius: '4px' }}>
                 <strong style={{ color: 'var(--danger-color)', display: 'block', marginBottom: '0.5rem' }}>
-                  Warning: {kycApproveHighFlags.length} High-Severity Flag(s)
+                  Warning: {kycApproveHighFlags.length} High-Severity {plural(kycApproveHighFlags.length, 'Flag', 'Flags')}
                 </strong>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem' }}>
                   {kycApproveHighFlags.map(f => (
