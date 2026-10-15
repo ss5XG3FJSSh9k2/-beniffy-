@@ -6287,6 +6287,14 @@ async function main() {
     process.env.SEED_MODE = origSeed;
   }
 
+  // --- 44. BF-SEEDED-USER-PHONES ---
+  console.log('\n--- 44. BF-SEEDED-USER-PHONES ---');
+  const seedRunner = require('../lib/seed-runner.js');
+  const seededUsers = seedRunner.DEFAULT_DB ? seedRunner.DEFAULT_DB.users : [];
+  const phoneRegex = /^[6-9]\d{9}$/;
+  const allPhonesValid = seededUsers.length > 0 && seededUsers.every(u => !u.phone || phoneRegex.test(u.phone));
+  assert(allPhonesValid, 'every seeded user phone passes /^[6-9]\\d{9}$/');
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 
