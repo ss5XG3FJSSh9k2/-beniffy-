@@ -2525,6 +2525,10 @@ export default function App() {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setConfirmModal(null);
+        setShowPrivacyPolicyModal(false);
+        setShowTermsModal(false);
+        setShowRefundPolicyModal(false);
+        setShowCookiesPolicyModal(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -19879,12 +19883,32 @@ export default function App() {
       {/* Privacy Policy Modal (Part 2 Item 6) */}
       {showPrivacyPolicyModal && (
         <ModalLayer>
-        <div className="modal-overlay" role="dialog" aria-labelledby="privacy-modal-title">
-          <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
+        <div className="modal-overlay" role="dialog" aria-labelledby="privacy-modal-title" onClick={() => setShowPrivacyPolicyModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 id="privacy-modal-title">{t('Privacy Policy', 'Privacy Policy', 'Privacy Policy')}</h3>
-              <button className="btn btn-secondary btn-sm" aria-label="Close Privacy Policy" onClick={() => setShowPrivacyPolicyModal(false)}>Close</button>
+              <button
+                type="button"
+                aria-label="Close"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  flexShrink: 0
+                }}
+                onClick={() => setShowPrivacyPolicyModal(false)}
+              >
+                <X size={16} />
+              </button>
             </div>
             <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               <p><strong>{t('Data Collected:', 'Data Collected:', 'Data Collected:')}</strong> {t('Phone number, name, delivery address, order history, points ledger.', 'Phone number, name, delivery address, order history, points ledger.', 'Phone number, name, delivery address, order history, points ledger.')}</p>
@@ -19904,12 +19928,32 @@ export default function App() {
       {/* Terms & Conditions Modal (Part 2 Item 7) */}
       {showTermsModal && (
         <ModalLayer>
-        <div className="modal-overlay" role="dialog" aria-labelledby="terms-modal-title">
-          <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
+        <div className="modal-overlay" role="dialog" aria-labelledby="terms-modal-title" onClick={() => setShowTermsModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 id="terms-modal-title">{t('Terms & Conditions', 'Terms & Conditions', 'Terms & Conditions')}</h3>
-              <button className="btn btn-secondary btn-sm" aria-label="Close Terms" onClick={() => setShowTermsModal(false)}>Close</button>
+              <button
+                type="button"
+                aria-label="Close"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  flexShrink: 0
+                }}
+                onClick={() => setShowTermsModal(false)}
+              >
+                <X size={16} />
+              </button>
             </div>
             <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               <p><strong>{t('Eligibility:', 'Eligibility:', 'Eligibility:')}</strong> {t('18+ years, resident of India.', '18+ years, resident of India.', '18+ years, resident of India.')}</p>
@@ -19928,12 +19972,32 @@ export default function App() {
       {/* Refund Policy Modal (Part 2 Item 8) */}
       {showRefundPolicyModal && (
         <ModalLayer>
-        <div className="modal-overlay" role="dialog" aria-labelledby="refund-modal-title">
-          <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
+        <div className="modal-overlay" role="dialog" aria-labelledby="refund-modal-title" onClick={() => setShowRefundPolicyModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 id="refund-modal-title">{t('Refund Policy', 'Refund Policy', 'Refund Policy')}</h3>
-              <button className="btn btn-secondary btn-sm" aria-label="Close Refund Policy" onClick={() => setShowRefundPolicyModal(false)}>Close</button>
+              <button
+                type="button"
+                aria-label="Close"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  flexShrink: 0
+                }}
+                onClick={() => setShowRefundPolicyModal(false)}
+              >
+                <X size={16} />
+              </button>
             </div>
             <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               <p><strong>{t('Cancellation Window:', 'Cancellation Window:', 'Cancellation Window:')}</strong> {t('Orders can be cancelled within 1 minute of placement for a refund (minus platform commission fee).', 'ऑर्डर देने के 1 मिनट के भीतर रद्द किए जा सकते हैं, जिसमें से प्लेटफ़ॉर्म कमीशन शुल्क काटा जाएगा।', 'অর্ডার করার ১ মিনিটের মধ্যে বাতিল করা যেতে পারে (প্ল্যাটফর্ম কমিশন ফি কেটে নেওয়া হবে)।')}</p>
@@ -19952,12 +20016,32 @@ export default function App() {
       {/* Cookies Policy Modal (Part 2 Item 9) */}
       {showCookiesPolicyModal && (
         <ModalLayer>
-        <div className="modal-overlay" role="dialog" aria-labelledby="cookies-modal-title">
-          <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }}>
+        <div className="modal-overlay" role="dialog" aria-labelledby="cookies-modal-title" onClick={() => setShowCookiesPolicyModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 id="cookies-modal-title">{t('Cookies Policy', 'Cookies Policy', 'Cookies Policy')}</h3>
-              <button className="btn btn-secondary btn-sm" aria-label="Close Cookies Policy" onClick={() => setShowCookiesPolicyModal(false)}>Close</button>
+              <button
+                type="button"
+                aria-label="Close"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  flexShrink: 0
+                }}
+                onClick={() => setShowCookiesPolicyModal(false)}
+              >
+                <X size={16} />
+              </button>
             </div>
             <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               <p><strong>{t('What Cookies Are Used:', 'What Cookies Are Used:', 'What Cookies Are Used:')}</strong> {t('Session security cookies (httpOnly, Secure), analytics preferences, and regional settings.', 'Session security cookies (httpOnly, Secure), analytics preferences, and regional settings.', 'Session security cookies (httpOnly, Secure), analytics preferences, and regional settings.')}</p>
