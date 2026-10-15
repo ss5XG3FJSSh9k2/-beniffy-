@@ -859,29 +859,6 @@ select option:disabled {
   line-height: 1.4;
 }
 
-/* Customer App Specific Styles (Netflix style) */
-.netflix-card {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--surface-overlay);
-  transition: transform 0.3s;
-}
-
-.netflix-card:hover {
-  transform: scale(1.03);
-}
-
-.net-badge {
-  background: var(--danger); /* Netflix Red */
-  color: var(--on-primary);
-  padding: 0.2rem 0.5rem;
-  font-size: 0.6rem;
-  font-weight: 800;
-  border-radius: 2px;
-  text-transform: uppercase;
-}
 
 .net-btn {
   background: white;

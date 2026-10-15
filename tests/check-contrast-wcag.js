@@ -2,8 +2,21 @@ const { chromium } = require('playwright');
 const { newLightContext, newLightPage } = require('./helpers.js');
 const fs = require('fs');
 
+async function launchBrowser() {
+  const options = { headless: true };
+  try {
+    return await chromium.launch(options);
+  } catch (err) {
+    try {
+      return await chromium.launch({ ...options, channel: 'chrome' });
+    } catch {
+      return await chromium.launch({ ...options, channel: 'msedge' });
+    }
+  }
+}
+
 async function run() {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchBrowser();
   const context = await newLightContext(browser);
   const page = await context.newPage();
 
@@ -100,6 +113,13 @@ async function run() {
   const scenarios = [
     { name: 'marketing', clickRole: 'marketing' },
     { name: 'customer', clickRole: 'customer' },
+    { name: 'customer-shop', clickRole: 'customer', action: async (page) => {
+      const shopBtn = page.locator('button:has-text("Shop")').first();
+      if (await shopBtn.count() > 0) {
+        await shopBtn.click();
+        await page.waitForTimeout(500);
+      }
+    }},
     { name: 'stockist', clickRole: 'stockist' },
     { name: 'partner', clickRole: 'partner' },
     { name: 'admin', clickRole: 'admin' },
@@ -113,16 +133,14 @@ async function run() {
   for (const theme of ['light', 'dark']) {
     await page.evaluate((t) => {
       window.localStorage.setItem('theme', t);
+      window.localStorage.setItem('fastnet.themes.v1', JSON.stringify({
+        marketing: t,
+        customer: t,
+        stockist: t,
+        admin: t,
+        partner: t
+      }));
       document.documentElement.setAttribute('data-theme', t);
-      // Trigger App re-render (if App reads from localStorage/data-theme)
-      // Normally we click the theme switch, but this works for CSS tests.
-    }, theme);
-    // Actually it's better to just click the toggle.
-    await page.evaluate((t) => {
-       const btn = document.querySelector('.theme-toggle');
-       if (btn && document.documentElement.getAttribute('data-theme') !== t) {
-          btn.click();
-       }
     }, theme);
     await page.waitForTimeout(1000);
 
@@ -133,6 +151,9 @@ async function run() {
         if (btn) btn.click();
       }, scenario.clickRole);
       await page.waitForTimeout(500);
+      if (scenario.action) {
+        await scenario.action(page);
+      }
 
       const fails = await checkContrastOnScreen(page, scenario.name, theme);
       totalFails = totalFails.concat(fails);

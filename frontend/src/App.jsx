@@ -10466,7 +10466,7 @@ export default function App() {
                               const hasCostPrice = p.cost_price !== undefined && p.cost_price !== null;
                               const isOutOfStock = p.stock_qty <= 0;
                               return (
-                                <div key={p.id} className="netflix-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.6rem', gap: '0.5rem' }}>
+                                <div key={p.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.6rem', gap: '0.5rem' }}>
                                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%' }}>
                                     <ProductImage
                                       src={p.image_url}
@@ -10478,7 +10478,9 @@ export default function App() {
                                       <h4 style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                           {p.name}
                                         </h4>
-                                      {p.description && <div style={{ fontSize: '0.65rem', color: 'var(--text-main)', opacity: 0.85 }}>{p.description}</div>}
+                                      {p.description && p.description.trim() && p.description.trim().toLowerCase() !== p.name.trim().toLowerCase() && (
+                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.description}</div>
+                                      )}
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
                                         <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-main)' }}>₹{p.price}</span>
                                         {hasCostPrice ? (
