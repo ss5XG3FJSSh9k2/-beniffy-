@@ -6398,6 +6398,72 @@ async function main() {
   const prodsInR3 = await get(`http://localhost:3001/api/products?regionId=r3&stockistId=${syncStkId}&customer=true`);
   assert(prodsInR3.status === 200 && Array.isArray(prodsInR3.body) && prodsInR3.body.length === 1, 'GET /api/products in region r3 returns 1 product');
 
+  // --- 47. BF-ADMIN-STOCKIST-VISIBILITY ---
+  console.log('\n--- 47. BF-ADMIN-STOCKIST-VISIBILITY ---');
+  
+  // (a) KYC-pending shop appears in admin stockists (with include_pending=true) but not to customers (/api/stockists)
+  const pendingOwnerId = 'u-test-pending-stk-' + Date.now();
+  const pendingStkId = 's-test-pending-stk-' + Date.now();
+  await dbModule.insertRow('users', {
+    id: pendingOwnerId,
+    tenant_id: 't1',
+    region_id: 'r1',
+    phone: '9888899991',
+    email: 'pending_stk@test.com',
+    name: 'Pending Stockist Owner',
+    role: 'STOCKIST',
+    kyc_status: 'PENDING',
+    is_active: true,
+    created_at: new Date().toISOString()
+  });
+  await dbModule.insertRow('stockists', {
+    id: pendingStkId,
+    tenant_id: 't1',
+    region_id: 'r1',
+    user_id: pendingOwnerId,
+    name: 'Pending Kirana Shop',
+    phone: '9888899991',
+    contact_phone: '9888899991',
+    is_active: true,
+    created_at: new Date().toISOString()
+  });
+
+  // Customer endpoint (/api/stockists) must NOT show this KYC-pending stockist
+  const custStockists = await get('http://localhost:3001/api/stockists?regionId=r1');
+  assert(custStockists.status === 200, 'GET /api/stockists returns 200');
+  const foundInCust = custStockists.body.find(s => s.id === pendingStkId);
+  assert(!foundInCust, 'KYC-pending shop is absent from customer shop list (/api/stockists)');
+
+  // Admin endpoint (/api/admin/stockists?include_pending=true) MUST include this shop with kyc_status PENDING
+  const adminStockistsWithPending = await get('http://localhost:3001/api/admin/stockists?include_pending=true');
+  assert(adminStockistsWithPending.status === 200, 'GET /api/admin/stockists?include_pending=true returns 200');
+  const foundInAdmin = adminStockistsWithPending.body.find(s => s.id === pendingStkId);
+  assert(foundInAdmin && foundInAdmin.kyc_status === 'PENDING', 'KYC-pending shop appears in admin stockists list with kyc_status PENDING');
+  assert(foundInAdmin.customer_visible === false && foundInAdmin.customer_visibility_reason === 'KYC pending', 'Admin list reports customer_visible=false with reason "KYC pending"');
+
+  // (b) a stockist with no phone and a user with no phone do not match each other in isCustomerVisible
+  const { isCustomerVisible: serverIsCustomerVisible, getCustomerVisibility: serverGetVisibility } = require('../server.js');
+  const emptyStockist = { id: 's-no-phone', is_active: true };
+  const usersWithNoPhone = [
+    { id: 'u-no-phone-1', role: 'STOCKIST', kyc_status: 'APPROVED', is_active: true },
+    { id: 'u-no-phone-2', phone: '', role: 'STOCKIST', kyc_status: 'APPROVED', is_active: true }
+  ];
+  const noPhoneMatch = serverIsCustomerVisible(emptyStockist, usersWithNoPhone);
+  assert(noPhoneMatch === false, 'Stockist with no phone and users with no phone do not match each other in isCustomerVisible');
+
+  // Also test getCustomerVisibility reasons: inactive, owner deactivated, no products
+  const inactiveStockist = { id: 's-inact', is_active: false, user_id: 'u-stk1' };
+  assert(serverGetVisibility(inactiveStockist, usersWithNoPhone).reason === 'inactive', 'Visibility reason for inactive stockist is "inactive"');
+
+  const deactOwnerUser = [{ id: 'u-deact-stk', role: 'STOCKIST', kyc_status: 'APPROVED', is_active: false }];
+  const deactStockist = { id: 's-deact', is_active: true, user_id: 'u-deact-stk' };
+  assert(serverGetVisibility(deactStockist, deactOwnerUser).reason === 'owner deactivated', 'Visibility reason for deactivated owner is "owner deactivated"');
+
+  const noProdStockist = { id: 's-no-prod', is_active: true, user_id: 'u-active-stk' };
+  const activeOwnerUser = [{ id: 'u-active-stk', role: 'STOCKIST', kyc_status: 'APPROVED', is_active: true }];
+  assert(serverGetVisibility(noProdStockist, activeOwnerUser, []).reason === 'no products', 'Visibility reason when shop has 0 products is "no products"');
+  assert(serverGetVisibility(noProdStockist, activeOwnerUser, [{ stockist_id: 's-no-prod', is_active: true, is_sellable: true }]).visible === true, 'Visibility is true when active owner has products');
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);

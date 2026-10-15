@@ -3270,7 +3270,7 @@ export default function App() {
         const leads = await leadsRes.json().catch(() => ({}));
 
         const custsRes = await fetch(`${API_BASE}/admin/customers?include_inactive=true`);
-        const stksRes = await fetch(`${API_BASE}/admin/stockists?include_inactive=true`);
+        const stksRes = await fetch(`${API_BASE}/admin/stockists?include_inactive=true&include_pending=true`);
 
         const blRes = await fetch(`${API_BASE}/admin/blacklist`);
         if (blRes.ok) {
@@ -14413,7 +14413,7 @@ export default function App() {
               {(() => {
                 const step1Done = regions.length > 0;
                 const step2Done = vendors.length > 0;
-                const allStks = adminStockists.length > 0 ? adminStockists : customerStockists;
+                const allStks = adminStockists;
                 const step3Done = allStks.length > 0;
                 const step4Done = adminCustomers.length > 0;
 
@@ -14928,6 +14928,7 @@ export default function App() {
                           <th>30d Earnings (GMV)</th>
                           <th>Pending Orders</th>
                           <th style={{ whiteSpace: 'nowrap', minWidth: '75px' }}>Status</th>
+                          <th>Customers can see it</th>
                           <th style={{ whiteSpace: 'nowrap', minWidth: '340px', position: 'static' }}>Actions</th>
                         </tr>
                       </thead>
@@ -14937,7 +14938,7 @@ export default function App() {
                             .filter(s => adminRegionFilter === 'ALL' || s.region_id === adminRegionFilter)
                             .filter(s => {
                               const ACTIVE_LIST_STATUSES = ['APPROVED'];
-                              const INACTIVE_LIST_STATUSES = ['DEACTIVATED'];
+                              const INACTIVE_LIST_STATUSES = ['DEACTIVATED', 'PENDING'];
                               const visible = adminIncludeInactiveStockists
                                 ? [...ACTIVE_LIST_STATUSES, ...INACTIVE_LIST_STATUSES]
                                 : ACTIVE_LIST_STATUSES;
@@ -14972,7 +14973,7 @@ export default function App() {
                           if (!dbState) {
                             return (
                               <tr>
-                                <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                                   Loading stockists...
                                 </td>
                               </tr>
@@ -14981,7 +14982,7 @@ export default function App() {
                           if (filteredList.length === 0) {
                             return (
                               <tr>
-                                <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                                   {adminStockistSearchField === 'KYC_ID' ? (
                                     "No stockist found with that ID number."
                                   ) : (
@@ -15016,6 +15017,15 @@ export default function App() {
                                 <td>{s.pending_orders_count || 0}</td>
                                 <td style={{ whiteSpace: 'nowrap', minWidth: '75px' }}>
                                   {renderKycStatusBadge(s.kyc_status, s.is_active)}
+                                </td>
+                                <td style={{ whiteSpace: 'nowrap' }}>
+                                  {s.customer_visible ? (
+                                    <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>Yes</span>
+                                  ) : (
+                                    <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>
+                                      No ({s.customer_visibility_reason || 'inactive'})
+                                    </span>
+                                  )}
                                 </td>
                                 <td style={{ whiteSpace: 'nowrap', position: 'static' }}>
                                   <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'nowrap' }}>
@@ -16476,7 +16486,7 @@ export default function App() {
                               </tr>
                             </thead>
                             <tbody>
-                              {(adminStockists.length > 0 ? adminStockists : customerStockists).map(s => {
+                              {adminStockists.map(s => {
                                 const storeCfg = commissionConfigs.find(c => c.scope === 'STORE' && c.stockist_id === s.id);
                                 const isOverride = !!storeCfg;
                                 const reinvest = isOverride ? storeCfg.stockist_reinvest_pct : globalReinvestPct;
@@ -17081,9 +17091,19 @@ export default function App() {
                           <label className="input-label">Select Shop</label>
                           <select className="text-input" value={vendorAdminStockistId} onChange={e => setVendorAdminStockistId(e.target.value)}>
                             <option value="">-- Select Shop --</option>
-                            {customerStockists.map(s => (
-                              <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
+                            {adminStockists.map(s => {
+                              const reg = regions.find(r => r.id === s.region_id);
+                              const regName = reg ? reg.name : (s.region_id || 'No Region');
+                              let label = `${s.name} (${regName})`;
+                              if (s.kyc_status === 'PENDING' || (s.kyc_status && s.kyc_status !== 'APPROVED' && s.kyc_status !== 'DEACTIVATED')) {
+                                label += ' (KYC pending)';
+                              } else if (s.is_active === false || s.kyc_status === 'DEACTIVATED') {
+                                label += ' (inactive)';
+                              }
+                              return (
+                                <option key={s.id} value={s.id}>{label}</option>
+                              );
+                            })}
                           </select>
                         </div>
                         <div className="input-group">
@@ -19217,7 +19237,7 @@ export default function App() {
               <label className="input-label">Select Stockist Shop</label>
               <select className="text-input" value={overrideStockistId} onChange={e => setOverrideStockistId(e.target.value)}>
                 <option value="">-- Select Shop --</option>
-                {(adminStockists.length > 0 ? adminStockists : customerStockists).map(s => (
+                {adminStockists.map(s => (
                   <option key={s.id} value={s.id}>{s.name} ({s.id})</option>
                 ))}
               </select>

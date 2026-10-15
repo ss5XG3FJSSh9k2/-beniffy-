@@ -2198,11 +2198,41 @@ function calculateIsShopOpen(stockist, currentTimeStr) {
   return currentTime >= opening && currentTime < closing;
 }
 
-const isCustomerVisible = (stockist, users) => {
-  if (!stockist || !stockist.is_active) return false;
-  const owner = users.find(u => u.id === stockist.user_id || u.phone === stockist.phone || u.phone === stockist.contact_phone);
-  if (!owner) return false;
-  return owner.kyc_status === 'APPROVED';
+function findStockistOwner(stockist, users) {
+  if (!stockist || !Array.isArray(users)) return null;
+  if (stockist.user_id) {
+    return users.find(u => u.id === stockist.user_id) || null;
+  }
+  const sPhone = (stockist.contact_phone || stockist.phone || '').trim();
+  if (!sPhone) return null;
+  return users.find(u => u.role === 'STOCKIST' && typeof u.phone === 'string' && u.phone.trim() !== '' && u.phone.trim() === sPhone) || null;
+}
+
+function getCustomerVisibility(stockist, users, products) {
+  if (!stockist || stockist.is_active === false) {
+    return { visible: false, reason: 'inactive' };
+  }
+  const owner = findStockistOwner(stockist, users);
+  if (!owner) {
+    return { visible: false, reason: 'KYC pending' };
+  }
+  if (owner.is_active === false) {
+    return { visible: false, reason: 'owner deactivated' };
+  }
+  if (owner.kyc_status !== 'APPROVED') {
+    return { visible: false, reason: 'KYC pending' };
+  }
+  if (products && Array.isArray(products)) {
+    const shopProducts = getCustomerVisibleProducts(stockist, products);
+    if (shopProducts.length === 0) {
+      return { visible: false, reason: 'no products' };
+    }
+  }
+  return { visible: true, reason: null };
+}
+
+const isCustomerVisible = (stockist, users, products) => {
+  return getCustomerVisibility(stockist, users, products).visible;
 };
 
 function getRegionDeliveryFee(regionRow) {
@@ -6619,23 +6649,28 @@ app.post('/api/admin/customers/:id/reactivate', async (req, res) => {
 // Admin Stockists Endpoints
 app.get('/api/admin/stockists', async (req, res) => {
   const includeInactive = req.query.include_inactive === 'true';
+  const includePending = req.query.include_pending === 'true';
   const stockists = await db.getTable('stockists');
   const orders = await db.getTable('orders');
   const rates = await db.getTable('stockist_commission_rates');
   const users = await db.getTable('users');
+  const products = await db.getTable('products');
 
   const ACTIVE_LIST_STATUSES = ['APPROVED'];
   const INACTIVE_LIST_STATUSES = ['DEACTIVATED'];
 
-  const visibleStatuses = includeInactive
+  let visibleStatuses = includeInactive
     ? [...ACTIVE_LIST_STATUSES, ...INACTIVE_LIST_STATUSES]
     : ACTIVE_LIST_STATUSES;
+  if (includePending) {
+    visibleStatuses = [...visibleStatuses, 'PENDING'];
+  }
 
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
   const result = [];
   for (const s of stockists) {
-    const user = users.find(u => u.id === s.user_id || (u.phone && (u.phone === s.phone || u.phone === s.contact_phone)));
+    const user = findStockistOwner(s, users);
     let kycStatus = user ? user.kyc_status : (s.is_active !== false ? 'APPROVED' : 'DEACTIVATED');
     if (s.is_active === false && kycStatus === 'APPROVED') {
       kycStatus = 'DEACTIVATED';
@@ -6651,6 +6686,7 @@ app.get('/api/admin/stockists', async (req, res) => {
     const pendingCount = stkOrders.filter(o => ['CONFIRMING', 'PENDING', 'ACCEPTED', 'PREPARING'].includes(o.status)).length;
     const stkRates = rates.filter(r => r.stockist_id === s.id);
     const latestRate = stkRates.length > 0 ? stkRates[stkRates.length - 1].rate_percent : 10.0;
+    const visibility = getCustomerVisibility(s, users, products);
 
     result.push({
       ...s,
@@ -6660,7 +6696,9 @@ app.get('/api/admin/stockists', async (req, res) => {
       user_phone: user ? user.phone : (s.phone || s.contact_phone || ''),
       gmv_30d: gmv30d,
       pending_orders_count: pendingCount,
-      commission_rate: latestRate
+      commission_rate: latestRate,
+      customer_visible: visibility.visible,
+      customer_visibility_reason: visibility.reason
     });
   }
   return res.json(result);
@@ -10561,7 +10599,10 @@ module.exports = {
   checkOtpRateLimit,
   otpRateLimitMap,
   otpHourlyLimitMap,
-  getCustomerVisibleProducts
+  getCustomerVisibleProducts,
+  findStockistOwner,
+  getCustomerVisibility,
+  isCustomerVisible
 };
 
 
