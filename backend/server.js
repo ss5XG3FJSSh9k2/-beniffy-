@@ -1543,7 +1543,7 @@ const handleCreateProductRoute = async (req, res) => {
     price: parsedPrice,
     cost_price: parsedCostPrice,
     description: description !== undefined ? description : (name + ' added by local stockist'),
-    image_url: finalImageUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&auto=format&fit=crop&q=60',
+    image_url: finalImageUrl || null,
     latest_bill_photo_id: billPhotoId,
     created_at: new Date().toISOString()
   };

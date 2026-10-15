@@ -78,6 +78,65 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 const CALC_AVG_MARGIN_PCT = 18;
 
+const resolveImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('http') || trimmed.startsWith('data:')) return trimmed;
+  if (trimmed.startsWith('/api/')) {
+    const base = API_BASE.replace(/\/api\/?$/, '');
+    return `${base}${trimmed}`;
+  }
+  const sep = (API_BASE.endsWith('/') || trimmed.startsWith('/')) ? '' : '/';
+  return `${API_BASE}${sep}${trimmed}`;
+};
+
+const ProductImage = ({ src, alt, style, t, className, containerStyle }) => {
+  const [hasError, setHasError] = useState(false);
+  const resolved = resolveImageUrl(src);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
+  if (!resolved || hasError) {
+    return (
+      <div
+        className={className}
+        style={{
+          width: style?.width || '100%',
+          height: style?.height || '100%',
+          borderRadius: style?.borderRadius || '6px',
+          backgroundColor: 'var(--surface-overlay)',
+          color: 'var(--text-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '0.65rem',
+          textAlign: 'center',
+          padding: '0.2rem',
+          userSelect: 'none',
+          boxSizing: 'border-box',
+          flexShrink: style?.flexShrink !== undefined ? style.flexShrink : 0,
+          ...containerStyle
+        }}
+      >
+        <span>{t ? t('No photo', 'कोई फ़ोटो नहीं', 'ছবি নেই') : 'No photo'}</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={resolved}
+      alt={alt || ''}
+      className={className}
+      style={style}
+      onError={() => setHasError(true)}
+    />
+  );
+};
+
 const isWithinOpeningHours = (profile) => {
   if (!profile.opening_time || !profile.closing_time) return true;
   const now = new Date();
@@ -5935,8 +5994,7 @@ export default function App() {
           showToast('No document uploaded for this stockist', 'error');
           return;
         }
-        const apiOrigin = API_BASE.replace(/\/api\/?$/, '');
-        const resolvedUrl = /^https?:\/\//i.test(docUrl) ? docUrl : `${apiOrigin}${docUrl}`;
+        const resolvedUrl = resolveImageUrl(docUrl);
         setSelectedKycDocument({
           url: resolvedUrl,
           userName: u.name,
@@ -10410,7 +10468,12 @@ export default function App() {
                               return (
                                 <div key={p.id} className="netflix-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.6rem', gap: '0.5rem' }}>
                                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%' }}>
-                                    <img src={p.image_url ? (p.image_url.startsWith('http') || p.image_url.startsWith('data:') ? p.image_url : `${API_BASE}${p.image_url}`) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"} alt={p.name} style={{ width: '56px', height: '56px', borderRadius: '6px', objectFit: 'cover' }} onError={(e) => { e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"; }} />
+                                    <ProductImage
+                                      src={p.image_url}
+                                      alt={p.name}
+                                      style={{ width: '56px', height: '56px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }}
+                                      t={t}
+                                    />
                                     <div style={{ flex: 1 }}>
                                       <h4 style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                           {p.name}
@@ -10585,7 +10648,12 @@ export default function App() {
                                   {suggestions.map(p => (
                                     <div key={p.id} style={{ minWidth: '110px', flexShrink: 0, background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem' }}>
                                       <div style={{ width: '100%', aspectRatio: '1', backgroundColor: 'var(--surface-overlay)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <img src={p.image_url ? (p.image_url.startsWith('http') || p.image_url.startsWith('data:') ? p.image_url : `${API_BASE}${p.image_url}`) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16'%3EProduct Image%3C/text%3E%3C/svg%3E"; }} />
+                                        <ProductImage
+                                          src={p.image_url}
+                                          alt={p.name}
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                          t={t}
+                                        />
                                       </div>
                                       <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '0.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
                                       {p.description && <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.description}</div>}

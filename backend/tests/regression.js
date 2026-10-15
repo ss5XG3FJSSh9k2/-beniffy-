@@ -6295,6 +6295,21 @@ async function main() {
   const allPhonesValid = seededUsers.length > 0 && seededUsers.every(u => !u.phone || phoneRegex.test(u.phone));
   assert(allPhonesValid, 'every seeded user phone passes /^[6-9]\\d{9}$/');
 
+  // --- 45. BF-PRODUCT-NO-IMAGE-NULL ---
+  console.log('\n--- 45. BF-PRODUCT-NO-IMAGE-NULL ---');
+  const noImgProdRes = await postMultipart('http://localhost:3001/api/products', {
+    name: 'BF-NoImage-Test-Product',
+    price: 150,
+    costPrice: 120,
+    category: 'groceries',
+    initialStock: 10,
+    stockistId: 's1',
+    regionId: 'r1'
+  }, { fieldName: 'bill_photo', filename: 'bill.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock bill photo') });
+  assert(noImgProdRes.status === 200, 'Product creation without imageFile returns 200');
+  const noImgProd = noImgProdRes.body.product || noImgProdRes.body;
+  assert(noImgProd.image_url === null, 'Newly created product without image has image_url null, not an unsplash URL');
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 
