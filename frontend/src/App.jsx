@@ -2166,6 +2166,9 @@ export default function App() {
   const [pkgFaceValue, setPkgFaceValue] = useState('');
   const [pkgCostToPartner, setPkgCostToPartner] = useState('');
   const [pkgPointCost, setPkgPointCost] = useState('');
+  const [pkgPointCostEdited, setPkgPointCostEdited] = useState(false);
+  const [pkgCostTouched, setPkgCostTouched] = useState(false);
+  const [pkgSubmitted, setPkgSubmitted] = useState(false);
   const [pkgActiveRegions, setPkgActiveRegions] = useState([]);
   const [pkgDurationDays, setPkgDurationDays] = useState('');
   const [pkgDurationMode, setPkgDurationMode] = useState('preset');
@@ -8010,6 +8013,9 @@ export default function App() {
     setPkgFaceValue('');
     setPkgCostToPartner('');
     setPkgPointCost('');
+    setPkgPointCostEdited(false);
+    setPkgCostTouched(false);
+    setPkgSubmitted(false);
     setPkgActiveRegions((partnerRegionsList || []).map(r => r.region_id));
     setPkgDurationDays('30');
     setPkgDurationMode('preset');
@@ -8022,8 +8028,11 @@ export default function App() {
     setPkgDesc(pkg.description || '');
     setPkgServiceType(pkg.service_type || 'CABLE');
     setPkgFaceValue(pkg.face_value_rupees || '');
-    setPkgCostToPartner(pkg.cost_to_partner_rupees || pkg.face_value_rupees || '');
-    setPkgPointCost(pkg.point_cost || pkg.face_value_rupees || '');
+    setPkgCostToPartner(pkg.cost_to_partner_rupees !== undefined && pkg.cost_to_partner_rupees !== null ? pkg.cost_to_partner_rupees : '');
+    setPkgPointCost(pkg.point_cost !== undefined && pkg.point_cost !== null ? pkg.point_cost : '');
+    setPkgPointCostEdited(true);
+    setPkgCostTouched(false);
+    setPkgSubmitted(false);
     setPkgActiveRegions(pkg.active_regions || []);
     const presets = ['30', '90', '180', '365'];
     const dur = pkg.duration_days ? String(pkg.duration_days) : '30';
@@ -8032,9 +8041,45 @@ export default function App() {
     setShowPkgModal(true);
   };
 
+  const handleFaceValueChange = (e) => {
+    const val = e.target.value;
+    setPkgFaceValue(val);
+    if (!pkgPointCostEdited) {
+      setPkgPointCost(val);
+    }
+  };
+
+  const handleCostToPartnerChange = (e) => {
+    setPkgCostToPartner(e.target.value);
+  };
+
+  const handlePointCostChange = (e) => {
+    setPkgPointCostEdited(true);
+    setPkgPointCost(e.target.value);
+  };
+
+  const costError = (() => {
+    if (pkgCostToPartner !== '' && pkgFaceValue !== '' && Number(pkgCostToPartner) >= Number(pkgFaceValue)) {
+      return 'Cost to Partner must be less than Face Value';
+    }
+    if ((pkgSubmitted || pkgCostTouched) && (pkgCostToPartner === '' || pkgCostToPartner === undefined || pkgCostToPartner === null)) {
+      return 'Cost to Partner is required';
+    }
+    return '';
+  })();
+
   const handleSavePackage = async () => {
+    setPkgSubmitted(true);
     if (!pkgName.trim() || !pkgFaceValue) {
       showToast('Package name and face value are required', 'error');
+      return;
+    }
+    if (pkgCostToPartner === '' || pkgCostToPartner === undefined || pkgCostToPartner === null) {
+      showToast('Cost to Partner is required', 'error');
+      return;
+    }
+    if (Number(pkgCostToPartner) >= Number(pkgFaceValue)) {
+      showToast('Cost to Partner must be less than Face Value', 'error');
       return;
     }
     if (!pkgDurationDays || Number(pkgDurationDays) <= 0) {
@@ -8046,7 +8091,7 @@ export default function App() {
       description: pkgDesc,
       service_type: pkgServiceType,
       face_value_rupees: Number(pkgFaceValue),
-      cost_to_partner_rupees: Number(pkgCostToPartner || pkgFaceValue),
+      cost_to_partner_rupees: Number(pkgCostToPartner),
       point_cost: Number(pkgPointCost || pkgFaceValue),
       active_regions: pkgActiveRegions,
       duration_days: Number(pkgDurationDays),
@@ -9425,22 +9470,58 @@ export default function App() {
                     ))}
                   </select>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', alignItems: 'start' }}>
                   <div className="input-group">
-                    <label className="input-label">Face Value ₹ *</label>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: '-0.25rem', marginBottom: '0.5rem' }}>The rupee value the customer perceives. What you'd normally charge them for this.</div>
-                    <input type="number" inputMode="numeric" min="1" max="100000" step="1" onKeyDown={e => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }} className="text-input" value={pkgFaceValue} onChange={e => setPkgFaceValue(e.target.value)} />
+                    <label className="input-label" style={{ whiteSpace: 'nowrap' }}>Face Value ₹ *</label>
+                    <input 
+                      type="number" 
+                      inputMode="numeric" 
+                      min="1" 
+                      max="100000" 
+                      step="1" 
+                      onKeyDown={e => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }} 
+                      className="text-input" 
+                      value={pkgFaceValue} 
+                      onChange={handleFaceValueChange} 
+                    />
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: '0.25rem' }}>The rupee value the customer perceives. What you'd normally charge them for this.</div>
                   </div>
                   <div className="input-group">
-                    <label className="input-label">Cost to Partner ₹</label>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: '-0.25rem', marginBottom: '0.5rem' }}>Your actual cost to provide it. Used to calculate your platform payout. Defaults to Face Value if empty.</div>
-                    <input type="number" inputMode="numeric" min="0" max="100000" step="1" onKeyDown={e => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }} className="text-input" value={pkgCostToPartner} onChange={e => setPkgCostToPartner(e.target.value)} placeholder={pkgFaceValue} />
+                    <label className="input-label" style={{ whiteSpace: 'nowrap' }}>Cost to Partner ₹ *</label>
+                    <input 
+                      type="number" 
+                      inputMode="numeric" 
+                      min="0" 
+                      max="100000" 
+                      step="1" 
+                      onKeyDown={e => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }} 
+                      className="text-input" 
+                      value={pkgCostToPartner} 
+                      onChange={handleCostToPartnerChange}
+                      onBlur={() => setPkgCostTouched(true)}
+                    />
+                    {costError && (
+                      <div id="pkg-cost-error" className="field-error-text inline-error" style={{ color: 'var(--danger-text)', fontSize: '0.72rem', marginTop: '0.25rem' }}>
+                        {costError}
+                      </div>
+                    )}
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: '0.25rem' }}>What it costs you to provide this. Must be less than the face value.</div>
                   </div>
                 </div>
                 <div className="input-group">
                   <label className="input-label">Point Cost *</label>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: '-0.25rem', marginBottom: '0.5rem' }}>How many loyalty points a customer must spend to redeem this. Usually 1 point = ₹1, so equal to Face Value.</div>
-                  <input type="number" inputMode="numeric" min="1" max="100000" step="1" onKeyDown={e => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }} className="text-input" value={pkgPointCost} onChange={e => setPkgPointCost(e.target.value)} placeholder={pkgFaceValue} />
+                  <input 
+                    type="number" 
+                    inputMode="numeric" 
+                    min="1" 
+                    max="100000" 
+                    step="1" 
+                    onKeyDown={e => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }} 
+                    className="text-input" 
+                    value={pkgPointCost} 
+                    onChange={handlePointCostChange} 
+                  />
                 </div>
                 
                 <div className="input-group">
