@@ -5014,9 +5014,9 @@ async function main() {
   const phoneScreenMatches = indexCssBf21c.match(/\.phone-screen\s*\{/g);
   assert(phoneScreenMatches && phoneScreenMatches.length === 1, 'index.css has exactly one consolidated .phone-screen definition');
 
-  // Test #923: consolidated .phone-screen contains padding-top: 10px
+  // Test #923: consolidated .phone-screen contains padding-top: 16px
   const phoneScreenBlock = indexCssBf21c.match(/\.phone-screen\s*\{[^}]*\}/s);
-  assert(phoneScreenBlock && phoneScreenBlock[0].includes('padding-top: 10px'), 'consolidated .phone-screen contains padding-top: 10px');
+  assert(phoneScreenBlock && phoneScreenBlock[0].includes('padding-top: 16px'), 'consolidated .phone-screen contains padding-top: 16px');
 
   // Test #924: Add SKU modal container in App.jsx has bounded scrolling (overflowY: 'auto' and WebkitOverflowScrolling)
   const appJsxBf21c = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
@@ -6606,6 +6606,16 @@ async function main() {
     }
   }
   assert(allLoadCountsMatch === true, 'For every wholesaler, load count == approved_count');
+
+  // --- Section 49: Remove fake camera notch from phone app screens ---
+  console.log('\n--- Section 49: Remove fake camera notch from phone app screens ---');
+  const notchIndexCss = fs.readFileSync(path.join(__dirname, '../../frontend/src/index.css'), 'utf8');
+  const notchAppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+
+  assert(!notchIndexCss.includes('.phone-notch'), 'index.css does not contain .phone-notch CSS rule');
+  assert(!notchAppJsx.includes('className="phone-notch"'), 'App.jsx does not contain phone-notch elements');
+  const phoneScreenRule = notchIndexCss.match(/\.phone-screen\s*\{[^}]*\}/s);
+  assert(phoneScreenRule && phoneScreenRule[0].includes('padding-top: 16px') && !phoneScreenRule[0].includes('padding-top: 36px') && !phoneScreenRule[0].includes('padding-top: 10px'), '.phone-screen has single padding-top: 16px rule with legacy and notch offsets removed');
 
   clearLogin();
 

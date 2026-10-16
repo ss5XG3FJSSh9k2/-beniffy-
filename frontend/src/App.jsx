@@ -8760,7 +8760,6 @@ export default function App() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
           <div className="perspective-banner"><span>Partner Hub: Not logged in</span></div>
           <div className="phone-mockup" ref={setPhoneEl} data-theme={resolve(themes.partner)}>
-            <div className="phone-notch"></div>
             <div className="phone-screen">
               {splash.app === 'partner' && <AppSplash theme={resolve(themes.partner)} key={splash.key} role="PARTNER" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
               {renderPartnerAuthForm()}
@@ -8778,7 +8777,6 @@ export default function App() {
         </div>
 
         <div className="phone-mockup" ref={setPhoneEl} data-theme={resolve(themes.partner)}>
-          <div className="phone-notch"></div>
           <div className="phone-screen" style={{ minHeight: '550px', display: 'flex', flexDirection: 'column' }}>
             
             {/* Header */}
@@ -10108,7 +10106,6 @@ export default function App() {
         </div>
         
         <div className="phone-mockup" ref={setPhoneEl} data-theme={resolve(themes.customer)}>
-          <div className="phone-notch"></div>
           <div className="phone-screen">
             {splash.app === 'customer' && <AppSplash theme={resolve(themes.customer)} key={splash.key} role={null} onDone={() => setSplash(s => ({ ...s, app: null }))} />}
             {isLoggedOut ? (
@@ -12618,7 +12615,6 @@ export default function App() {
         </div>
 
         <div className="phone-mockup" ref={setPhoneEl} data-theme={resolve(themes.stockist)}>
-          <div className="phone-notch"></div>
           <div className="phone-screen">
             {splash.app === 'stockist' && <AppSplash theme={resolve(themes.stockist)} key={splash.key} role="STOCKIST" onDone={() => setSplash(s => ({ ...s, app: null }))} />}
             {isLoggedOut ? (
