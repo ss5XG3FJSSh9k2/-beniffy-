@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const { newLightContext, newLightPage } = require('./helpers.js');
+const { newLightContext, newLightPage, waitForSplash } = require('./helpers.js');
 const fs = require('fs');
 
 async function launchBrowser() {
@@ -20,8 +20,8 @@ async function run() {
   const context = await newLightContext(browser);
   const page = await context.newPage();
 
-  async function checkContrastOnScreen(page, name, theme) {
-    const failures = await page.evaluate(({ name, theme }) => {
+  async function checkContrastOnScreen(page, name, theme, reportSel) {
+    const failures = await page.evaluate(({ name, theme, reportSel }) => {
       const fails = [];
 
       function parseRGBA(str) {
@@ -99,13 +99,16 @@ async function run() {
         const isLarge = sizePx >= 24 || (isBold && sizePx >= 18.66);
         const threshold = isLarge ? 3 : 4.5;
 
+        if (reportSel && parent.closest(reportSel)) {
+          fails.push(`[INFO] [${theme}] ${name} - "${node.nodeValue.trim().substring(0, 30)}" (size: ${sizePx}px, bold: ${isBold}). Ratio: ${ratio.toFixed(2)}:1 (req ${threshold}:1) ${ratio >= threshold ? 'PASS' : 'FAIL'}. fg:${style.color}, bg:rgba(${bg.join(',')}), disabled:${!!parent.closest('button:disabled')}`);
+        }
         if (ratio < threshold) {
           const textExcerpt = node.nodeValue.trim().substring(0, 20).replace(/\n/g, ' ');
           fails.push(`[FAIL] [${theme}] ${name} - "${textExcerpt}" (size: ${sizePx}px, bold: ${isBold}). Ratio: ${ratio.toFixed(2)}:1 (req ${threshold}:1). fg:${style.color}, bg:rgba(${bg.join(',')})`);
         }
       }
       return fails;
-    }, { name, theme });
+    }, { name, theme, reportSel });
 
     return failures;
   }
@@ -123,6 +126,17 @@ async function run() {
     { name: 'stockist', clickRole: 'stockist' },
     { name: 'partner', clickRole: 'partner' },
     { name: 'admin', clickRole: 'admin' },
+    // Sign-up screens at 440px; report the submit button's measured ratio.
+    { name: 'customer-signup', clickRole: 'customer', report: '#signup-customer-submit-btn', action: async (page) => {
+      await page.setViewportSize({ width: 440, height: 900 });
+      await page.locator('button:has-text("Sign Up (Customer)")').first().click();
+      await page.locator('#signup-customer-submit-btn').waitFor({ state: 'visible', timeout: 5000 });
+    }},
+    { name: 'stockist-signup', clickRole: 'stockist', report: '#signup-stockist-submit-btn', action: async (page) => {
+      await page.setViewportSize({ width: 440, height: 900 });
+      await page.locator('button:has-text("Open a Shop")').first().click();
+      await page.locator('#signup-stockist-submit-btn').waitFor({ state: 'visible', timeout: 5000 });
+    }},
   ];
 
   await page.goto('http://localhost:5173');
@@ -142,6 +156,10 @@ async function run() {
       }));
       document.documentElement.setAttribute('data-theme', t);
     }, theme);
+    // fresh page per theme so the sign-up screens from the previous pass do not linger
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.reload();
+    await waitForSplash(page);
     await page.waitForTimeout(1000);
 
     for (const scenario of scenarios) {
@@ -155,7 +173,7 @@ async function run() {
         await scenario.action(page);
       }
 
-      const fails = await checkContrastOnScreen(page, scenario.name, theme);
+      const fails = await checkContrastOnScreen(page, scenario.name, theme, scenario.report);
       totalFails = totalFails.concat(fails);
     }
 

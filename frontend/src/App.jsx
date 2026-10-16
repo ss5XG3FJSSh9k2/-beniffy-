@@ -690,6 +690,14 @@ const FieldError = ({ error }) => {
   );
 };
 
+// Sign-up required-field keys -> element ids (used to scroll to / focus the first empty field).
+const SIGNUP_FIELD_IDS = {
+  phone: 'signup-phone-input', email: 'signup-email-input', name: 'signup-name-input', region: 'signup-region-select',
+  shopName: 'signup-shop-name-input', kycType: 'signup-kyc-type-select', idNumber: 'signup-id-number-input',
+  docPhoto: 'signup-doc-photo-input', address: 'signup-address-input',
+  cable: 'signup-cable-select', broadband: 'signup-broadband-yes', broadbandProvider: 'signup-broadband-select', terms: 'customer-terms-checkbox',
+};
+
 const THEME_APPS = ['marketing', 'customer', 'stockist', 'admin', 'partner'];
 const THEME_KEY = 'fastnet.themes.v1';
 const loadThemes = () => {
@@ -1368,6 +1376,7 @@ export default function App() {
     setRegPhone('');
     setRegPhoneError('');
     setSignupIdentifierType('phone');
+    setSignupShowMissing(false);
     setRegAddress('');
     setRegRegion(regions.length > 0 ? regions[0].id : '');
     setRegShopName('');
@@ -2946,6 +2955,8 @@ export default function App() {
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPhoneError, setRegPhoneError] = useState('');
+  const [signupShowMissing, setSignupShowMissing] = useState(false); // after a failed submit, mark empty required sign-up fields
+  const [signupSubmitting, setSignupSubmitting] = useState(false); // double-tap guard while a sign-up request is in flight
   const [signupIdentifierType, setSignupIdentifierType] = useState('phone'); // which login identifier opened sign-up: 'phone' | 'email'
   const [regRegion, setRegRegion] = useState('');
   const [customerTermsAgreed, setCustomerTermsAgreed] = useState(false);
@@ -4032,6 +4043,7 @@ export default function App() {
     setOtpSent(false);
     setLoginOtp('');
     setRegPhoneError('');
+    setSignupShowMissing(false);
     const raw = (loginPhone || '').trim();
     if (raw.includes('@')) {
       setSignupIdentifierType('email');
@@ -4728,23 +4740,37 @@ export default function App() {
     return false;
   };
 
+  // Required sign-up fields that are still empty (keys of SIGNUP_FIELD_IDS).
+  const stockistSignupMissing = () => [
+    !regName.trim() && 'name', !regPhone && 'phone', !regEmail.trim() && 'email', !regShopName.trim() && 'shopName',
+    !regRegion && 'region', !regKycType2 && 'kycType',
+    (regKycType2 === 'Aadhaar' ? !aadhaarDigits : !regKycNumber2.trim()) && 'idNumber',
+    !regDocPhoto && 'docPhoto', !regAddress.trim() && 'address',
+  ].filter(Boolean);
+  const customerSignupMissing = () => [
+    !regPhone && 'phone', !regEmail.trim() && 'email', !regName.trim() && 'name', !regRegion && 'region',
+    (!noCableProvider && !signupCablePartnerId) && 'cable', !hasBroadbandAnswered && 'broadband',
+    (hasBroadbandAnswered && hasBroadband && !noBroadbandProvider && !signupBroadbandPartnerId) && 'broadbandProvider',
+    !customerTermsAgreed && 'terms',
+  ].filter(Boolean);
+  // Any empty required field: one toast, mark every empty field, scroll to + focus the first on screen. Returns true if something is missing.
+  const flagMissingSignupFields = (missing) => {
+    if (missing.length === 0) return false;
+    setSignupShowMissing(true);
+    showToast(t('Fill all the details to confirm.', 'पुष्टि करने के लिए सभी विवरण भरें।', 'নিশ্চিত করতে সব তথ্য পূরণ করুন।'), 'error');
+    const first = missing.map(k => document.getElementById(SIGNUP_FIELD_IDS[k])).filter(Boolean)
+      .sort((a, b) => (a.compareDocumentPosition(b) & window.Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))[0];
+    if (first) { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus({ preventScroll: true }); }
+    return true;
+  };
+
   // Customer registration
   const handleCustomerRegister = async () => {
+    if (signupSubmitting) return;
+    if (flagMissingSignupFields(customerSignupMissing())) return;
     if (!validateSignupPhone()) return;
-    if (!regName || !regEmail) { showToast(t('Name and email are required', 'नाम और ईमेल आवश्यक हैं', 'নাম ও ইমেল আবশ্যক'), 'error'); return; }
-    if (!noCableProvider && !signupCablePartnerId) {
-      showToast('Please select your cable operator or choose Not Listed', 'error');
-      return;
-    }
-    if (!hasBroadbandAnswered) {
-      showToast('Please answer whether you have a broadband provider', 'error');
-      return;
-    }
-    if (hasBroadband && !noBroadbandProvider && !signupBroadbandPartnerId) {
-      showToast('Please select your broadband operator or choose Not Listed', 'error');
-      return;
-    }
 
+    setSignupSubmitting(true);
     try {
       const payload = { phone: regPhone, email: regEmail, name: regName, regionId: regRegion, address: regAddress, termsAgreed: customerTermsAgreed };
       if (signupCablePartnerId && !noCableProvider) {
@@ -4778,7 +4804,7 @@ export default function App() {
       } else {
         showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
       }
-    } catch (err) { showToast('Registration error', 'error'); }
+    } catch (err) { showToast('Registration error', 'error'); } finally { setSignupSubmitting(false); }
   };
 
   const handleAdminRefund = async (orderId) => {
@@ -4851,10 +4877,9 @@ export default function App() {
   };
 
   const handleStockistRegister = async () => {
+    if (signupSubmitting) return;
+    if (flagMissingSignupFields(stockistSignupMissing())) return;
     if (!validateSignupPhone()) return;
-    if (!regName || !regEmail || !regShopName || !regAddress || !regRegion) {
-      showToast(t('All fields required (including email)', 'सभी फ़ील्ड आवश्यक हैं (ईमेल सहित)', 'সব ঘর পূরণ করা আবশ্যক (ইমেল সহ)'), 'error'); return;
-    }
     const isAadhaar = String(regKycType2 || '').toUpperCase().includes('AADHAAR') || String(regKycType2 || '').toUpperCase().includes('AADHAR');
     if (isAadhaar) {
       if (aadhaarDigits.length !== 12) {
@@ -4868,10 +4893,7 @@ export default function App() {
         return;
       }
     }
-    if (!regDocPhoto) {
-      showToast(t('Document photo upload is required', 'दस्तावेज़ फोटो अपलोड आवश्यक है', 'ডকুমেন্ট ফটো আপলোড আবশ্যক'), 'error');
-      return;
-    }
+    setSignupSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('phone', regPhone);
@@ -4894,7 +4916,7 @@ export default function App() {
       } else {
         showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
       }
-    } catch (err) { showToast('Registration error', 'error'); }
+    } catch (err) { showToast('Registration error', 'error'); } finally { setSignupSubmitting(false); }
   };
 
   const handleRedeemPoints = async () => {
@@ -7044,12 +7066,20 @@ export default function App() {
 
     // Sign-up identifier fields (customer + stockist). The login identifier's field renders first, the other below the name.
     const signupIdentifierValue = signupIdentifierType === 'email' ? regEmail : (/^\d{10}$/.test(regPhone) ? regPhone : '');
+    // Empty required fields after a failed submit; a field's mark clears as soon as it has a value.
+    const signupMissing = !signupShowMissing ? [] : showStockistSignup ? stockistSignupMissing() : customerSignupMissing();
+    const missingBorder = (key) => (signupMissing.includes(key) ? { borderColor: 'var(--danger-text)' } : undefined);
+    const renderMissing = (key) => (signupMissing.includes(key) ? (
+      <div className="field-error-text" style={{ color: 'var(--danger-text)' }}><AlertCircle size={12} /> {t('Required', 'आवश्यक', 'আবশ্যক')}</div>
+    ) : null);
+    const signupSubmitLabel = (label) => (signupSubmitting ? t('Submitting…', 'सबमिट हो रहा है…', 'জমা দেওয়া হচ্ছে…') : label);
     const renderSignupPhoneField = () => (
       <div className="input-group">
         <label className="input-label" htmlFor="signup-phone-input">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'ফোন নম্বর (১০ সংখ্যা)')}</label>
         <PhoneInput
           id="signup-phone-input"
           className={regPhoneError ? 'input-error' : ''}
+          style={missingBorder('phone')}
           placeholder="e.g. 9876543210"
           required
           aria-invalid={regPhoneError ? 'true' : undefined}
@@ -7057,12 +7087,14 @@ export default function App() {
           onChange={e => { setRegPhone(e.target.value); setRegPhoneError(''); }}
         />
         <FieldError error={regPhoneError} />
+        {renderMissing('phone')}
       </div>
     );
     const renderSignupEmailField = () => (
       <div className="input-group">
         <label className="input-label" htmlFor="signup-email-input">{t('Email Address', 'ईमेल पता', 'ইমেল ঠিকানা')}</label>
-        <input id="signup-email-input" type="email" required placeholder="example@beniffy.com" className="text-input" value={regEmail} onChange={e => setRegEmail(e.target.value.trim().toLowerCase())} />
+        <input id="signup-email-input" type="email" required placeholder="example@beniffy.com" className="text-input" style={missingBorder('email')} value={regEmail} onChange={e => setRegEmail(e.target.value.trim().toLowerCase())} />
+        {renderMissing('email')}
       </div>
     );
 
@@ -7215,17 +7247,19 @@ export default function App() {
             {signupIdentifierType === 'email' ? renderSignupEmailField() : renderSignupPhoneField()}
             <div className="input-group">
               <label className="input-label">{t('Full Name', 'पूरा नाम', 'পুরো নাম')}</label>
-              <input type="text" placeholder="e.g. Joy Dev" className="text-input" value={regName} onChange={e => setRegName(e.target.value)} />
+              <input id="signup-name-input" type="text" placeholder="e.g. Joy Dev" className="text-input" style={missingBorder('name')} value={regName} onChange={e => setRegName(e.target.value)} />
+              {renderMissing('name')}
             </div>
             {signupIdentifierType === 'email' ? renderSignupPhoneField() : renderSignupEmailField()}
             <div className="input-group">
               <label className="input-label">{t('Select Region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</label>
-              <select className="text-input" value={regRegion} onChange={e => setRegRegion(e.target.value)}>
+              <select id="signup-region-select" className="text-input" style={missingBorder('region')} value={regRegion} onChange={e => setRegRegion(e.target.value)}>
                 <option value="">{t('Select Region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</option>
                 {regions.map(r => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </select>
+              {renderMissing('region')}
               {regions.length === 0 && (
                 <p style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
                   {t('No service areas are available yet. Please check back soon.', 'कोई सेवा क्षेत्र अभी उपलब्ध नहीं है। कृपया जल्द ही पुनः प्रयास करें।', 'এখনও কোনো পরিষেবা ক্ষেত্র উপলব্ধ নেই। দয়া করে শীঘ্রই আবার পরীক্ষা করুন।')}
@@ -7238,7 +7272,7 @@ export default function App() {
               <label className="input-label" style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
                 {t('CHOOSE YOUR LOCAL CABLE OPERATOR', 'अपने स्थानीय केबल ऑपरेटर को चुनें', 'আপনার স্থানীয় কেবল অপারেটর বাছুন')}
               </label>
-              <select className="text-input"
+              <select id="signup-cable-select" className="text-input" style={missingBorder('cable')}
                 value={noCableProvider ? 'NOT_LISTED' : signupCablePartnerId}
                 onChange={e => {
                   const val = e.target.value;
@@ -7259,6 +7293,7 @@ export default function App() {
                   {t("My provider isn't listed yet", "मेरा प्रदाता अभी सूचीबद्ध नहीं है", "আমার প্রদানকারী এখনও তালিকাভুক্ত নয়")}
                 </option>
               </select>
+              {renderMissing('cable')}
               {noCableProvider && (
                 <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem', fontStyle: 'italic' }}>
                   {t(
@@ -7275,8 +7310,9 @@ export default function App() {
               <label className="input-label" style={{ fontWeight: 'bold' }}>
                 {t('Do you have a local internet/wi-fi provider?', 'क्या आपके पास स्थानीय इंटरनेट/वाई-फाई प्रदाता है?', 'আপনার কি কোনো স্থানীয় ইন্টারনেট/ওয়াই-ফাই প্রদানকারী আছে?')}
               </label>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem', ...(signupMissing.includes('broadband') ? { outline: '1px solid var(--danger-text)', outlineOffset: '2px', borderRadius: '6px' } : {}) }}>
                 <button
+                  id="signup-broadband-yes"
                   type="button"
                   className="btn"
                   aria-pressed={hasBroadbandAnswered && hasBroadband}
@@ -7315,10 +7351,11 @@ export default function App() {
                   {t('No', 'नहीं', 'না')}
                 </button>
               </div>
+              {renderMissing('broadband')}
 
               {hasBroadbandAnswered && hasBroadband && (
                 <div style={{ marginTop: '0.5rem' }}>
-                  <select className="text-input"
+                  <select id="signup-broadband-select" className="text-input" style={missingBorder('broadbandProvider')}
                     value={noBroadbandProvider ? 'NOT_LISTED' : signupBroadbandPartnerId}
                     onChange={e => {
                       const val = e.target.value;
@@ -7339,6 +7376,7 @@ export default function App() {
                       {t("My provider isn't listed yet", "मेरा प्रदाता अभी सूचीबद्ध नहीं है", "আমার প্রদানকারী এখনও তালিকাভুক্ত নয়")}
                     </option>
                   </select>
+                  {renderMissing('broadbandProvider')}
                 </div>
               )}
             </div>
@@ -7357,7 +7395,7 @@ export default function App() {
                 id="customer-terms-checkbox"
                 checked={customerTermsAgreed} 
                 onChange={(e) => setCustomerTermsAgreed(e.target.checked)} 
-                style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
+                style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer', ...(signupMissing.includes('terms') ? { outline: '2px solid var(--danger-text)', outlineOffset: '1px' } : {}) }}
               />
               <label htmlFor="customer-terms-checkbox" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 {t('I agree to the ', 'मैं ', 'আমি ')}
@@ -7367,36 +7405,20 @@ export default function App() {
                 {t('', ' से सहमत हूँ।', ' তে সম্মত।')}
               </label>
             </div>
+            {renderMissing('terms')}
 
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={resetAuthForm}>← {t('Back', 'वापस', 'ফিরে')}</button>
               <div style={{ flex: 2, position: 'relative' }}>
                 <button 
+                  id="signup-customer-submit-btn"
                   className="btn btn-accent" 
-
-                  onClick={() => {
-                    if (!customerTermsAgreed) {
-                      showToast(t('Please tick the box to agree to the Terms and Privacy Policy', 'कृपया नियम और गोपनीयता नीति से सहमत होने के लिए बॉक्स पर टिक करें', 'নিয়ম এবং গোপনীয়তা নীতিতে সম্মত হতে অনুগ্রহ করে বক্সে টিক দিন'), 'error');
-                      document.getElementById('customer-terms-checkbox')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      return;
-                    }
-                    handleCustomerRegister();
-                  }}
-                  disabled={regions.length === 0 || !customerTermsAgreed}
-                  style={(!customerTermsAgreed || regions.length === 0) ? { width: '100%', height: '100%', opacity: 0.5 } : { width: '100%', height: '100%' }}
+                  onClick={handleCustomerRegister}
+                  disabled={signupSubmitting}
+                  style={{ width: '100%', height: '100%' }}
                 >
-                  {t('Create Account', 'खाता बनाएं', 'অ্যাকাউন্ট তৈরি')}
+                  {signupSubmitLabel(t('Create Account', 'खाता बनाएं', 'অ্যাকাউন্ট তৈরি'))}
                 </button>
-                {!customerTermsAgreed && regions.length > 0 && (
-                  <div 
-                    style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, cursor: 'pointer' }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      showToast(t('Please tick the box to agree to the Terms and Privacy Policy', 'कृपया नियम और गोपनीयता नीति से सहमत होने के लिए बॉक्स पर टिक करें', 'নিয়ম এবং গোপনীয়তা নীতিতে সম্মত হতে অনুগ্রহ করে বক্সে টিক দিন'), 'error');
-                      document.getElementById('customer-terms-checkbox')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }}
-                  />
-                )}
               </div>
             </div>
           </>
@@ -7412,21 +7434,24 @@ export default function App() {
             {isStockistApp && renderStockistSignupBtn()}
             <div className="input-group">
               <label className="input-label">{t('Owner Name', 'मालिक का नाम', 'মালিকের নাম')}</label>
-              <input type="text" placeholder="e.g. Rafiq Ahmed" className="text-input" value={regName} onChange={e => setRegName(e.target.value)} />
+              <input id="signup-name-input" type="text" placeholder="e.g. Rafiq Ahmed" className="text-input" style={missingBorder('name')} value={regName} onChange={e => setRegName(e.target.value)} />
+              {renderMissing('name')}
             </div>
             {signupIdentifierType === 'email' ? renderSignupPhoneField() : renderSignupEmailField()}
             <div className="input-group">
               <label className="input-label">{t('Shop Name', 'दुकान का नाम', 'দোকানের নাম')}</label>
-              <input type="text" placeholder="e.g. Ahmed General Store" className="text-input" value={regShopName} onChange={e => setRegShopName(e.target.value)} />
+              <input id="signup-shop-name-input" type="text" placeholder="e.g. Ahmed General Store" className="text-input" style={missingBorder('shopName')} value={regShopName} onChange={e => setRegShopName(e.target.value)} />
+              {renderMissing('shopName')}
             </div>
             <div className="input-group">
               <label className="input-label">{t('Region', 'क्षेत्र', 'অঞ্চল')}</label>
-              <select className="text-input" value={regRegion} onChange={e => setRegRegion(e.target.value)}>
+              <select id="signup-region-select" className="text-input" style={missingBorder('region')} value={regRegion} onChange={e => setRegRegion(e.target.value)}>
                 <option value="">{t('Select Region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</option>
                 {regions.map(r => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </select>
+              {renderMissing('region')}
               {regions.length === 0 && (
                 <p style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
                   {t('No service areas are available yet. Please check back soon.', 'कोई सेवा क्षेत्र अभी उपलब्ध नहीं है। कृपया जल्द ही पुनः प्रयास करें।', 'এখনও কোনো পরিষেবা ক্ষেত্র উপলব্ধ নেই। দয়া করে শীঘ্রই আবার পরীক্ষা করুন।')}
@@ -7435,32 +7460,38 @@ export default function App() {
             </div>
             <div className="input-group">
               <label className="input-label">{t('KYC Document Type', 'KYC दस्तावेज़ प्रकार', 'KYC ডকুমেন্ট ধরন')} *</label>
-              <select className="text-input" value={regKycType2} onChange={e => { setRegKycType2(e.target.value); setAadhaarDigits(''); setAadhaarDisplay(''); setAadhaarError(''); setRegKycNumber2(''); }}>
+              <select id="signup-kyc-type-select" className="text-input" style={missingBorder('kycType')} value={regKycType2} onChange={e => { setRegKycType2(e.target.value); setAadhaarDigits(''); setAadhaarDisplay(''); setAadhaarError(''); setRegKycNumber2(''); }}>
                 <option value="Aadhaar">Aadhaar Card</option>
                 <option value="Voter ID">Voter ID</option>
                 <option value="Trade License">Trade License</option>
               </select>
+              {renderMissing('kycType')}
             </div>
             {regKycType2 === 'Aadhaar' ? (
               <div className="input-group">
                 <label className="input-label">{t('Aadhaar Number', 'आधार नंबर', 'আধার নম্বর')} *</label>
                 <input 
+                  id="signup-id-number-input"
                   type="text" 
                   placeholder="1234-5678-9012" 
                   className="text-input" 
+                  style={missingBorder('idNumber')}
                   value={aadhaarDisplay} 
                   onChange={onAadhaarChange} 
                   maxLength={14}
                 />
+                {renderMissing('idNumber')}
                 {aadhaarError && <p style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>{aadhaarError}</p>}
               </div>
             ) : (
               <div className="input-group">
                 <label className="input-label">{t('Document ID Number', 'दस्तावेज़ नंबर', 'ডকুমেন্ট নম্বর')} *</label>
                 <input 
+                  id="signup-id-number-input"
                   type="text" 
                   placeholder={t('Enter ID Number', 'आईडी दर्ज करें', 'আইডি লিখুন')} 
                   className="text-input" 
+                  style={missingBorder('idNumber')}
                   value={regKycNumber2} 
                   maxLength={regKycType2 === 'PAN' || regKycType2 === 'Voter ID' ? 10 : regKycType2 === 'Driving Licence' ? 16 : 20} 
                   onChange={e => {
@@ -7472,16 +7503,20 @@ export default function App() {
                     setRegKycNumber2(val);
                   }} 
                 />
+                {renderMissing('idNumber')}
               </div>
             )}
             <div className="input-group">
               <label className="input-label">{t('Document Photo', 'दस्तावेज़ फोटो', 'ডকুমেন্ট ফটো')} *</label>
               <input 
+                id="signup-doc-photo-input"
                 type="file" 
                 accept="image/*" 
                 className="text-input" 
+                style={missingBorder('docPhoto')}
                 onChange={e => setRegDocPhoto(e.target.files ? e.target.files[0] : null)} 
               />
+              {renderMissing('docPhoto')}
               {!regDocPhoto && (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                   {t('Photo upload is required for verification', 'सत्यापन के लिए फोटो अपलोड आवश्यक है', 'যাচাইয়ের জন্য ছবি আপলোড বাধ্যতামূলক')}
@@ -7490,7 +7525,8 @@ export default function App() {
             </div>
             <div className="input-group">
               <label className="input-label">{t('Shop Address', 'दुकान का पता', 'দোকানের ঠিকানা')} *</label>
-              <input type="text" placeholder="e.g. Shop 5, Market Road" className="text-input" value={regAddress} onChange={e => setRegAddress(e.target.value)} />
+              <input id="signup-address-input" type="text" placeholder="e.g. Shop 5, Market Road" className="text-input" style={missingBorder('address')} value={regAddress} onChange={e => setRegAddress(e.target.value)} />
+              {renderMissing('address')}
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--accent)', background: 'var(--success-glow)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.5rem', margin: '0.5rem 0' }}>
               {t(
@@ -7502,15 +7538,13 @@ export default function App() {
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={resetAuthForm}>← {t('Back', 'वापस', 'ফিরে')}</button>
               <button 
+                id="signup-stockist-submit-btn"
                 className="btn btn-accent" 
                 style={{ flex: 2 }} 
                 onClick={handleStockistRegister}
-                disabled={
-                  !regName || !regShopName || !regAddress || !regRegion || !regDocPhoto ||
-                  (regKycType2 === 'Aadhaar' ? aadhaarDigits.length !== 12 : !regKycNumber2)
-                }
+                disabled={signupSubmitting}
               >
-                {t('Submit for KYC Review', 'KYC समीक्षा सबमिट', 'KYC পর্যালোচনায় জমা')}
+                {signupSubmitLabel(t('Submit for KYC Review', 'KYC समीक्षा सबमिट', 'KYC পর্যালোচনায় জমা'))}
               </button>
             </div>
           </>

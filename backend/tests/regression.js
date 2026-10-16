@@ -6653,8 +6653,8 @@ async function main() {
     const st = {};
     const set = (k) => (v) => { st[k] = v; };
     const body = s50Open.replace(/^const openSignupFromLogin = /, 'return ');
-    const fn = new Function('loginPhone', 'normalizeFrontendPhone', 'setOtpSent', 'setLoginOtp', 'setRegPhoneError', 'setSignupIdentifierType', 'setRegEmail', 'setRegPhone', 'setShowCustomerSignup', 'setShowStockistSignup', body)(
-      loginValue, s50Norm, set('otpSent'), set('loginOtp'), set('regPhoneError'), set('type'), set('regEmail'), set('regPhone'), set('customer'), set('stockist'));
+    const fn = new Function('loginPhone', 'normalizeFrontendPhone', 'setOtpSent', 'setLoginOtp', 'setRegPhoneError', 'setSignupIdentifierType', 'setRegEmail', 'setRegPhone', 'setShowCustomerSignup', 'setShowStockistSignup', 'setSignupShowMissing', body)(
+      loginValue, s50Norm, set('otpSent'), set('loginOtp'), set('regPhoneError'), set('type'), set('regEmail'), set('regPhone'), set('customer'), set('stockist'), set('showMissing'));
     fn('customer');
     return st;
   };
@@ -6668,13 +6668,45 @@ async function main() {
   const s51Stk = (s50App.match(/const handleStockistRegister = async \(\) => \{[\s\S]*?\n  \};/) || [''])[0];
   assert(s51Cust && s51Stk && !s51Cust.includes('loginPhone') && !s51Stk.includes('loginPhone'), 'Register handlers never read loginPhone');
   assert(s51Cust.includes('phone: regPhone, email: regEmail') && s51Stk.includes("formData.append('phone', regPhone)") && s51Stk.includes("formData.append('email', regEmail)"), 'Register handlers send regPhone and regEmail');
-  assert(/^\s*if \(!validateSignupPhone\(\)\) return;/m.test(s51Cust.split('\n')[1]) && /^\s*if \(!validateSignupPhone\(\)\) return;/m.test(s51Stk.split('\n')[1]), 'Both handlers validate the sign-up phone first');
+  // Order: double-tap guard, missing-field check, then the phone format check.
+  const s51Head = (src) => src.split('\n').slice(1, 4).map(l => l.trim()).join(' | ');
+  const s51Order = (src, missingFn) => s51Head(src) === `if (signupSubmitting) return; | if (flagMissingSignupFields(${missingFn}())) return; | if (!validateSignupPhone()) return;`;
+  assert(s51Order(s51Cust, 'customerSignupMissing') && s51Order(s51Stk, 'stockistSignupMissing'), 'Both handlers validate the sign-up phone first (after the missing-field check)');
   const s51Validate = (s50App.match(/const validateSignupPhone = \(\) => \{[\s\S]*?\n  \};/) || [''])[0];
   assert(s51Validate.includes('/^[6-9]\\d{9}$/.test(regPhone)') && s51Validate.includes('setRegPhoneError(') && s51Validate.includes("document.getElementById('signup-phone-input')?.focus()"), 'Invalid sign-up phone sets the field error and focuses the phone field');
   assert((s50App.match(/\{signupIdentifierType === 'email' \? renderSignupEmailField\(\) : renderSignupPhoneField\(\)\}/g) || []).length === 2 && (s50App.match(/\{signupIdentifierType === 'email' \? renderSignupPhoneField\(\) : renderSignupEmailField\(\)\}/g) || []).length === 2, 'Customer and stockist forms render the login identifier first and the other in the lower slot');
   const s51PhoneField = (s50App.match(/const renderSignupPhoneField = \(\) => \([\s\S]*?\n    \);/) || [''])[0];
   const s51EmailField = (s50App.match(/const renderSignupEmailField = \(\) => \([\s\S]*?\n    \);/) || [''])[0];
   assert(/\brequired\b/.test(s51PhoneField) && /\brequired\b/.test(s51EmailField) && s51PhoneField.includes('value={regPhone}') && s51EmailField.includes('value={regEmail}') && s51PhoneField.includes('<FieldError error={regPhoneError} />'), 'Both sign-up identifier fields are required and bound to their own state');
+
+  // --- Section 52: Sign-up buttons always tappable; empty fields named, not silently blocked ---
+  console.log('\n--- Section 52: Sign-up buttons always tappable; empty fields named, not silently blocked ---');
+  const s52Btn = (id) => (s50App.match(new RegExp(`<button \\s*\\n\\s*id="${id}"[\\s\\S]*?</button>`)) || [''])[0];
+  const s52StkBtn = s52Btn('signup-stockist-submit-btn');
+  const s52CustBtn = s52Btn('signup-customer-submit-btn');
+  assert(s52StkBtn.includes('disabled={signupSubmitting}') && (s52StkBtn.match(/disabled=/g) || []).length === 1 && s52StkBtn.includes('onClick={handleStockistRegister}'), 'Submit for KYC Review is disabled only while the request is in flight');
+  assert(s52CustBtn.includes('disabled={signupSubmitting}') && (s52CustBtn.match(/disabled=/g) || []).length === 1 && s52CustBtn.includes('onClick={handleCustomerRegister}') && !s52CustBtn.includes('opacity'), 'Create Account is disabled only while the request is in flight');
+  assert(!s50App.includes('!regName || !regShopName || !regAddress || !regRegion || !regDocPhoto') && !s50App.includes('disabled={regions.length === 0 || !customerTermsAgreed}'), 'Old disabled-until-filled conditions are gone');
+  assert(s52StkBtn.includes("signupSubmitLabel(t('Submit for KYC Review'") && s52CustBtn.includes("signupSubmitLabel(t('Create Account'") && s50App.includes("t('Submitting…', 'सबमिट हो रहा है…', 'জমা দেওয়া হচ্ছে…')"), 'Both buttons show "Submitting…" while in flight');
+  const s52Flag = (s50App.match(/const flagMissingSignupFields = \(missing\) => \{[\s\S]*?\n  \};/) || [''])[0];
+  assert(s52Flag.includes("showToast(t('Fill all the details to confirm.', 'पुष्टि करने के लिए सभी विवरण भरें।', 'নিশ্চিত করতে সব তথ্য পূরণ করুন।'), 'error')") && s52Flag.includes('scrollIntoView') && s52Flag.includes('.focus('), 'Missing fields: one error toast, scroll to and focus the first');
+  // Run the real missing-field lists against stub state.
+  const s52Fn = (name) => (s50App.match(new RegExp(`const ${name} = \\(\\) => \\[[\\s\\S]*?\\]\\.filter\\(Boolean\\);`)) || [''])[0].replace(new RegExp(`^const ${name} = `), 'return ');
+  const s52Vars = ['regName', 'regPhone', 'regEmail', 'regShopName', 'regRegion', 'regKycType2', 'aadhaarDigits', 'regKycNumber2', 'regDocPhoto', 'regAddress', 'noCableProvider', 'signupCablePartnerId', 'hasBroadbandAnswered', 'hasBroadband', 'noBroadbandProvider', 'signupBroadbandPartnerId', 'customerTermsAgreed'];
+  const s52Run = (name, st) => new Function(...s52Vars, s52Fn(name))(...s52Vars.map(v => st[v]))();
+  const s52Empty = { regName: '', regPhone: '', regEmail: '', regShopName: '', regRegion: '', regKycType2: 'Aadhaar', aadhaarDigits: '', regKycNumber2: '', regDocPhoto: null, regAddress: '', noCableProvider: false, signupCablePartnerId: '', hasBroadbandAnswered: false, hasBroadband: false, noBroadbandProvider: false, signupBroadbandPartnerId: '', customerTermsAgreed: false };
+  const s52Full = { ...s52Empty, regName: 'A', regPhone: '9831000001', regEmail: 'a@b.test', regShopName: 'S', regRegion: 'r1', aadhaarDigits: '234567890123', regDocPhoto: {}, regAddress: 'X', noCableProvider: true, hasBroadbandAnswered: true, customerTermsAgreed: true };
+  assert(JSON.stringify(s52Run('stockistSignupMissing', s52Empty)) === JSON.stringify(['name', 'phone', 'email', 'shopName', 'region', 'idNumber', 'docPhoto', 'address']) && JSON.stringify(s52Run('stockistSignupMissing', s52Full)) === '[]', 'Stockist missing list covers every required field; empty when filled');
+  assert(JSON.stringify(s52Run('stockistSignupMissing', { ...s52Full, regDocPhoto: null })) === '["docPhoto"]' && JSON.stringify(s52Run('stockistSignupMissing', { ...s52Full, regKycType2: 'Voter ID', regKycNumber2: '' })) === '["idNumber"]', 'Stockist: only Document Photo / non-Aadhaar ID reported when that alone is empty');
+  assert(JSON.stringify(s52Run('customerSignupMissing', s52Empty)) === JSON.stringify(['phone', 'email', 'name', 'region', 'cable', 'broadband', 'terms']) && JSON.stringify(s52Run('customerSignupMissing', s52Full)) === '[]' && JSON.stringify(s52Run('customerSignupMissing', { ...s52Full, hasBroadband: true })) === '["broadbandProvider"]', 'Customer missing list covers every required field; provider required only after Yes');
+  const s52Ids = (s50App.match(/const SIGNUP_FIELD_IDS = \{[\s\S]*?\};/) || [''])[0];
+  const s52IdPairs = [...s52Ids.matchAll(/(\w+): '([\w-]+)'/g)].map(m => [m[1], m[2]]);
+  assert(s52IdPairs.length === 13 && s52IdPairs.every(([, id]) => s50App.includes(`id="${id}"`)), 'Every sign-up field id used for scroll/focus exists in the markup');
+  assert(s52IdPairs.every(([k]) => s50App.includes(`renderMissing('${k}')`)), 'Every required sign-up field renders its Required line');
+  assert(s50App.includes("const missingBorder = (key) => (signupMissing.includes(key) ? { borderColor: 'var(--danger-text)' } : undefined);") && s50App.includes("t('Required', 'आवश्यक', 'আবশ্যক')"), 'Missing fields get a --danger-text border and a translated Required line');
+  assert(/\} finally \{ setSignupSubmitting\(false\); \}\s*\n  \};$/.test(s51Cust) && /\} finally \{ setSignupSubmitting\(false\); \}\s*\n  \};$/.test(s51Stk), 'Submitting state always resets after the request');
+  const s52StkHead = s51Stk.indexOf('flagMissingSignupFields');
+  assert(s52StkHead > 0 && s52StkHead < s51Stk.indexOf('Aadhaar must be exactly 12 digits') && s52StkHead < s51Stk.indexOf('validateKycId(') && s51Stk.indexOf('validateKycId(') < s51Stk.indexOf('setSignupSubmitting(true)'), 'Stockist format checks run only after every field is filled, before sending');
 
   clearLogin();
 

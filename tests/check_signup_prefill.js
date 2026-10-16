@@ -171,17 +171,30 @@ async function run() {
 
           await fillRest(page, r, role);
           if (kase === 'a') {
-            // (c) phone left empty -> inline error on the phone field, focus there, no request
+            // (c) phone left empty -> "Required" mark + missing-details toast, focus there, no request
             await page.locator(`button.btn-accent:has-text("${r.submit}")`).click();
             await page.waitForTimeout(700);
             const c = await page.evaluate(() => {
               const el = document.getElementById('signup-phone-input');
               const err = el.closest('.input-group').querySelector('.field-error-text');
-              return { err: err ? err.textContent.trim() : '', cls: el.className, focused: document.activeElement === el };
+              const toast = [...document.querySelectorAll('.toast-msg')].map(n => n.textContent).join(' | ');
+              return { err: err ? err.textContent.trim() : '', toast, focused: document.activeElement === el };
             });
-            check('(c) error shown on the Phone field', c.err.includes('Enter a valid 10-digit mobile number') && c.cls.includes('input-error'), JSON.stringify(c.err));
+            check('(c) Phone field marked Required', c.err.includes('Required'), JSON.stringify(c.err));
+            check('(c) toast "Fill all the details to confirm."', c.toast.includes('Fill all the details to confirm.'), JSON.stringify(c.toast));
             check('(c) Phone field focused', c.focused === true);
             check('(c) no registration request sent', registerRequests.length === 0, registerRequests.length);
+            // (c2) short phone -> the existing format error on the field, still no request
+            await page.locator('#signup-phone-input').fill('97330');
+            await page.locator(`button.btn-accent:has-text("${r.submit}")`).click();
+            await page.waitForTimeout(500);
+            const c2 = await page.evaluate(() => {
+              const el = document.getElementById('signup-phone-input');
+              const err = el.closest('.input-group').querySelector('.field-error-text');
+              return { err: err ? err.textContent.trim() : '', cls: el.className };
+            });
+            check('(c2) format error on the Phone field', c2.err.includes('Enter a valid 10-digit mobile number') && c2.cls.includes('input-error'), JSON.stringify(c2.err));
+            check('(c2) no registration request sent', registerRequests.length === 0, registerRequests.length);
             await page.locator('#signup-phone-input').fill(NEW_PHONE);
             await submitAndExpectCreated(page, r, NEW_PHONE, EMAIL);
           } else {
