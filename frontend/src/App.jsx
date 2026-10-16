@@ -521,7 +521,9 @@ const ToastView = ({ toast, onDismiss, onPointerEnter, onPointerLeave, toastPaus
 const TimePicker = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState({ hour12: '12', minute: '00', meridiem: 'AM' });
-  const pickerRef = useRef(null);
+  const selectedHourRef = useRef(null);
+  const selectedMinuteRef = useRef(null);
+  const selectedMeridiemRef = useRef(null);
 
   const to12h = (hhmm) => {
     if (!hhmm) return { hour12: '12', minute: '00', meridiem: 'AM' };
@@ -548,14 +550,26 @@ const TimePicker = ({ value, onChange }) => {
   };
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
         setIsOpen(false);
       }
     };
-    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
-    else document.removeEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const scrollSelected = () => {
+      selectedHourRef.current?.scrollIntoView({ block: 'center' });
+      selectedMinuteRef.current?.scrollIntoView({ block: 'center' });
+      selectedMeridiemRef.current?.scrollIntoView({ block: 'center' });
+    };
+    scrollSelected();
+    const raf = window.requestAnimationFrame(scrollSelected);
+    return () => window.cancelAnimationFrame(raf);
   }, [isOpen]);
 
   const handleOpen = () => {
@@ -573,7 +587,7 @@ const TimePicker = ({ value, onChange }) => {
   const meridiems = ['AM', 'PM'];
 
   return (
-    <div style={{ position: 'relative' }} ref={pickerRef}>
+    <div style={{ position: 'relative' }}>
       <div 
         className="text-input" 
         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
@@ -602,70 +616,103 @@ const TimePicker = ({ value, onChange }) => {
             >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', height: '180px' }}>
               <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                {hours.map(h => (
-                  <div 
-                    key={h} 
-                    onClick={() => setDraft({ ...draft, hour12: h })}
-                    style={{ 
-                      padding: '0.5rem', 
-                      textAlign: 'center', 
-                      cursor: 'pointer',
-                      minHeight: '40px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: draft.hour12 === h ? 'var(--accent)' : 'transparent',
-                      borderRadius: '4px',
-                      color: draft.hour12 === h ? 'var(--on-primary)' : 'inherit'
-                    }}
-                  >
-                    {h.padStart(2, '0')}
-                  </div>
-                ))}
+                {hours.map(h => {
+                  const isSelected = draft.hour12 === h;
+                  return (
+                    <button 
+                      type="button"
+                      key={h} 
+                      ref={isSelected ? selectedHourRef : null}
+                      aria-pressed={isSelected}
+                      onClick={() => setDraft({ ...draft, hour12: h })}
+                      style={{ 
+                        padding: '0.5rem', 
+                        margin: 0,
+                        textAlign: 'center', 
+                        cursor: 'pointer',
+                        minHeight: '40px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: isSelected ? 'var(--accent)' : 'transparent',
+                        borderRadius: '4px',
+                        color: isSelected ? 'var(--on-primary)' : 'inherit',
+                        border: 'none',
+                        font: 'inherit',
+                        lineHeight: 'inherit',
+                        width: '100%'
+                      }}
+                    >
+                      {h.padStart(2, '0')}
+                    </button>
+                  );
+                })}
               </div>
               <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                {minutes.map(m => (
-                  <div 
-                    key={m} 
-                    onClick={() => setDraft({ ...draft, minute: m })}
-                    style={{ 
-                      padding: '0.5rem', 
-                      textAlign: 'center', 
-                      cursor: 'pointer',
-                      minHeight: '40px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: draft.minute === m ? 'var(--accent)' : 'transparent',
-                      borderRadius: '4px',
-                      color: draft.minute === m ? 'var(--on-primary)' : 'inherit'
-                    }}
-                  >
-                    {m}
-                  </div>
-                ))}
+                {minutes.map(m => {
+                  const isSelected = draft.minute === m;
+                  return (
+                    <button 
+                      type="button"
+                      key={m} 
+                      ref={isSelected ? selectedMinuteRef : null}
+                      aria-pressed={isSelected}
+                      onClick={() => setDraft({ ...draft, minute: m })}
+                      style={{ 
+                        padding: '0.5rem', 
+                        margin: 0,
+                        textAlign: 'center', 
+                        cursor: 'pointer',
+                        minHeight: '40px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: isSelected ? 'var(--accent)' : 'transparent',
+                        borderRadius: '4px',
+                        color: isSelected ? 'var(--on-primary)' : 'inherit',
+                        border: 'none',
+                        font: 'inherit',
+                        lineHeight: 'inherit',
+                        width: '100%'
+                      }}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
               </div>
               <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                {meridiems.map(m => (
-                  <div 
-                    key={m} 
-                    onClick={() => setDraft({ ...draft, meridiem: m })}
-                    style={{ 
-                      padding: '0.5rem', 
-                      textAlign: 'center', 
-                      cursor: 'pointer',
-                      minHeight: '40px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: draft.meridiem === m ? 'var(--accent)' : 'transparent',
-                      borderRadius: '4px',
-                      color: draft.meridiem === m ? 'var(--on-primary)' : 'inherit'
-                    }}
-                  >
-                    {m}
-                  </div>
-                ))}
+                {meridiems.map(m => {
+                  const isSelected = draft.meridiem === m;
+                  return (
+                    <button 
+                      type="button"
+                      key={m} 
+                      ref={isSelected ? selectedMeridiemRef : null}
+                      aria-pressed={isSelected}
+                      onClick={() => setDraft({ ...draft, meridiem: m })}
+                      style={{ 
+                        padding: '0.5rem', 
+                        margin: 0,
+                        textAlign: 'center', 
+                        cursor: 'pointer',
+                        minHeight: '40px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: isSelected ? 'var(--accent)' : 'transparent',
+                        borderRadius: '4px',
+                        color: isSelected ? 'var(--on-primary)' : 'inherit',
+                        border: 'none',
+                        font: 'inherit',
+                        lineHeight: 'inherit',
+                        width: '100%'
+                      }}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             
