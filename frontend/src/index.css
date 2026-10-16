@@ -409,7 +409,39 @@ h1, h2, h3, h4, h5, h6 {
   .cs-role { opacity: 1; clip-path: none; animation: none; }
   .cs-dropx, .cs-splat { display: none; }
 }
-.cs-nodrop .cs-dropx, .cs-nodrop .cs-splat { display: none; }
+/* Shop Settings Unsaved Changes Bar */
+.settings-unsaved-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 56px;
+  background: var(--bg-surface-elevated);
+  border-top: 1px solid var(--border-color);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  z-index: 15;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.12);
+  animation: slideUpUnsavedBar 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpUnsavedBar {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-unsaved-bar {
+    animation: none;
+    transform: none;
+  }
+}
 
 .phone-footer {
   height: 56px;

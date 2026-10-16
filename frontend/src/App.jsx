@@ -2719,6 +2719,34 @@ export default function App() {
 
   // Stockist App State
   const [stockistProfile, setStockistProfile] = useState(null);
+  const [settingsDraft, setSettingsDraft] = useState(null);
+  const [settingsErrors, setSettingsErrors] = useState({});
+  const [showLeaveGuard, setShowLeaveGuard] = useState(false);
+  const [pendingLeaveAction, setPendingLeaveAction] = useState(null);
+
+  const isSettingsDirty = useMemo(() => {
+    if (!settingsDraft || !stockistProfile) return false;
+    if ((settingsDraft.opening_time || '09:00') !== (stockistProfile.opening_time || '09:00')) return true;
+    if ((settingsDraft.closing_time || '17:00') !== (stockistProfile.closing_time || '17:00')) return true;
+    if (Number(settingsDraft.prep_eta_minutes ?? 15) !== Number(stockistProfile.prep_eta_minutes ?? 15)) return true;
+    if (Number(settingsDraft.delivery_radius_km ?? 5.0) !== Number(stockistProfile.delivery_radius_km ?? 5.0)) return true;
+    if ((settingsDraft.closed_until || '') !== (stockistProfile.closed_until || '')) return true;
+    if ((settingsDraft.payout_upi_id || '').trim() !== (stockistProfile.payout_upi_id || '').trim()) return true;
+    if ((settingsDraft.payout_bank_account || '').trim() !== (stockistProfile.payout_bank_account || '').trim()) return true;
+    if ((settingsDraft.payout_ifsc || '').trim().toUpperCase() !== (stockistProfile.payout_ifsc || '').trim().toUpperCase()) return true;
+    if ((settingsDraft.payout_account_name || '').trim() !== (stockistProfile.payout_account_name || '').trim()) return true;
+    if ((settingsDraft.contact_phone || '').trim() !== (stockistProfile.contact_phone || '').trim()) return true;
+    return false;
+  }, [settingsDraft, stockistProfile]);
+
+  useEffect(() => {
+    if (stockistActiveTab === 'settings' && stockistProfile) {
+      setSettingsDraft(prev => {
+        if (!prev) return { ...stockistProfile };
+        return prev;
+      });
+    }
+  }, [stockistActiveTab, stockistProfile]);
   const [closedUntilDraft, setClosedUntilDraft] = useState(null);
   const [showCustomDate, setShowCustomDate] = useState(false);
   const [closedUntilPreset, setClosedUntilPreset] = useState(null);
@@ -3231,7 +3259,12 @@ export default function App() {
     }
   };
 
-  const switchViewToRole = async (targetRole) => {
+  const switchViewToRole = async (targetRole, force = false) => {
+    if (!force && activeRole === 'stockist' && stockistActiveTab === 'settings' && isSettingsDirty && targetRole !== 'stockist') {
+      setPendingLeaveAction({ type: 'role', targetRole });
+      setShowLeaveGuard(true);
+      return;
+    }
     if (activeRole !== targetRole) {
       resetAuthForm();
     }
@@ -4297,7 +4330,7 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
+  const rawHandleLogout = () => {
     clearSession();
     setCustomerStockists([]);
     setSelectedStockist(null);
@@ -4305,8 +4338,153 @@ export default function App() {
     setCustomerProducts([]);
     setCustomerCarts({});
     setStockistProfile(null);
+    setSettingsDraft(null);
+    setSettingsErrors({});
     setStockistOrders([]);
     showToast('Logged out successfully.');
+  };
+
+  const handleLogout = () => {
+    if (activeRole === 'stockist' && stockistActiveTab === 'settings' && isSettingsDirty) {
+      setPendingLeaveAction({ type: 'logout' });
+      setShowLeaveGuard(true);
+      return;
+    }
+    rawHandleLogout();
+  };
+
+  const handleDiscardSettings = () => {
+    setSettingsDraft(stockistProfile ? { ...stockistProfile } : null);
+    setSettingsErrors({});
+    setClosedUntilDraft(null);
+    setShowCustomDate(false);
+    setClosedUntilPreset(null);
+  };
+
+  const handleSaveSettings = async () => {
+    const draft = settingsDraft || stockistProfile || {};
+    const tUpi = (draft.payout_upi_id || '').trim();
+    const tAccount = (draft.payout_bank_account || '').trim();
+    const tIfsc = (draft.payout_ifsc || '').trim().toUpperCase();
+    const tPhone = (draft.contact_phone || '').trim();
+
+    const errors = {};
+    if (tPhone && (tPhone.length !== 10 || !/^[6-9]\d{9}$/.test(tPhone))) {
+      errors.contact_phone = t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন');
+    }
+    if (tUpi && !/^[a-z0-9.\-_]{2,}@[a-z]{2,}$/i.test(tUpi)) {
+      errors.payout_upi_id = t("Enter a valid UPI ID like name@bank.", "name@bank की तरह एक मान्य UPI ID दर्ज करें।", "name@bank এর মত একটি বৈধ UPI ID লিখুন।");
+    }
+    if (tIfsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(tIfsc)) {
+      errors.payout_ifsc = t("IFSC must be 11 characters, like SBIN0000300.", "IFSC 11 वर्णों का होना चाहिए, जैसे SBIN0000300।", "IFSC অবশ্যই 11 অক্ষরের হতে হবে, যেমন SBIN0000300।");
+    }
+    if (tAccount && !/^\d{9,18}$/.test(tAccount)) {
+      errors.payout_bank_account = t("Bank account number must be 9 to 18 digits.", "बैंक खाता संख्या 9 से 18 अंकों की होनी चाहिए।", "ব্যাঙ্ক অ্যাকাউন্ট নম্বর 9 থেকে 18 অঙ্কের হতে হবে।");
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setSettingsErrors(errors);
+      const firstKey = Object.keys(errors)[0];
+      showToast(errors[firstKey], 'error');
+      setTimeout(() => {
+        const el = document.getElementById(`settings-field-${firstKey}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.focus?.();
+        }
+      }, 50);
+      return false;
+    }
+
+    setSavingSettings(true);
+    try {
+      const res = await fetch(`${API_BASE}/stockist/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': currentUser.id },
+        body: JSON.stringify({
+          manual_closed: stockistProfile.manual_closed,
+          closed_reason: stockistProfile.closed_reason,
+          closed_until: draft.closed_until,
+          opening_time: draft.opening_time || '09:00',
+          closing_time: draft.closing_time || '17:00',
+          prep_eta_minutes: draft.prep_eta_minutes || 15,
+          delivery_radius_km: draft.delivery_radius_km || 5.0,
+          payout_upi_id: draft.payout_upi_id,
+          payout_bank_account: draft.payout_bank_account,
+          payout_ifsc: draft.payout_ifsc,
+          payout_account_name: draft.payout_account_name,
+          contact_phone: draft.contact_phone
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || t('Failed to save settings', 'सेटिंग्स सहेजने में विफल', 'সেটিংস সংরক্ষণ করতে ব্যর্থ'), 'error');
+        return false;
+      } else {
+        const data = await res.json();
+        setStockistProfile(data.stockist);
+        setSettingsDraft({ ...data.stockist });
+        setSettingsErrors({});
+        showToast(t('Settings saved', 'सेटिंग्स सहेजी गईं', 'সেটিংস সংরক্ষিত হয়েছে'), 'success');
+        return true;
+      }
+    } catch(e) {
+      showToast('Network error', 'error');
+      return false;
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleStockistTabClick = (tab, cb) => {
+    if (stockistActiveTab === 'settings' && isSettingsDirty && tab !== 'settings') {
+      setPendingLeaveAction({ type: 'tab', tab, cb });
+      setShowLeaveGuard(true);
+      return;
+    }
+    setStockistActiveTab(tab);
+    if (cb) cb();
+  };
+
+  const handleLeaveGuardAction = async (action) => {
+    if (action === 'stay') {
+      setShowLeaveGuard(false);
+      setPendingLeaveAction(null);
+      return;
+    }
+    if (action === 'discard') {
+      handleDiscardSettings();
+      setShowLeaveGuard(false);
+      const pending = pendingLeaveAction;
+      setPendingLeaveAction(null);
+      if (pending?.type === 'tab') {
+        setStockistActiveTab(pending.tab);
+        if (pending.cb) pending.cb();
+      } else if (pending?.type === 'logout') {
+        rawHandleLogout();
+      } else if (pending?.type === 'role') {
+        switchViewToRole(pending.targetRole, true);
+      }
+      return;
+    }
+    if (action === 'save') {
+      const ok = await handleSaveSettings();
+      if (ok) {
+        setShowLeaveGuard(false);
+        const pending = pendingLeaveAction;
+        setPendingLeaveAction(null);
+        if (pending?.type === 'tab') {
+          setStockistActiveTab(pending.tab);
+          if (pending.cb) pending.cb();
+        } else if (pending?.type === 'logout') {
+          rawHandleLogout();
+        } else if (pending?.type === 'role') {
+          switchViewToRole(pending.targetRole, true);
+        }
+      } else {
+        setShowLeaveGuard(false);
+      }
+    }
   };
 
   // ----------------------------------------------------
@@ -13240,7 +13418,10 @@ export default function App() {
                                         body: JSON.stringify({ manual_closed: next })
                                       });
                                       const data = await res.json();
-                                      if (data.stockist) setStockistProfile(data.stockist);
+                                      if (data.stockist) {
+                                  setStockistProfile(data.stockist);
+                                  setSettingsDraft(prev => prev ? ({ ...prev, manual_closed: data.stockist.manual_closed }) : prev);
+                                }
                                       showToast(next ? t('Shop closed', 'दुकान बंद', 'দোকান বন্ধ') : t('Shop opened', 'दुकान खुली', 'দোকান খোলা'), 'success');
                                     } catch (e) {
                                       setStockistProfile(prev => ({ ...prev, manual_closed: !next }));
@@ -13749,7 +13930,7 @@ export default function App() {
                 </div>
 
                   {stockistActiveTab === 'settings' && stockistProfile && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '2rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '6rem' }}>
                       <h3 style={{ fontSize: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
                         <Settings size={16} style={{ color: 'var(--primary)' }} />
                         {t("Shop Settings", "दुकान सेटिंग", "দোকান সেটিংস")}
@@ -13767,6 +13948,7 @@ export default function App() {
                               if (withinHours || stockistProfile.manual_closed) {
                                 const next = !stockistProfile.manual_closed;
                                 setStockistProfile(prev => ({ ...prev, manual_closed: next, closed_until: '' }));
+                                setSettingsDraft(prev => prev ? ({ ...prev, manual_closed: next, closed_until: '' }) : prev);
                                 setShowCustomDate(false);
                                 setClosedUntilPreset(null);
                                 try {
@@ -13877,7 +14059,7 @@ export default function App() {
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                   <button className="btn btn-secondary" onClick={() => { setClosedUntilDraft(null); setShowCustomDate(false); setClosedUntilPreset(null); }} style={{ padding: '0.4rem 0.8rem' }}>{t('Cancel', 'रद्द करें', 'বাতিল করুন')}</button>
                                   <button className="btn btn-accent" onClick={() => {
-                                    setStockistProfile(prev => ({ ...prev, closed_until: closedUntilDraft ?? (prev.closed_until || '') }));
+                                    setSettingsDraft(prev => ({ ...(prev || stockistProfile), closed_until: closedUntilDraft ?? (prev?.closed_until || '') }));
                                     setClosedUntilDraft(null);
                                     setShowCustomDate(false);
                                     setClosedUntilPreset(null);
@@ -13896,22 +14078,22 @@ export default function App() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                           <div className="input-group" style={{ margin: 0 }}>
                             <label className="input-label">{t('Opening Time', 'खुलने का समय', 'খোলার সময়')}</label>
-                            <TimePicker value={stockistProfile.opening_time || '09:00'} onChange={(v) => setStockistProfile(prev => ({...prev, opening_time: v}))} />
+                            <TimePicker value={(settingsDraft || stockistProfile).opening_time || '09:00'} onChange={(v) => setSettingsDraft(prev => ({ ...(prev || stockistProfile), opening_time: v }))} />
                           </div>
                           <div className="input-group" style={{ margin: 0 }}>
                             <label className="input-label">{t('Closing Time', 'बंद होने का समय', 'বন্ধের সময়')}</label>
-                            <TimePicker value={stockistProfile.closing_time || '17:00'} onChange={(v) => setStockistProfile(prev => ({...prev, closing_time: v}))} />
+                            <TimePicker value={(settingsDraft || stockistProfile).closing_time || '17:00'} onChange={(v) => setSettingsDraft(prev => ({ ...(prev || stockistProfile), closing_time: v }))} />
                           </div>
                         </div>
 
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('Preparation Time (minutes)', 'तैयारी का समय (मिनट)', 'প্রস্তুতির সময় (মিনিট)')}</label>
-                          <NumberStepper value={stockistProfile.prep_eta_minutes || 15} onChange={v => setStockistProfile(prev => ({ ...prev, prep_eta_minutes: parseInt(v, 10) }))} min={5} max={120} step={5} decimals={0} />
+                          <NumberStepper value={(settingsDraft || stockistProfile).prep_eta_minutes ?? 15} onChange={v => setSettingsDraft(prev => ({ ...(prev || stockistProfile), prep_eta_minutes: parseInt(v, 10) }))} min={5} max={120} step={5} decimals={0} />
                         </div>
 
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('Delivery Radius (km)', 'डिलीवरी का दायरा (किमी)', 'ডেলিভারি ব্যাসার্ধ (কিমি)')}</label>
-                          <NumberStepper value={stockistProfile.delivery_radius_km || 5.0} onChange={v => setStockistProfile(prev => ({ ...prev, delivery_radius_km: parseFloat(v) }))} min={0.5} max={stockistProfile.max_delivery_radius_km || 5.0} step={0.5} decimals={1} suffix="km" />
+                          <NumberStepper value={(settingsDraft || stockistProfile).delivery_radius_km ?? 5.0} onChange={v => setSettingsDraft(prev => ({ ...(prev || stockistProfile), delivery_radius_km: parseFloat(v) }))} min={0.5} max={stockistProfile.max_delivery_radius_km || 5.0} step={0.5} decimals={1} suffix="km" />
                           <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0' }}>{t('Maximum allowed', 'अधिकतम अनुमत', 'সর্বাধিক অনুমোদিত')}: {stockistProfile.max_delivery_radius_km || 5.0} {t('km', 'किमी', 'কিমি')}</p>
                         </div>
                       </div>
@@ -13922,22 +14104,76 @@ export default function App() {
                         
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('UPI ID (Primary)', 'UPI आईडी (प्राथमिक)', 'UPI আইডি (প্রাথমিক)')}</label>
-                          <input type="text" placeholder="name@bank" maxLength={50} className="text-input" value={stockistProfile.payout_upi_id || ''} onChange={e => setStockistProfile({...stockistProfile, payout_upi_id: e.target.value.toLowerCase().replace(/[^a-z0-9.\-_@]/g, '')})} />
+                          <input 
+                            id="settings-field-payout_upi_id"
+                            type="text" 
+                            placeholder="name@bank" 
+                            maxLength={50} 
+                            className={`text-input ${settingsErrors.payout_upi_id ? 'input-error' : ''}`} 
+                            value={(settingsDraft || stockistProfile).payout_upi_id || ''} 
+                            onChange={e => {
+                              const val = e.target.value.toLowerCase().replace(/[^a-z0-9.\-_@]/g, '');
+                              setSettingsDraft(prev => ({ ...(prev || stockistProfile), payout_upi_id: val }));
+                              if (settingsErrors.payout_upi_id) setSettingsErrors(prev => ({ ...prev, payout_upi_id: null }));
+                            }} 
+                          />
+                          {settingsErrors.payout_upi_id && (
+                            <p className="field-error-text" style={{ color: 'var(--danger-text)', fontSize: '0.7rem', margin: '0.2rem 0 0 0' }}>{settingsErrors.payout_upi_id}</p>
+                          )}
                         </div>
 
                         <div style={{ borderTop: '1px dashed var(--border-color)', margin: '0.5rem 0' }}></div>
 
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('Bank Account Number (Fallback)', 'बैंक खाता संख्या (वैकल्पिक)', 'ব্যাংক অ্যাকাউন্ট নম্বর (বিকল্প)')}</label>
-                          <input type="text" className="text-input" maxLength={18} inputMode="numeric" value={stockistProfile.payout_bank_account || ''} onChange={e => setStockistProfile({...stockistProfile, payout_bank_account: e.target.value.replace(/\D/g, '').slice(0, 18)})} />
+                          <input 
+                            id="settings-field-payout_bank_account"
+                            type="text" 
+                            className={`text-input ${settingsErrors.payout_bank_account ? 'input-error' : ''}`} 
+                            maxLength={18} 
+                            inputMode="numeric" 
+                            value={(settingsDraft || stockistProfile).payout_bank_account || ''} 
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '').slice(0, 18);
+                              setSettingsDraft(prev => ({ ...(prev || stockistProfile), payout_bank_account: val }));
+                              if (settingsErrors.payout_bank_account) setSettingsErrors(prev => ({ ...prev, payout_bank_account: null }));
+                            }} 
+                          />
+                          {settingsErrors.payout_bank_account && (
+                            <p className="field-error-text" style={{ color: 'var(--danger-text)', fontSize: '0.7rem', margin: '0.2rem 0 0 0' }}>{settingsErrors.payout_bank_account}</p>
+                          )}
                         </div>
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('IFSC Code', 'IFSC कोड', 'IFSC কোড')}</label>
-                          <input type="text" placeholder="ABCD0123456" maxLength={11} className="text-input" value={stockistProfile.payout_ifsc || ''} onChange={e => setStockistProfile({...stockistProfile, payout_ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11)})} />
+                          <input 
+                            id="settings-field-payout_ifsc"
+                            type="text" 
+                            placeholder="ABCD0123456" 
+                            maxLength={11} 
+                            className={`text-input ${settingsErrors.payout_ifsc ? 'input-error' : ''}`} 
+                            value={(settingsDraft || stockistProfile).payout_ifsc || ''} 
+                            onChange={e => {
+                              const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+                              setSettingsDraft(prev => ({ ...(prev || stockistProfile), payout_ifsc: val }));
+                              if (settingsErrors.payout_ifsc) setSettingsErrors(prev => ({ ...prev, payout_ifsc: null }));
+                            }} 
+                          />
+                          {settingsErrors.payout_ifsc && (
+                            <p className="field-error-text" style={{ color: 'var(--danger-text)', fontSize: '0.7rem', margin: '0.2rem 0 0 0' }}>{settingsErrors.payout_ifsc}</p>
+                          )}
                         </div>
                         <div className="input-group" style={{ margin: 0 }}>
                           <label className="input-label">{t('Account Holder Name', 'खाताधारक का नाम', 'অ্যাকাউন্ট হোল্ডারের নাম')}</label>
-                          <input type="text" className="text-input" value={stockistProfile.payout_account_name || ''} onChange={e => setStockistProfile({...stockistProfile, payout_account_name: e.target.value})} />
+                          <input 
+                            id="settings-field-payout_account_name"
+                            type="text" 
+                            className="text-input" 
+                            value={(settingsDraft || stockistProfile).payout_account_name || ''} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setSettingsDraft(prev => ({ ...(prev || stockistProfile), payout_account_name: val }));
+                            }} 
+                          />
                         </div>
                       </div>
 
@@ -14091,63 +14327,9 @@ export default function App() {
                         className="btn btn-accent" 
                         disabled={savingSettings}
                         style={{ width: '100%', minHeight: '40px', marginTop: '0.5rem' }}
-                        onClick={async () => {
-                          const tUpi = (stockistProfile.payout_upi_id || '').trim();
-                          const tAccount = (stockistProfile.payout_bank_account || '').trim();
-                          const tIfsc = (stockistProfile.payout_ifsc || '').trim().toUpperCase();
-                          const tPhone = (stockistProfile.contact_phone || '').trim();
-                          if (tPhone && (tPhone.length !== 10 || !/^[6-9]\d{9}$/.test(tPhone))) {
-                            showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
-                            return;
-                          }
-                          if (tUpi && !/^[a-z0-9.\-_]{2,}@[a-z]{2,}$/i.test(tUpi)) {
-                            showToast(t("Enter a valid UPI ID like name@bank.", "name@bank की तरह एक मान्य UPI ID दर्ज करें।", "name@bank এর মত একটি বৈধ UPI ID লিখুন।"), 'error');
-                            return;
-                          }
-                          if (tIfsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(tIfsc)) {
-                            showToast(t("IFSC must be 11 characters, like SBIN0000300.", "IFSC 11 वर्णों का होना चाहिए, जैसे SBIN0000300।", "IFSC অবশ্যই 11 অক্ষরের হতে হবে, যেমন SBIN0000300।"), 'error');
-                            return;
-                          }
-                          if (tAccount && !/^\d{9,18}$/.test(tAccount)) {
-                            showToast(t("Bank account number must be 9 to 18 digits.", "बैंक खाता संख्या 9 से 18 अंकों की होनी चाहिए।", "ব্যাঙ্ক অ্যাকাউন্ট নম্বর 9 থেকে 18 অঙ্কের হতে হবে।"), 'error');
-                            return;
-                          }
-                          setSavingSettings(true);
-                          try {
-                            const res = await fetch(`${API_BASE}/stockist/profile`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json', 'X-User-Id': currentUser.id },
-                              body: JSON.stringify({
-                                manual_closed: stockistProfile.manual_closed,
-                                closed_reason: stockistProfile.closed_reason,
-                                closed_until: stockistProfile.closed_until,
-                                opening_time: stockistProfile.opening_time || '09:00',
-                                closing_time: stockistProfile.closing_time || '17:00',
-                                prep_eta_minutes: stockistProfile.prep_eta_minutes || 15,
-                                delivery_radius_km: stockistProfile.delivery_radius_km || 5.0,
-                                payout_upi_id: stockistProfile.payout_upi_id,
-                                payout_bank_account: stockistProfile.payout_bank_account,
-                                payout_ifsc: stockistProfile.payout_ifsc,
-                                payout_account_name: stockistProfile.payout_account_name,
-                                contact_phone: stockistProfile.contact_phone
-                              })
-                            });
-                            if (!res.ok) {
-                              const err = await res.json().catch(()=>({}));
-                              showToast(err.error || t('Failed to save settings', 'सेटिंग्स सहेजने में विफल', 'সেটিংস সংরক্ষণ করতে ব্যর্থ'), 'error');
-                            } else {
-                              const data = await res.json();
-                              setStockistProfile(data.stockist);
-                              showToast(t('Settings saved successfully', 'सेटिंग्स सफलतापूर्वक सहेजी गईं', 'সেটিংস সফলভাবে সংরক্ষিত হয়েছে'), 'success');
-                            }
-                          } catch(e) {
-                            showToast('Network error', 'error');
-                          } finally {
-                            setSavingSettings(false);
-                          }
-                        }}
+                        onClick={() => handleSaveSettings()}
                       >
-                        {savingSettings ? t('Saving...','सहेजा जा रहा है...','সংরক্ষণ করা হচ্ছে...') : t('Save Settings','सेटिंग्स सहेजें','সেটিংস সংরক্ষণ করুন')}
+                        {savingSettings ? t('Saving...', 'सहेजा जा रहा है...', 'সংরক্ষণ করা হচ্ছে...') : t('Save Settings', 'सेटिंग्स सहेजें', 'সেটিংস সংরক্ষণ করুন')}
                       </button>
 
                       <button className="btn btn-danger" style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.8rem', minHeight: '36px', height: '36px' }} onClick={handleLogout}>Log Out</button>
@@ -14155,11 +14337,11 @@ export default function App() {
                   )}
 
                 <div className="phone-footer">
-                  <button className={`phone-nav-btn ${stockistActiveTab === 'orders' ? 'active' : ''}`} onClick={() => setStockistActiveTab('orders')}>
+                  <button className={`phone-nav-btn ${stockistActiveTab === 'orders' ? 'active' : ''}`} onClick={() => handleStockistTabClick('orders')}>
                     <ArrowRightLeft size={18} />
                     {t("Orders", "ऑर्डर", "অর্ডার")}
                   </button>
-                  <button className={`phone-nav-btn ${stockistActiveTab === 'inventory' ? 'active' : ''}`} onClick={() => setStockistActiveTab('inventory')} style={{ position: 'relative' }}>
+                  <button className={`phone-nav-btn ${stockistActiveTab === 'inventory' ? 'active' : ''}`} onClick={() => handleStockistTabClick('inventory')} style={{ position: 'relative' }}>
                     <Package size={18} />
                     {t("Inventory", "इन्वेंट्री", "ইনভেন্টরি")}
                     {rejectedBillCount > 0 && (
@@ -14168,11 +14350,11 @@ export default function App() {
                       </span>
                     )}
                   </button>
-                  <button className={`phone-nav-btn ${stockistActiveTab === 'analytics' ? 'active' : ''}`} onClick={() => { setStockistActiveTab('analytics'); loadStockistData(); }}>
+                  <button className={`phone-nav-btn ${stockistActiveTab === 'analytics' ? 'active' : ''}`} onClick={() => handleStockistTabClick('analytics', loadStockistData)}>
                     <BarChart2 size={18} />
                     {t("Analytics", "विश्लेषण", "অ্যানালিটিক্স")}
                   </button>
-                  <button className={`phone-nav-btn ${stockistActiveTab === 'settings' ? 'active' : ''}`} onClick={() => setStockistActiveTab('settings')}>
+                  <button className={`phone-nav-btn ${stockistActiveTab === 'settings' ? 'active' : ''}`} onClick={() => handleStockistTabClick('settings')}>
                     <Settings size={18} />
                     {t("Settings", "सेटिंग्स", "সেটিংস")}
                   </button>
@@ -14181,6 +14363,96 @@ export default function App() {
 
             )}
           </div>
+
+          {/* Unsaved changes bar */}
+          {stockistActiveTab === 'settings' && isSettingsDirty && (
+            <div className="settings-unsaved-bar">
+              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                {t('Unsaved changes', 'बदलाव सहेजे नहीं गए', 'পরিবর্তন সংরক্ষিত হয়নি')}
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', minHeight: '32px' }}
+                  onClick={handleDiscardSettings}
+                >
+                  {t('Discard', 'खारिज करें', 'বাতিল করুন')}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-accent"
+                  disabled={savingSettings}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', minHeight: '32px' }}
+                  onClick={() => handleSaveSettings()}
+                >
+                  {savingSettings ? t('Saving...', 'सहेजा जा रहा है...', 'সংরক্ষণ করা হচ্ছে...') : t('Save', 'सहेजें', 'সংরক্ষণ করুন')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Leave Guard Modal */}
+          {showLeaveGuard && (
+            <ModalLayer>
+              <div className="modal-overlay" onClick={() => handleLeaveGuardAction('stay')}>
+                <div 
+                  className="modal-content" 
+                  style={{
+                    width: '90%',
+                    maxWidth: '340px',
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.85rem',
+                    background: 'var(--bg-surface-elevated)',
+                    color: 'var(--text-main)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '12px'
+                  }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <h3 style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-main)', fontWeight: 600 }}>
+                    {t('Save your changes?', 'क्या आप अपने बदलाव सहेजना चाहते हैं?', 'আপনি কি আপনার পরিবর্তন সংরক্ষণ করতে চান?')}
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                    {t(
+                      'You have unsaved changes in your shop settings. Do you want to save them before leaving?',
+                      'आपकी दुकान की सेटिंग्स में बिना सहेजे गए बदलाव हैं। क्या आप छोड़ने से पहले उन्हें सहेजना चाहते हैं?',
+                      'আপনার দোকান সেটিংসে সংরক্ষিত না হওয়া পরিবর্তন রয়েছে। আপনি কি প্রস্থান করার আগে সেগুলি সংরক্ষণ করতে চান?'
+                    )}
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}
+                      onClick={() => handleLeaveGuardAction('stay')}
+                    >
+                      {t('Stay', 'यहीं रहें', 'এখানে থাকুন')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', color: 'var(--danger-text)' }}
+                      onClick={() => handleLeaveGuardAction('discard')}
+                    >
+                      {t('Discard', 'खारिज करें', 'বাতিল করুন')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-accent"
+                      disabled={savingSettings}
+                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}
+                      onClick={() => handleLeaveGuardAction('save')}
+                    >
+                      {savingSettings ? t('Saving...', 'सहेजा जा रहा है...', 'সংরক্ষণ করা হচ্ছে...') : t('Save', 'सहेजें', 'সংরক্ষণ করুন')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </ModalLayer>
+          )}
         </div>
       </div>
     );
