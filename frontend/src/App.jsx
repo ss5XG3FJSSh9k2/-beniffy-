@@ -923,6 +923,7 @@ const AlternativeShops = ({ productName, regionId, excludeStockistId, onStartNew
 
 
 const PhoneInput = ({ value, onChange, onKeyDown, onPaste, ...rest }) => {
+  const sanitizedValue = normalizeFrontendPhone(value);
   const handleChange = (e) => {
     const normalized = normalizeFrontendPhone(e.target.value);
     e.target.value = normalized;
@@ -950,7 +951,7 @@ const PhoneInput = ({ value, onChange, onKeyDown, onPaste, ...rest }) => {
       inputMode="numeric"
       autoComplete="tel-national"
       maxLength={10}
-      value={value ?? ''}
+      value={sanitizedValue}
       onChange={handleChange}
       onPaste={handlePaste}
       onKeyDown={(e) => {
@@ -4019,6 +4020,25 @@ export default function App() {
     }
   };
 
+  // Login value -> sign-up fields: an email goes to the Email field (phone left empty);
+  // a valid 10-digit phone prefills the phone field; anything else leaves phone empty.
+  const openSignupFromLogin = (role) => {
+    setOtpSent(false);
+    setLoginOtp('');
+    const raw = (loginPhone || '').trim();
+    const norm = normalizeFrontendPhone(raw);
+    if (raw.includes('@')) {
+      setRegEmail(raw.toLowerCase());
+      setLoginPhone('');
+    } else {
+      setLoginPhone(/^\d{10}$/.test(norm) ? norm : '');
+    }
+    setShowCustomerSignup(role === 'customer');
+    setShowStockistSignup(role === 'stockist');
+  };
+  const handleOpenCustomerSignup = () => openSignupFromLogin('customer');
+  const handleOpenStockistSignup = () => openSignupFromLogin('stockist');
+
   const handleSendOtp = async () => {
     if (!loginPhone) {
       const err = t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন');
@@ -4113,15 +4133,7 @@ export default function App() {
               'error',
               {
                 label: t('Open a' + ' Shop', 'दुकान खोलें', 'দোকান খুলুন'),
-                onClick: () => {
-                  setOtpSent(false);
-                  setLoginOtp('');
-                  if (loginPhone.includes('@')) {
-                    setRegEmail(loginPhone.trim().toLowerCase());
-                  }
-                  setShowStockistSignup(true);
-                  setShowCustomerSignup(false);
-                }
+                onClick: handleOpenStockistSignup
               }
             );
           } else if (activeRole === 'customer') {
@@ -4130,15 +4142,7 @@ export default function App() {
               'error',
               {
                 label: t('Sign Up', 'साइन अप करें', 'সাইন আপ করুন'),
-                onClick: () => {
-                  setOtpSent(false);
-                  setLoginOtp('');
-                  if (loginPhone.includes('@')) {
-                    setRegEmail(loginPhone.trim().toLowerCase());
-                  }
-                  setShowCustomerSignup(true);
-                  setShowStockistSignup(false);
-                }
+                onClick: handleOpenCustomerSignup
               }
             );
           } else if (activeRole === 'admin') {
@@ -4842,7 +4846,7 @@ export default function App() {
     const isAadhaar = String(regKycType2 || '').toUpperCase().includes('AADHAAR') || String(regKycType2 || '').toUpperCase().includes('AADHAR');
     if (isAadhaar) {
       if (aadhaarDigits.length !== 12) {
-        showToast(t('Aadhaar must be exactly 12 digits', 'आधार संख्या में ठीक 12 अंक होने चाहिए', 'আধার নম্বরটি ठीक ১২ টি সংখ্যার হতে হবে'), 'error');
+        showToast(t('Aadhaar must be exactly 12 digits', 'आधार संख्या में ठीक 12 अंक होने चाहिए', 'আধার নম্বরটি ঠিক ১২ টি সংখ্যার হতে হবে'), 'error');
         return;
       }
     } else {
@@ -7014,14 +7018,14 @@ export default function App() {
 
     const renderCustomerSignupBtn = () => (
       <button className="btn btn-secondary" style={{ width: '100%', fontSize: '0.7rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
-        onClick={() => { setShowCustomerSignup(true); setShowStockistSignup(false); }}>
+        onClick={handleOpenCustomerSignup}>
         <UserPlus size={12} /> {t("Sign Up (Customer)", "साइन अप (ग्राहक)", "সাইন আপ (ক্রেতা)")}
       </button>
     );
 
     const renderStockistSignupBtn = () => (
       <button className="btn btn-secondary" style={{ width: '100%', fontSize: '0.7rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
-        onClick={() => { setShowStockistSignup(true); setShowCustomerSignup(false); }}>
+        onClick={handleOpenStockistSignup}>
         <Store size={12} /> {t("Open a Shop", "दुकान खोलें", "দোকান খুলুন")}
       </button>
     );
@@ -7170,10 +7174,10 @@ export default function App() {
           <>
             <div style={{ background: 'var(--primary-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.75rem', textAlign: 'center' }}>
               <UserPlus size={14} style={{ color: 'var(--primary)', marginRight: '0.35rem', verticalAlign: 'middle' }} />
-              {t('New Customer Registration', 'नया ग्राहक पंजीकरण', 'নতুন ক্রেতা নিবন্ধন')}{loginPhone ? `: ${loginPhone}` : ''}
+              {t('New Customer Registration', 'नया ग्राहक पंजीकरण', 'নতুন ক্রেতা নিবন্ধন')}{/^\d{10}$/.test(loginPhone) ? `: ${loginPhone}` : ''}
             </div>
             <div className="input-group">
-              <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'फोन নম্বর (১০ সংখ্যা)')}</label>
+              <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'ফোন নম্বর (১০ সংখ্যা)')}</label>
               <PhoneInput 
                 className="text-input" 
                 placeholder="e.g. 9876543210" 
@@ -7334,7 +7338,7 @@ export default function App() {
                 {t('I agree to the ', 'मैं ', 'আমি ')}
                 <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTermsModal(true); }} style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>{t('Terms & Conditions', 'नियम और शर्तें', 'নিয়ম ও শর্তাবলী')}</span>
                 {t(' and ', ' और ', ' এবং ')}
-                <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPrivacyPolicyModal(true); }} style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>{t('Privacy Policy', 'गोपनीयता नीति', 'গোপনীয়ता নীতি')}</span>
+                <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPrivacyPolicyModal(true); }} style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>{t('Privacy Policy', 'गोपनीयता नीति', 'গোপনীয়তা নীতি')}</span>
                 {t('', ' से सहमत हूँ।', ' তে সম্মত।')}
               </label>
             </div>
@@ -7376,10 +7380,10 @@ export default function App() {
           <>
             <div style={{ background: 'var(--warning-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.2)', fontSize: '0.75rem', textAlign: 'center' }}>
               <Store size={14} style={{ color: 'var(--warning-text)', marginRight: '0.35rem', verticalAlign: 'middle' }} />
-              {t('Register Local Shop (KYC Required)', 'स्थानीय दुकान पंजीकरण (KYC आवश्यक)', 'স্থানীয় দোকান নিবন্ধন (KYC প্রয়োজন)')}{loginPhone ? `: ${loginPhone}` : ''}
+              {t('Register Local Shop (KYC Required)', 'स्थानीय दुकान पंजीकरण (KYC आवश्यक)', 'স্থানীয় দোকান নিবন্ধন (KYC প্রয়োজন)')}{/^\d{10}$/.test(loginPhone) ? `: ${loginPhone}` : ''}
             </div>
             <div className="input-group">
-              <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'फोन নম্বর (১০ সংখ্যা)')}</label>
+              <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'ফোন নম্বর (১০ সংখ্যা)')}</label>
               <PhoneInput 
                 className="text-input" 
                 placeholder="e.g. 9876543210" 
@@ -8502,7 +8506,7 @@ export default function App() {
               <label className="input-label">{t('Contact Person Name', 'संपर्क व्यक्ति का नाम', 'যোগাযোগের ব্যক্তির নাম')}</label>
               <input 
                 type="text" 
-                placeholder={t('e.g. Ramesh Kumar', 'उदा. रमेश कुमार', 'যেমন रमेश कुमार')} 
+                placeholder={t('e.g. Ramesh Kumar', 'उदा. रमेश कुमार', 'যেমন রমেশ কুমার')} 
                 className="text-input" 
                 value={partnerContactName}
                 onChange={(e) => setPartnerContactName(e.target.value)}
@@ -8663,7 +8667,7 @@ export default function App() {
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
                     {setupStep === 1
                       ? `${t('Step 1 of 2', 'चरण 1 का 2', 'ধাপ ১ এর ২')}: ${t('Set account email', 'खाता ईमेल सेट करें', 'অ্যাকাউন্ট ইমেল সেট করুন')}`
-                      : `${t('Step 2 of 2', 'चरण 2 का 2', 'ধাপ ২ এর ২')}: ${t('Set account password', 'खाता पासवर्ड सेट करें', 'অ্যাকাউন্ট পাসওয়ার্ড सेट করুন')}`}
+                      : `${t('Step 2 of 2', 'चरण 2 का 2', 'ধাপ ২ এর ২')}: ${t('Set account password', 'खाता पासवर्ड सेट करें', 'অ্যাকাউন্ট পাসওয়ার্ড সেট করুন')}`}
                   </p>
 
                   {setupStep === 1 ? (
@@ -8695,7 +8699,7 @@ export default function App() {
                         />
                       </div>
                       <div className="input-group" style={{ marginTop: '0.75rem' }}>
-                        <label className="input-label">{t('Confirm password', 'पासवर्ड की पुष्टि करें', 'পাসवर्ड निश्चित করুন')}</label>
+                        <label className="input-label">{t('Confirm password', 'पासवर्ड की पुष्टि करें', 'পাসওয়ার্ড নিশ্চিত করুন')}</label>
                         <input 
                           type="password" 
                           placeholder="••••••••" 
@@ -18984,7 +18988,7 @@ export default function App() {
                       {t(
                         `Keep ${oldNameEn} as an extra supplier`,
                         `${oldNameHi} को एक अतिरिक्त आपूर्तिकर्ता के रूप में रखें`,
-                        `${oldNameBn}-কে अतिरिक्त সরবরাহকারী হিসেবে রাখুন`
+                        `${oldNameBn}-কে অতিরিক্ত সরবরাহকারী হিসেবে রাখুন`
                       )}
                     </label>
                   </div>

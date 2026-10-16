@@ -6617,6 +6617,35 @@ async function main() {
   const phoneScreenRule = notchIndexCss.match(/\.phone-screen\s*\{[^}]*\}/s);
   assert(phoneScreenRule && phoneScreenRule[0].includes('padding-top: 16px') && !phoneScreenRule[0].includes('padding-top: 36px') && !phoneScreenRule[0].includes('padding-top: 10px'), '.phone-screen has single padding-top: 16px rule with legacy and notch offsets removed');
 
+  // --- Section 50: Email never lands in sign-up phone field; Bengali phone label ---
+  console.log('\n--- Section 50: Email never lands in sign-up phone field; Bengali phone label ---');
+  const s50App = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  const s50NormSrc = (s50App.match(/const normalizeFrontendPhone = \(val\) => \{[\s\S]*?\n\};/) || [''])[0];
+  const s50Norm = s50NormSrc ? new Function(`${s50NormSrc}; return normalizeFrontendPhone;`)() : () => null;
+  assert(s50Norm('tapas.kundu@beniffy.test') === '', 'normalizeFrontendPhone: email -> empty string');
+  assert(s50Norm('919831000001') === '9831000001' && s50Norm('+91 98310 00001') === '9831000001', 'normalizeFrontendPhone: drops leading 91 on 12 digits');
+  assert(s50Norm('98310000012345') === '9831000001', 'normalizeFrontendPhone: max 10 digits');
+  const s50PhoneInput = (s50App.match(/const PhoneInput = [\s\S]*?\n\};/) || [''])[0];
+  assert(/normalizeFrontendPhone\(value\)/.test(s50PhoneInput) && s50PhoneInput.includes('value={sanitizedValue}'), 'PhoneInput sanitizes its value prop before rendering');
+  assert(!s50App.includes('{loginPhone ? `: ${loginPhone}` : \'\'}') && (s50App.match(/\{\/\^\\d\{10\}\$\/\.test\(loginPhone\) \? `: \$\{loginPhone\}` : ''\}/g) || []).length === 2, 'Sign-up banners show the phone only when it is exactly 10 digits');
+  const s50Open = (s50App.match(/const openSignupFromLogin = \(role\) => \{[\s\S]*?\n  \};/) || [''])[0];
+  assert(/raw\.includes\('@'\)[\s\S]*setRegEmail\(raw\.toLowerCase\(\)\);\s*setLoginPhone\(''\)/.test(s50Open), 'Opening sign-up with an email puts it in Email and leaves phone empty');
+  assert((s50App.match(/onClick[=:] ?\{?handleOpen(Customer|Stockist)Signup/g) || []).length === 4, 'All four sign-up entry points use the shared login->sign-up helper');
+  assert(!s50App.includes('\u092b\u094b\u0928 \u09a8\u09ae\u09cd\u09ac\u09b0') && (s50App.match(/'\u09ab\u09cb\u09a8 \u09a8\u09ae\u09cd\u09ac\u09b0 \(\u09e7\u09e6 \u09b8\u0982\u0996\u09cd\u09af\u09be\)'/g) || []).length >= 3, 'Bengali phone label is fully Bengali at every sign-up form');
+  const s50Deva = /[\u0900-\u0963\u0966-\u097F]/; // Devanagari letters; shared danda U+0964/5 excluded
+  const s50Beng = /[\u0980-\u09FF]/;
+  const s50Mixed = [];
+  s50App.split(/\r?\n/).forEach((line, i) => {
+    for (const m of line.matchAll(/'(?:[^'\\`]|\\.)*'|"(?:[^"\\`]|\\.)*"/g)) if (s50Beng.test(m[0]) && s50Deva.test(m[0])) s50Mixed.push(`${i + 1}: ${m[0]}`);
+    for (const m of line.matchAll(/`(?:[^`\\]|\\.)*`/g)) {
+      let s = m[0], prev;
+      do { prev = s; s = s.replace(/\$\{[^{}]*\}/g, ''); } while (s !== prev);
+      if (s50Beng.test(s) && s50Deva.test(s)) s50Mixed.push(`${i + 1}: ${m[0]}`);
+    }
+  });
+  if (s50Mixed.length) console.log('  Mixed-script literals:\n  ' + s50Mixed.join('\n  '));
+  assert(s50Mixed.length === 0, 'No string literal in App.jsx mixes Bengali and Devanagari letters');
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
