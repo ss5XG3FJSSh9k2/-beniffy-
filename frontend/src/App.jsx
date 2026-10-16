@@ -5877,7 +5877,7 @@ export default function App() {
             }
 
             if (delRes.ok) {
-              showToast(`Account successfully ${delData.action?.toLowerCase() || 'removed'}.`);
+              showToast(t('Account removed. This number can register again.', 'खाता हटा दिया गया। यह नंबर फिर से पंजीकरण कर सकता है।', 'অ্যাকাউন্ট সরানো হয়েছে। এই নম্বরটি আবার নিবন্ধন করতে পারে।'));
               fetchDbState();
               setBlacklistedUsers(prev => prev.filter(u => (u.user_id || u.id) !== userId));
             } else {

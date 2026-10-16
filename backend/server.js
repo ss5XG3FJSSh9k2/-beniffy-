@@ -186,7 +186,7 @@ async function checkEmail(email, res, expectNew = true) {
   if (expectNew) {
     const users = await db.getTable('users');
     const partners = await db.getTable('partners');
-    const uDup = users.some(u => u.email && u.email.trim().toLowerCase() === clean);
+    const uDup = users.some(u => u.kyc_status !== 'RELEASED' && u.email && u.email.trim().toLowerCase() === clean);
     const pDup = partners.some(p => p.contact_email && p.contact_email.trim().toLowerCase() === clean);
     if (uDup || pDup) {
       res.status(400).json({ error: 'This email is already registered.' });
@@ -327,7 +327,7 @@ async function isDNDRegistered(phone) {
 }
 
 function stockistKycGate(user) {
-  if (!user) return { blocked: true, code: 404, body: { error: 'Stockist not found' } };
+  if (!user || user.kyc_status === 'RELEASED') return { blocked: true, code: 404, body: { error: 'No account found' } };
   if (user.kyc_status === 'APPROVED') return { blocked: false };
 
   const messages = {
@@ -618,13 +618,13 @@ const handleSendOtpRoute = async (req, res) => {
     const cleanEmail = identifier.trim().toLowerCase();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(cleanEmail)) return res.status(400).json({ error: 'Invalid email format' });
-    user = users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail && u.role === 'STOCKIST') ||
-           users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail);
+    user = users.find(u => u.kyc_status !== 'RELEASED' && u.email && u.email.trim().toLowerCase() === cleanEmail && u.role === 'STOCKIST') ||
+           users.find(u => u.kyc_status !== 'RELEASED' && u.email && u.email.trim().toLowerCase() === cleanEmail);
   } else {
     const cleanPhone = checkPhone(identifier, res);
     if (!cleanPhone) return;
-    user = users.find(u => u.phone === cleanPhone && u.role === 'STOCKIST') ||
-           users.find(u => u.phone === cleanPhone);
+    user = users.find(u => u.kyc_status !== 'RELEASED' && u.phone === cleanPhone && u.role === 'STOCKIST') ||
+           users.find(u => u.kyc_status !== 'RELEASED' && u.phone === cleanPhone);
   }
 
 
@@ -683,7 +683,7 @@ app.post('/api/auth/register-customer', async (req, res) => {
   const cleanAddress = address ? escapeHtml(address) : '';
 
   const users = await db.getTable('users');
-  const existing = users.find(u => u.phone === phone);
+  const existing = users.find(u => u.kyc_status !== 'RELEASED' && u.phone === phone);
   if (existing) {
     return res.status(400).json({ error: 'Phone already registered' });
   }
@@ -929,13 +929,13 @@ const handleVerifyOtpRoute = async (req, res) => {
 
   if (isEmail) {
     const cleanEmail = identifier.trim().toLowerCase();
-    user = users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail && u.role === 'STOCKIST') ||
-           users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail);
+    user = users.find(u => u.kyc_status !== 'RELEASED' && u.email && u.email.trim().toLowerCase() === cleanEmail && u.role === 'STOCKIST') ||
+           users.find(u => u.kyc_status !== 'RELEASED' && u.email && u.email.trim().toLowerCase() === cleanEmail);
   } else {
     const cleanPhone = checkPhone(identifier, res);
     if (!cleanPhone) return;
-    user = users.find(u => u.phone === cleanPhone && u.role === 'STOCKIST') ||
-           users.find(u => u.phone === cleanPhone);
+    user = users.find(u => u.kyc_status !== 'RELEASED' && u.phone === cleanPhone && u.role === 'STOCKIST') ||
+           users.find(u => u.kyc_status !== 'RELEASED' && u.phone === cleanPhone);
   }
 
   if (!user) {
@@ -1043,7 +1043,7 @@ app.post('/api/customer/register-with-referral', async (req, res) => {
   if (!validEmail) return;
 
   const users = await db.getTable('users');
-  if (users.some(u => u.phone === phone)) {
+  if (users.some(u => u.kyc_status !== 'RELEASED' && u.phone === phone)) {
     return res.status(400).json({ error: 'An account with this phone number already exists' });
   }
 
@@ -1238,7 +1238,7 @@ app.post('/api/auth/register-stockist', uploadBillMiddleware, async (req, res) =
   }
 
   const users = await db.getTable('users');
-  const existingUser = users.find(u => u.phone === phone);
+  const existingUser = users.find(u => u.kyc_status !== 'RELEASED' && u.phone === phone);
   if (existingUser && existingUser.role === 'STOCKIST') {
     return res.status(400).json({ error: 'This phone number is already registered as a stockist. Use a different number.' });
   }
@@ -2201,11 +2201,11 @@ function calculateIsShopOpen(stockist, currentTimeStr) {
 function findStockistOwner(stockist, users) {
   if (!stockist || !Array.isArray(users)) return null;
   if (stockist.user_id) {
-    return users.find(u => u.id === stockist.user_id) || null;
+    return users.find(u => u.id === stockist.user_id && u.kyc_status !== 'RELEASED') || null;
   }
   const sPhone = (stockist.contact_phone || stockist.phone || '').trim();
   if (!sPhone) return null;
-  return users.find(u => u.role === 'STOCKIST' && typeof u.phone === 'string' && u.phone.trim() !== '' && u.phone.trim() === sPhone) || null;
+  return users.find(u => u.role === 'STOCKIST' && u.kyc_status !== 'RELEASED' && typeof u.phone === 'string' && u.phone.trim() !== '' && u.phone.trim() === sPhone) || null;
 }
 
 function getCustomerVisibility(stockist, users, products) {
@@ -5382,7 +5382,7 @@ app.post(['/api/admin/kyc/:userId/reject', '/api/admin/kyc/:userId/reject-with-a
 });
 
 // Blacklist User Endpoint
-app.post('/api/admin/kyc/:userId/blacklist', async (req, res) => {
+const handleBlacklistUserRoute = async (req, res) => {
   const { userId } = req.params;
   const { reason } = req.body;
   if (!reason || reason.trim().length < 5) return res.status(400).json({ error: 'Reason must be at least 5 characters' });
@@ -5416,7 +5416,9 @@ app.post('/api/admin/kyc/:userId/blacklist', async (req, res) => {
   await db.saveTable('users', users);
   await appendAudit(req, 'BLACKLIST_USER', 'user', userId, null, { kyc_status: 'BLACKLISTED', reason });
   return res.json({ success: true, status: 'BLACKLISTED', can_reapply: false });
-});
+};
+app.post('/api/admin/kyc/:userId/blacklist', handleBlacklistUserRoute);
+app.post('/api/admin/users/:userId/blacklist', handleBlacklistUserRoute);
 
 // Admin Get Blacklist
 
@@ -5439,9 +5441,9 @@ app.get('/api/admin/users/:userId/references', async (req, res) => {
 
   const tables = [
     'orders', 'points_ledger', 'split_payouts', 'cod_commission_ledger', 'products', 
-    'inventory', 'stockist_inventory', 'stockist_vendors', 'stockists', 'redemption_approvals',
+    'inventory', 'stockist_inventory', 'redemption_approvals',
     'customer_partner_bindings', 'fraud_reports', 'feedback_reports', 'anomaly_logs',
-    'admin_audit_log', 'partner_users', 'partner_notifications', 'partner_feedback',
+    'partner_users', 'partner_notifications', 'partner_feedback',
     'product_bill_photos', 'stockist_commission_rates', 'points_earn_config', 'commission_config'
   ];
 
@@ -5493,9 +5495,9 @@ app.delete('/api/admin/users/:userId/account', async (req, res) => {
   const references_by_table = {};
   const tables = [
     'orders', 'points_ledger', 'split_payouts', 'cod_commission_ledger', 'products', 
-    'inventory', 'stockist_inventory', 'stockist_vendors', 'stockists', 'redemption_approvals',
+    'inventory', 'stockist_inventory', 'redemption_approvals',
     'customer_partner_bindings', 'fraud_reports', 'feedback_reports', 'anomaly_logs',
-    'admin_audit_log', 'partner_users', 'partner_notifications', 'partner_feedback',
+    'partner_users', 'partner_notifications', 'partner_feedback',
     'product_bill_photos', 'stockist_commission_rates', 'points_earn_config', 'commission_config'
   ];
 
@@ -5513,8 +5515,7 @@ app.delete('/api/admin/users/:userId/account', async (req, res) => {
       }
       if (matched) count++;
     }
-    // we only care about references in OTHER tables besides stockists (since we will delete the stockists row anyway if ref=0)
-    if (count > 0 && t !== 'stockists') {
+    if (count > 0) {
       references_by_table[t] = count;
       totalRefs += count;
     }
@@ -5528,20 +5529,65 @@ app.delete('/api/admin/users/:userId/account', async (req, res) => {
       stockists.splice(stockistIndex, 1);
       await db.saveTable('stockists', stockists);
     }
-    await appendAudit(req, 'DELETE_ACCOUNT', 'user', userId, deletedUser, { references: 0, by: req.user.userId });
+    if (stockistId) {
+      let stockistVendors = await db.getTable('stockist_vendors') || [];
+      const svBefore = stockistVendors.length;
+      stockistVendors = stockistVendors.filter(sv => sv.stockist_id !== stockistId);
+      if (stockistVendors.length !== svBefore) {
+        await db.saveTable('stockist_vendors', stockistVendors);
+      }
+    }
+    // Delete kyc document file
+    try {
+      const kycDir = path.join(__dirname, 'uploads', 'kyc');
+      if (fs.existsSync(kycDir)) {
+        const files = fs.readdirSync(kycDir);
+        for (const f of files) {
+          if (f.startsWith(`${userId}_`)) {
+            try { fs.unlinkSync(path.join(kycDir, f)); } catch (_) {}
+          }
+        }
+      }
+      if (deletedUser.kyc_details?.document_photo_url) {
+        const filename = path.basename(deletedUser.kyc_details.document_photo_url);
+        const filePath = path.join(__dirname, 'uploads', 'kyc', filename);
+        if (fs.existsSync(filePath)) {
+          try { fs.unlinkSync(filePath); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    await appendAudit(req, 'DELETE_ACCOUNT', 'user', userId, deletedUser, { references: 0, by: req.user ? req.user.userId : 'admin-system' });
     return res.json({ success: true, action: 'DELETED', reference_count: 0, references_by_table });
   } else {
     // Outcome B: Release
+    const previousStatus = user.kyc_status;
     user.kyc_status = 'RELEASED';
     user.released_at = new Date().toISOString();
+    if (user.phone) {
+      user.released_phone = user.phone;
+      user.phone = null;
+    }
+    if (user.email) {
+      user.released_email = user.email;
+      user.email = null;
+    }
     await db.saveTable('users', users);
-    
-    // totalRefs here does not count the 'stockists' row, so let's add it back if we need to report it accurately
-    const totalWithStockists = totalRefs + (stockistIndex !== -1 ? 1 : 0);
-    if (stockistIndex !== -1) references_by_table['stockists'] = 1;
 
-    await appendAudit(req, 'RELEASE_ACCOUNT', 'user', userId, { previous_status: user.kyc_status }, { new_status: 'RELEASED', references_by_table, total_references: totalWithStockists, by: req.user.userId });
-    return res.json({ success: true, action: 'RELEASED', reference_count: totalWithStockists, references_by_table });
+    if (stockistIndex !== -1) {
+      const stockistRow = stockists[stockistIndex];
+      stockistRow.is_active = false;
+      const stPhone = stockistRow.phone || stockistRow.contact_phone;
+      if (stPhone) {
+        stockistRow.released_phone = stPhone;
+      }
+      stockistRow.phone = null;
+      stockistRow.contact_phone = null;
+      await db.saveTable('stockists', stockists);
+    }
+
+    await appendAudit(req, 'RELEASE_ACCOUNT', 'user', userId, { previous_status: previousStatus }, { new_status: 'RELEASED', references_by_table, total_references: totalRefs, by: req.user ? req.user.userId : 'admin-system' });
+    return res.json({ success: true, action: 'RELEASED', reference_count: totalRefs, references_by_table });
   }
 });
 
@@ -5753,7 +5799,7 @@ app.post('/api/customer/phone-change/request', requireAuth, async (req, res) => 
   if (!validPhone) return;
   const cleanPhone = validPhone;
   const users = await db.getTable('users');
-  const existing = users.find(u => u.phone === cleanPhone);
+  const existing = users.find(u => u.kyc_status !== 'RELEASED' && u.phone === cleanPhone);
   if (existing) {
     return res.status(409).json({ error: 'Phone number already registered' });
   }
@@ -6555,7 +6601,7 @@ app.post('/api/admin/customers/:id/phone-change/send-new', async (req, res) => {
   if (!user) return res.status(404).json({ error: 'Customer not found' });
   
   if (cleanPhone === user.phone) return res.status(400).json({ error: 'Phone already registered' });
-  const exists = users.find(u => u.phone === cleanPhone);
+  const exists = users.find(u => u.kyc_status !== 'RELEASED' && u.phone === cleanPhone);
   if (exists) return res.status(400).json({ error: 'Phone already registered' });
   
   if (checkSendRateLimit(sendNewRateLimits, id, res)) return;
@@ -6612,7 +6658,7 @@ app.post('/api/admin/customers/:id/phone-change', async (req, res) => {
   }
 
   if (cleanPhone === user.phone) return res.status(400).json({ error: 'Phone already registered' });
-  const exists = users.find(u => u.phone === cleanPhone);
+  const exists = users.find(u => u.kyc_status !== 'RELEASED' && u.phone === cleanPhone);
   if (exists) return res.status(400).json({ error: 'Phone already registered' });
   
   const oldPhone = user.phone;
@@ -6861,7 +6907,7 @@ app.post('/api/admin/stockists', async (req, res) => {
   const users = await db.getTable('users');
   const cleanPhone = phone.trim();
   const clash = stockists.find(s => s.phone === cleanPhone || s.contact_phone === cleanPhone);
-  const userClash = users.find(u => u.phone === cleanPhone && u.role === 'STOCKIST');
+  const userClash = users.find(u => u.kyc_status !== 'RELEASED' && u.phone === cleanPhone && u.role === 'STOCKIST');
   if (clash || userClash) return res.status(409).json({ error: 'Stockist already exists for this phone' });
 
   if (!vendor_id) {
@@ -7348,7 +7394,7 @@ app.post('/api/partner/auth/login-otp-request', async (req, res) => {
   otpRequestAttempts.set(phone, attempts);
 
   const users = await db.getTable('users');
-  const user = users.find(u => u.role === 'PARTNER_ADMIN' && u.phone === phone && u.is_active !== false);
+  const user = users.find(u => u.role === 'PARTNER_ADMIN' && u.phone === phone && u.is_active !== false && u.kyc_status !== 'RELEASED');
 
   if (user) {
     const code = issueOtp('login:' + phone);
@@ -7372,7 +7418,7 @@ const handlePartnerOtpVerify = async (req, res) => {
   if (!/^\d{6}$/.test(String(otp).trim())) return res.status(400).json({ error: 'Invalid OTP' });
 
   const users = await db.getTable('users');
-  const user = users.find(u => u.role === 'PARTNER_ADMIN' && u.phone === phone && u.is_active !== false);
+  const user = users.find(u => u.role === 'PARTNER_ADMIN' && u.phone === phone && u.is_active !== false && u.kyc_status !== 'RELEASED');
 
   if (!user) return res.status(404).json({ error: 'No account found' });
   const vRes = verifyOtp('login:' + phone, otp);

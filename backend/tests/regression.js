@@ -6717,6 +6717,263 @@ async function main() {
   assert((s50App.match(/renderStockistSignupBtn\(\)/g) || []).length === 2, 'renderStockistSignupBtn is invoked exactly twice (login screen and OTP screen)');
   assert((s50App.match(/renderCustomerSignupBtn\(\)/g) || []).length === 2, 'renderCustomerSignupBtn is invoked exactly twice (login screen and OTP screen)');
 
+  // --- Section 54: Removing an account frees its phone and email; no false KYC pending ---
+  console.log('\n--- Section 54: Removing an account frees its phone and email; no false KYC pending ---');
+
+  // Test 1: Fresh stockist (0 real activity) -> blacklist -> remove -> hard DELETED
+  clearLogin();
+  const s54FreshPhone = '9733000001';
+  const s54FreshEmail = 'stk_fresh_973301@test.com';
+  const s54FreshId = '234567890128';
+
+  const s54RegFreshRes = await post('http://localhost:3001/api/auth/register-stockist', {
+    name: 'Fresh Stockist One',
+    phone: s54FreshPhone,
+    email: s54FreshEmail,
+    shop_name: 'Fresh Shop One',
+    address: 'Shop 1 Address, Town',
+    region_id: 'r1',
+    id_type: 'Aadhaar',
+    id_number: s54FreshId
+  }, {
+    asMultipart: true,
+    fileObj: { fieldName: 'documentPhoto', filename: 'doc1.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock photo') }
+  });
+  assert(s54RegFreshRes.status === 200 && s54RegFreshRes.body.success, 'Stockist 9733000001 registers successfully');
+  const s54FreshUserId = s54RegFreshRes.body.user.id;
+
+  // Admin blacklists it
+  loginAs('u-admin', 'ADMIN');
+  const s54BlRes = await post(`http://localhost:3001/api/admin/users/${s54FreshUserId}/blacklist`, {
+    reason: 'Suspicious documents'
+  });
+  assert(s54BlRes.status === 200 && s54BlRes.body.status === 'BLACKLISTED', 'Admin blacklists stockist 9733000001');
+
+  // Check references: admin_audit_log, user_blacklist, registration_flags, stockists NOT counted
+  const s54FreshRefsRes = await get(`http://localhost:3001/api/admin/users/${s54FreshUserId}/references`);
+  assert(s54FreshRefsRes.status === 200 && s54FreshRefsRes.body.reference_count === 0, 'References check reports 0 real references for fresh blacklisted stockist');
+
+  // Admin removes the account
+  const s54FreshDelRes = await del(`http://localhost:3001/api/admin/users/${s54FreshUserId}/account`);
+  assert(s54FreshDelRes.status === 200 && s54FreshDelRes.body.action === 'DELETED', 'Remove account for fresh stockist results in DELETED action');
+
+  // Verify user and stockist rows deleted
+  const s54AllUsersAfterDel = await dbModule.getTable('users');
+  assert(!s54AllUsersAfterDel.some(u => u.id === s54FreshUserId), 'User row hard deleted from users table');
+  const s54AllStockistsAfterDel = await dbModule.getTable('stockists');
+  assert(!s54AllStockistsAfterDel.some(s => s.user_id === s54FreshUserId), 'Stockist row deleted from stockists table');
+
+  // (a) send-otp for that phone returns no-account response (404)
+  clearLogin();
+  const s54FreshSendOtpRes = await post('http://localhost:3001/api/stockist/auth/send-otp', {
+    phone: s54FreshPhone
+  });
+  assert(s54FreshSendOtpRes.status === 404 && s54FreshSendOtpRes.body.error === 'No account found', 'send-otp for removed phone returns 404 No account found');
+
+  const s54FreshVerifyRes = await post('http://localhost:3001/api/auth/verify-otp', {
+    phone: s54FreshPhone,
+    otp: '123456',
+    expected_role: 'STOCKIST'
+  });
+  assert(s54FreshVerifyRes.status === 404 && s54FreshVerifyRes.body.error === 'No account found', 'verify-otp for removed phone returns 404 No account found');
+
+  // (b) register again with the same phone and email succeeds with kyc_status PENDING
+  const s54ReRegFreshRes = await post('http://localhost:3001/api/auth/register-stockist', {
+    name: 'Fresh Stockist One Reborn',
+    phone: s54FreshPhone,
+    email: s54FreshEmail,
+    shop_name: 'Fresh Shop One Reborn',
+    address: 'Shop 1 Reborn Address, Town',
+    region_id: 'r1',
+    id_type: 'Aadhaar',
+    id_number: '234567890139'
+  }, {
+    asMultipart: true,
+    fileObj: { fieldName: 'documentPhoto', filename: 'doc1_re.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock photo') }
+  });
+  assert(s54ReRegFreshRes.status === 200 && s54ReRegFreshRes.body.user?.kyc_status === 'PENDING', 'Re-registering with same phone and email succeeds with kyc_status PENDING');
+
+  // (d) admin_audit_log still has BLACKLIST_USER and DELETE_ACCOUNT rows
+  loginAs('u-admin', 'ADMIN');
+  const s54AuditRes = await get('http://localhost:3001/api/admin/audit-log');
+  const s54AuditEntries = s54AuditRes.body || [];
+  const s54HasBlAudit = s54AuditEntries.some(a => a.action === 'BLACKLIST_USER' && a.entity_id === s54FreshUserId);
+  const s54HasDelAudit = s54AuditEntries.some(a => a.action === 'DELETE_ACCOUNT' && a.entity_id === s54FreshUserId);
+  assert(s54HasBlAudit && s54HasDelAudit, 'admin_audit_log retains BLACKLIST_USER and DELETE_ACCOUNT rows for removed user');
+
+  // Test 2: Stockist with a real order (Outcome: RELEASED)
+  clearLogin();
+  const s54OrderPhone = '9733000002';
+  const s54OrderEmail = 'stk_order_973302@test.com';
+  const s54OrderIdNum = '345678901239';
+
+  const s54RegOrderRes = await post('http://localhost:3001/api/auth/register-stockist', {
+    name: 'Order Stockist Two',
+    phone: s54OrderPhone,
+    email: s54OrderEmail,
+    shop_name: 'Order Shop Two',
+    address: 'Shop 2 Address, Town',
+    region_id: 'r1',
+    id_type: 'Aadhaar',
+    id_number: s54OrderIdNum
+  }, {
+    asMultipart: true,
+    fileObj: { fieldName: 'documentPhoto', filename: 'doc2.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock photo') }
+  });
+  assert(s54RegOrderRes.status === 200 && s54RegOrderRes.body.success, 'Stockist 9733000002 registers successfully');
+  const s54OrderUserId = s54RegOrderRes.body.user.id;
+
+  // Add real order reference for this stockist
+  const s54CurStockists = await dbModule.getTable('stockists');
+  const s54TargetShop = s54CurStockists.find(s => s.user_id === s54OrderUserId);
+  assert(s54TargetShop, 'Stockist shop found for order user');
+  await dbModule.insertRow('orders', {
+    id: 'ord-s54-test-1',
+    stockist_id: s54TargetShop.id,
+    customer_id: 'u-cust1',
+    total_amount: 150,
+    status: 'COMPLETED'
+  });
+
+  // Blacklist this stockist
+  loginAs('u-admin', 'ADMIN');
+  const s54BlOrderRes = await post(`http://localhost:3001/api/admin/users/${s54OrderUserId}/blacklist`, {
+    reason: 'Policy violation with active orders'
+  });
+  assert(s54BlOrderRes.status === 200, 'Admin blacklists stockist with order');
+
+  // References check: reports 1 order reference, audit rows not counted
+  const s54OrderRefsRes = await get(`http://localhost:3001/api/admin/users/${s54OrderUserId}/references`);
+  assert(s54OrderRefsRes.status === 200 && s54OrderRefsRes.body.reference_count === 1 && s54OrderRefsRes.body.references_by_table?.orders === 1, 'References check reports 1 order reference');
+
+  // Admin removes the account -> action RELEASED
+  const s54OrderDelRes = await del(`http://localhost:3001/api/admin/users/${s54OrderUserId}/account`);
+  assert(s54OrderDelRes.status === 200 && s54OrderDelRes.body.action === 'RELEASED', 'Account with real order is RELEASED (not deleted)');
+
+  // Verify identity is freed on user and stockist
+  const s54UsersAfterRel = await dbModule.getTable('users');
+  const s54RelUser = s54UsersAfterRel.find(u => u.id === s54OrderUserId);
+  assert(s54RelUser && s54RelUser.kyc_status === 'RELEASED', 'User kyc_status is RELEASED');
+  assert(s54RelUser.phone === null && s54RelUser.email === null, 'User phone and email are set to null');
+  assert(s54RelUser.released_phone === s54OrderPhone && s54RelUser.released_email === s54OrderEmail, 'User phone and email moved to released_phone and released_email');
+  assert(s54RelUser.released_at, 'User has released_at timestamp');
+
+  const s54StockistsAfterRel = await dbModule.getTable('stockists');
+  const s54RelShop = s54StockistsAfterRel.find(s => s.user_id === s54OrderUserId);
+  assert(s54RelShop && s54RelShop.is_active === false, 'Stockist shop is_active is false');
+  assert(s54RelShop.phone === null && s54RelShop.contact_phone === null, 'Stockist shop phone and contact_phone are null');
+  assert(s54RelShop.released_phone === s54OrderPhone, 'Stockist shop released_phone preserves phone');
+
+  // (a) send-otp for released phone returns no-account response (404)
+  clearLogin();
+  const s54RelSendOtpRes = await post('http://localhost:3001/api/stockist/auth/send-otp', {
+    phone: s54OrderPhone
+  });
+  assert(s54RelSendOtpRes.status === 404 && s54RelSendOtpRes.body.error === 'No account found', 'send-otp for released phone returns 404 No account found');
+
+  // (b) Register again with the same phone and email AND same ID succeeds with kyc_status PENDING
+  const s54ReRegOrderRes = await post('http://localhost:3001/api/auth/register-stockist', {
+    name: 'Order Stockist Two Reborn',
+    phone: s54OrderPhone,
+    email: s54OrderEmail,
+    shop_name: 'Order Shop Two Reborn',
+    address: 'Shop 2 Reborn Address, Town',
+    region_id: 'r1',
+    id_type: 'Aadhaar',
+    id_number: s54OrderIdNum
+  }, {
+    asMultipart: true,
+    fileObj: { fieldName: 'documentPhoto', filename: 'doc2_re.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock photo') }
+  });
+  assert(s54ReRegOrderRes.status === 200 && s54ReRegOrderRes.body.user?.kyc_status === 'PENDING', 'Re-registering released phone and email succeeds with PENDING');
+  const s54NewOrderUserId = s54ReRegOrderRes.body.user.id;
+
+  // (c) The new user is in GET /api/admin/kyc-queue with the duplicate-ID flag
+  loginAs('u-admin', 'ADMIN');
+  const s54KycQueueRes = await get('http://localhost:3001/api/admin/kyc-queue');
+  assert(s54KycQueueRes.status === 200 && Array.isArray(s54KycQueueRes.body), 'GET /api/admin/kyc-queue returns 200 array');
+  const s54NewUserInQueue = s54KycQueueRes.body.find(u => u.id === s54NewOrderUserId);
+  assert(s54NewUserInQueue !== undefined, 'New user is present in KYC queue');
+  const s54DupIdFlag = s54NewUserInQueue.flags?.find(f => f.flag_type === 'DUPLICATE_ID');
+  assert(s54DupIdFlag !== undefined, 'New user in KYC queue has DUPLICATE_ID flag for matching RELEASED record');
+
+  // (d) admin_audit_log retains RELEASE_ACCOUNT row
+  const s54AuditAfterRelRes = await get('http://localhost:3001/api/admin/audit-log');
+  const s54HasRelAudit = (s54AuditAfterRelRes.body || []).some(a => a.action === 'RELEASE_ACCOUNT' && a.entity_id === s54OrderUserId);
+  assert(s54HasRelAudit, 'admin_audit_log retains RELEASE_ACCOUNT entry for released user');
+
+  // Test 3: Active BLACKLISTED user blocks re-registration with same ID number
+  clearLogin();
+  const s54BlActivePhone = '9733000003';
+  const s54BlActiveIdNum = '456789012340';
+  const s54RegBlRes = await post('http://localhost:3001/api/auth/register-stockist', {
+    name: 'Active Blacklist Stockist',
+    phone: s54BlActivePhone,
+    email: 'stk_bl_active@test.com',
+    shop_name: 'Active Blacklist Shop',
+    address: 'Shop 3 Address, Town',
+    region_id: 'r1',
+    id_type: 'Aadhaar',
+    id_number: s54BlActiveIdNum
+  }, {
+    asMultipart: true,
+    fileObj: { fieldName: 'documentPhoto', filename: 'doc3.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock photo') }
+  });
+  assert(s54RegBlRes.status === 200, 'Stockist 9733000003 registers successfully');
+  const s54BlUserId = s54RegBlRes.body.user.id;
+
+  loginAs('u-admin', 'ADMIN');
+  await post(`http://localhost:3001/api/admin/users/${s54BlUserId}/blacklist`, {
+    reason: 'Fraudulent activity'
+  });
+
+  // Re-registration with same ID number of ACTIVE blacklisted user is blocked
+  clearLogin();
+  const s54BlBlockedRes = await post('http://localhost:3001/api/auth/register-stockist', {
+    name: 'Different Person Same ID',
+    phone: '9733000004',
+    email: 'diff_person@test.com',
+    shop_name: 'Different Shop',
+    address: 'Shop 4 Address, Town',
+    region_id: 'r1',
+    id_type: 'Aadhaar',
+    id_number: s54BlActiveIdNum
+  }, {
+    asMultipart: true,
+    fileObj: { fieldName: 'documentPhoto', filename: 'doc4.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock photo') }
+  });
+  assert(s54BlBlockedRes.status === 403, 'Registration with ID matching active BLACKLISTED user is blocked with 403');
+
+  // Test 4: Startup repair logic
+  const s54LegacyUserId = 'u-legacy-released-1';
+  await dbModule.insertRow('users', {
+    id: s54LegacyUserId,
+    name: 'Legacy Released User',
+    phone: '9733000088',
+    email: 'legacy_rel@test.com',
+    role: 'STOCKIST',
+    kyc_status: 'RELEASED'
+  });
+  await dbModule.insertRow('stockists', {
+    id: 's-legacy-rel-1',
+    user_id: s54LegacyUserId,
+    name: 'Legacy Released Shop',
+    phone: '9733000088',
+    contact_phone: '9733000088',
+    is_active: true
+  });
+
+  if (typeof dbModule.repairReleasedUsers === 'function') {
+    const repairedCount = await dbModule.repairReleasedUsers(dbModule);
+    assert(repairedCount >= 1, 'repairReleasedUsers repaired at least 1 user');
+  }
+  const s54RepairedUser = (await dbModule.getTable('users')).find(u => u.id === s54LegacyUserId);
+  assert(s54RepairedUser && s54RepairedUser.phone === null && s54RepairedUser.released_phone === '9733000088', 'Startup repair set phone to null and populated released_phone');
+
+  // Test 5: Admin UI toast check
+  const s54AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  assert(s54AppJsx.includes("Account removed. This number can register again.") && s54AppJsx.includes("অ্যাকাউন্ট সরানো হয়েছে। এই নম্বরটি আবার নিবন্ধন করতে পারে।"), 'Admin UI contains translated Account removed toast');
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);

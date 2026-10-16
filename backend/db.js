@@ -46,6 +46,9 @@ function normalizeRow(row) {
   if (res.stock_qty !== undefined && (res.stock_quantity === undefined || res.stock_quantity === null)) {
     res.stock_quantity = parseInt(res.stock_qty, 10) || 0;
   }
+  if (res.contact_phone !== undefined && res.phone === undefined) {
+    res.phone = res.contact_phone;
+  }
   for (const key of Object.keys(res)) {
     if (typeof res[key] === 'string') {
       // Parse JSONB strings if needed
@@ -277,6 +280,65 @@ async function repairStockistVendors(dbInterface) {
   }
 }
 
+async function repairReleasedUsers(dbInterface) {
+  try {
+    const users = await dbInterface.getTable('users');
+    const stockists = await dbInterface.getTable('stockists');
+    let repairedCount = 0;
+    let usersModified = false;
+    let stockistsModified = false;
+
+    for (const u of users) {
+      if (u.kyc_status === 'RELEASED' && (u.phone || u.email)) {
+        if (u.phone) {
+          u.released_phone = u.phone;
+          u.phone = null;
+        }
+        if (u.email) {
+          u.released_email = u.email;
+          u.email = null;
+        }
+        if (!u.released_at) {
+          u.released_at = new Date().toISOString();
+        }
+        usersModified = true;
+        repairedCount++;
+
+        const s = stockists.find(st => st.user_id === u.id);
+        if (s) {
+          s.is_active = false;
+          const stPhone = s.phone || s.contact_phone;
+          if (stPhone) {
+            s.released_phone = stPhone;
+          }
+          s.phone = null;
+          s.contact_phone = null;
+          stockistsModified = true;
+        }
+      }
+    }
+
+    if (usersModified) {
+      if (dbInterface && typeof dbInterface.saveTable === 'function') {
+        await dbInterface.saveTable('users', users);
+      } else {
+        await saveTable('users', users);
+      }
+    }
+    if (stockistsModified) {
+      if (dbInterface && typeof dbInterface.saveTable === 'function') {
+        await dbInterface.saveTable('stockists', stockists);
+      } else {
+        await saveTable('stockists', stockists);
+      }
+    }
+    console.log(`[Data repair] Repaired ${repairedCount} released user(s) to free phone and email.`);
+    return repairedCount;
+  } catch (e) {
+    console.error('[Data repair] Error repairing released users:', e);
+  }
+}
+
 let initPromise = null;
 
 async function init() {
@@ -355,6 +417,7 @@ async function init() {
     await normalizeClosingTimes(dbInterface);
     await repairProductRegions(dbInterface);
     await repairStockistVendors(dbInterface);
+    await repairReleasedUsers(dbInterface);
   })();
   return initPromise;
 }
@@ -386,6 +449,7 @@ async function resetForTest() {
     await normalizeClosingTimes(dbInterface);
     await repairProductRegions(dbInterface);
     await repairStockistVendors(dbInterface);
+    await repairReleasedUsers(dbInterface);
   }
 }
 
@@ -649,5 +713,6 @@ module.exports = {
   transaction,
   getAll,
   repairProductRegions,
-  repairStockistVendors
+  repairStockistVendors,
+  repairReleasedUsers
 };
