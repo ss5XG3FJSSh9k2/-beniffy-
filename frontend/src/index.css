@@ -409,8 +409,9 @@ h1, h2, h3, h4, h5, h6 {
   .cs-role { opacity: 1; clip-path: none; animation: none; }
   .cs-dropx, .cs-splat { display: none; }
 }
-/* Shop Settings Unsaved Changes Bar */
-.settings-unsaved-bar {
+/* Shop / Profile Settings Unsaved Changes Bar */
+.settings-unsaved-bar,
+.unsaved-changes-bar {
   position: absolute;
   left: 0;
   right: 0;
@@ -437,7 +438,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .settings-unsaved-bar {
+  .settings-unsaved-bar,
+  .unsaved-changes-bar {
     animation: none;
     transform: none;
   }

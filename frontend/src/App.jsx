@@ -518,6 +518,158 @@ const ToastView = ({ toast, onDismiss, onPointerEnter, onPointerLeave, toastPaus
   );
 };
 
+const UnsavedChangesBar = ({ isDirty, saving, onSave, onDiscard, t }) => {
+  if (!isDirty) return null;
+  return (
+    <div
+      className="settings-unsaved-bar unsaved-changes-bar"
+      role="region"
+      aria-label={t('Unsaved changes bar', 'बिना सहेजे बदलाव बार', 'অসংরক্ষিত পরিবর্তন বার')}
+    >
+      <div className="settings-unsaved-bar-text">
+        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>
+          {t('Unsaved changes', 'बदलाव सहेजे नहीं गए', 'পরিবর্তন সংরক্ষিত হয়নি')}
+        </span>
+      </div>
+      <div className="settings-unsaved-bar-actions">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', minHeight: '32px' }}
+          onClick={onDiscard}
+        >
+          {t('Discard', 'खारिज करें', 'বাতিল করুন')}
+        </button>
+        <button
+          type="button"
+          className="btn btn-accent"
+          disabled={saving}
+          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', minHeight: '32px' }}
+          onClick={onSave}
+        >
+          {saving ? t('Saving...', 'सहेजा जा रहा है...', 'সংরক্ষণ করা হচ্ছে...') : t('Save', 'सहेजें', 'সংরক্ষণ করুন')}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const LeaveGuardModal = ({ show, onAction, saving, t }) => {
+  if (!show) return null;
+  return (
+    <ModalLayer>
+      <div className="modal-overlay" onClick={() => onAction('stay')}>
+        <div
+          className="modal-content"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="leave-guard-title"
+          style={{
+            width: '90%',
+            maxWidth: '340px',
+            padding: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.85rem',
+            background: 'var(--bg-surface-elevated)',
+            color: 'var(--text-main)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '12px'
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <h3 id="leave-guard-title" style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-main)', fontWeight: 600 }}>
+            {t('Save your changes?', 'क्या आप अपने बदलाव सहेजना चाहते हैं?', 'আপনি কি আপনার পরিবর্তন সংরক্ষণ করতে চান?')}
+          </h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+            {t(
+              'You have unsaved changes. Do you want to save them before leaving?',
+              'आपके पास बिना सहेजे गए बदलाव हैं। क्या आप छोड़ने से पहले उन्हें सहेजना चाहते हैं?',
+              'আপনার সংরক্ষিত না হওয়া পরিবর্তন রয়েছে। আপনি কি প্রস্থান করার আগে সেগুলি সংরক্ষণ করতে চান?'
+            )}
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}
+              onClick={() => onAction('stay')}
+            >
+              {t('Stay', 'यहीं रहें', 'এখানে থাকুন')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', color: 'var(--danger-text)' }}
+              onClick={() => onAction('discard')}
+            >
+              {t('Discard', 'खारिज करें', 'বাতিল করুন')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-accent"
+              disabled={saving}
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}
+              onClick={() => onAction('save')}
+            >
+              {saving ? t('Saving...', 'सहेजा जा रहा है...', 'সংরক্ষণ করা হচ্ছে...') : t('Save', 'सहेजें', 'সংরক্ষণ করুন')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalLayer>
+  );
+};
+
+const useLeaveGuard = (isDirty, onSave, onDiscard) => {
+  const [showModal, setShowModal] = useState(false);
+  const pendingActionRef = useRef(null);
+  const onSaveRef = useRef(onSave);
+  const onDiscardRef = useRef(onDiscard);
+  onSaveRef.current = onSave;
+  onDiscardRef.current = onDiscard;
+
+  const confirmLeave = useCallback((action) => {
+    if (isDirty) {
+      pendingActionRef.current = action;
+      setShowModal(true);
+      return false;
+    }
+    if (typeof action === 'function') action();
+    return true;
+  }, [isDirty]);
+
+  const handleAction = useCallback(async (choice) => {
+    if (choice === 'stay') {
+      setShowModal(false);
+      pendingActionRef.current = null;
+    } else if (choice === 'discard') {
+      if (typeof onDiscardRef.current === 'function') {
+        onDiscardRef.current();
+      }
+      setShowModal(false);
+      const action = pendingActionRef.current;
+      pendingActionRef.current = null;
+      if (typeof action === 'function') action();
+    } else if (choice === 'save') {
+      let ok = true;
+      if (typeof onSaveRef.current === 'function') {
+        ok = await onSaveRef.current();
+      }
+      if (ok !== false) {
+        setShowModal(false);
+        const action = pendingActionRef.current;
+        pendingActionRef.current = null;
+        if (typeof action === 'function') action();
+      } else {
+        setShowModal(false);
+      }
+    }
+  }, []);
+
+  return { showModal, confirmLeave, handleAction };
+};
+
 const TimePicker = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState({ hour12: '12', minute: '00', meridiem: 'AM' });
@@ -2177,6 +2329,18 @@ export default function App() {
   const [profileAvailablePartners, setProfileAvailablePartners] = useState({ cable: [], broadband: [] });
   const [customerBindings, setCustomerBindings] = useState(null);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [customerProfileSaved, setCustomerProfileSaved] = useState(null);
+  const isCustomerDirty = useMemo(() => {
+    if (!customerProfileSaved) return false;
+    if (profileName !== (customerProfileSaved.name || '')) return true;
+    if (profileAddress !== (customerProfileSaved.address || '')) return true;
+    if (Boolean(profileNoCable) !== Boolean(customerProfileSaved.noCable)) return true;
+    if (!profileNoCable && (profileCablePartnerId || '') !== (customerProfileSaved.cablePartnerId || '')) return true;
+    if (Boolean(profileHasBroadband) !== Boolean(customerProfileSaved.hasBroadband)) return true;
+    if (Boolean(profileNoBroadband) !== Boolean(customerProfileSaved.noBroadband)) return true;
+    if (profileHasBroadband && !profileNoBroadband && (profileBroadbandPartnerId || '') !== (customerProfileSaved.broadbandPartnerId || '')) return true;
+    return false;
+  }, [customerProfileSaved, profileName, profileAddress, profileNoCable, profileCablePartnerId, profileHasBroadband, profileNoBroadband, profileBroadbandPartnerId]);
   
   // --- Round P4b Partner App State ---
   const [partnerAppTab, setPartnerAppTab] = useState('dashboard');
@@ -2310,6 +2474,20 @@ export default function App() {
   const [pProfCurrentPass, setPProfCurrentPass] = useState('');
   const [pProfNewPass, setPProfNewPass] = useState('');
   const [pProfConfirmNewPass, setPProfConfirmNewPass] = useState('');
+  const [partnerProfileSaved, setPartnerProfileSaved] = useState(null);
+  const [savingPartnerProfile, setSavingPartnerProfile] = useState(false);
+  const isPartnerDirty = useMemo(() => {
+    if (!partnerProfileSaved) return false;
+    if ((pProfDisplayName || '').trim() !== (partnerProfileSaved.displayName || '').trim()) return true;
+    if ((pProfContactPhone || '').trim() !== (partnerProfileSaved.contactPhone || '').trim()) return true;
+    if ((pProfContactEmail || '').trim() !== (partnerProfileSaved.contactEmail || '').trim()) return true;
+    if ((pProfAddress || '').trim() !== (partnerProfileSaved.address || '').trim()) return true;
+    if ((pProfPayoutUpiId || '').trim() !== (partnerProfileSaved.payoutUpiId || '').trim()) return true;
+    if ((pProfPayoutBankAccount || '').trim() !== (partnerProfileSaved.payoutBankAccount || '').trim()) return true;
+    if ((pProfPayoutBankIfsc || '').trim().toUpperCase() !== (partnerProfileSaved.payoutBankIfsc || '').trim().toUpperCase()) return true;
+    if ((pProfPayoutAccountName || '').trim() !== (partnerProfileSaved.payoutAccountName || '').trim()) return true;
+    return false;
+  }, [partnerProfileSaved, pProfDisplayName, pProfContactPhone, pProfContactEmail, pProfAddress, pProfPayoutUpiId, pProfPayoutBankAccount, pProfPayoutBankIfsc, pProfPayoutAccountName]);
 
   // Notifications
   const [partnerNotifList, setPartnerNotifList] = useState([]);
@@ -2721,8 +2899,6 @@ export default function App() {
   const [stockistProfile, setStockistProfile] = useState(null);
   const [settingsDraft, setSettingsDraft] = useState(null);
   const [settingsErrors, setSettingsErrors] = useState({});
-  const [showLeaveGuard, setShowLeaveGuard] = useState(false);
-  const [pendingLeaveAction, setPendingLeaveAction] = useState(null);
 
   const isSettingsDirty = useMemo(() => {
     if (!settingsDraft || !stockistProfile) return false;
@@ -3260,10 +3436,19 @@ export default function App() {
   };
 
   const switchViewToRole = async (targetRole, force = false) => {
-    if (!force && activeRole === 'stockist' && stockistActiveTab === 'settings' && isSettingsDirty && targetRole !== 'stockist') {
-      setPendingLeaveAction({ type: 'role', targetRole });
-      setShowLeaveGuard(true);
-      return;
+    if (!force) {
+      if (activeRole === 'stockist' && stockistActiveTab === 'settings' && isSettingsDirty && targetRole !== 'stockist') {
+        stockistLeaveGuard.confirmLeave(() => switchViewToRole(targetRole, true));
+        return;
+      }
+      if (activeRole === 'partner' && partnerAppTab === 'profile' && isPartnerDirty && targetRole !== 'partner') {
+        partnerLeaveGuard.confirmLeave(() => switchViewToRole(targetRole, true));
+        return;
+      }
+      if (activeRole === 'customer' && customerAppTab === 'profile' && isCustomerDirty && targetRole !== 'customer') {
+        customerLeaveGuard.confirmLeave(() => switchViewToRole(targetRole, true));
+        return;
+      }
     }
     if (activeRole !== targetRole) {
       resetAuthForm();
@@ -4346,8 +4531,11 @@ export default function App() {
 
   const handleLogout = () => {
     if (activeRole === 'stockist' && stockistActiveTab === 'settings' && isSettingsDirty) {
-      setPendingLeaveAction({ type: 'logout' });
-      setShowLeaveGuard(true);
+      stockistLeaveGuard.confirmLeave(() => rawHandleLogout());
+      return;
+    }
+    if (activeRole === 'customer' && customerAppTab === 'profile' && isCustomerDirty) {
+      customerLeaveGuard.confirmLeave(() => rawHandleLogout());
       return;
     }
     rawHandleLogout();
@@ -4436,55 +4624,18 @@ export default function App() {
     }
   };
 
+  const stockistLeaveGuard = useLeaveGuard(isSettingsDirty, handleSaveSettings, handleDiscardSettings);
+
   const handleStockistTabClick = (tab, cb) => {
     if (stockistActiveTab === 'settings' && isSettingsDirty && tab !== 'settings') {
-      setPendingLeaveAction({ type: 'tab', tab, cb });
-      setShowLeaveGuard(true);
+      stockistLeaveGuard.confirmLeave(() => {
+        setStockistActiveTab(tab);
+        if (cb) cb();
+      });
       return;
     }
     setStockistActiveTab(tab);
     if (cb) cb();
-  };
-
-  const handleLeaveGuardAction = async (action) => {
-    if (action === 'stay') {
-      setShowLeaveGuard(false);
-      setPendingLeaveAction(null);
-      return;
-    }
-    if (action === 'discard') {
-      handleDiscardSettings();
-      setShowLeaveGuard(false);
-      const pending = pendingLeaveAction;
-      setPendingLeaveAction(null);
-      if (pending?.type === 'tab') {
-        setStockistActiveTab(pending.tab);
-        if (pending.cb) pending.cb();
-      } else if (pending?.type === 'logout') {
-        rawHandleLogout();
-      } else if (pending?.type === 'role') {
-        switchViewToRole(pending.targetRole, true);
-      }
-      return;
-    }
-    if (action === 'save') {
-      const ok = await handleSaveSettings();
-      if (ok) {
-        setShowLeaveGuard(false);
-        const pending = pendingLeaveAction;
-        setPendingLeaveAction(null);
-        if (pending?.type === 'tab') {
-          setStockistActiveTab(pending.tab);
-          if (pending.cb) pending.cb();
-        } else if (pending?.type === 'logout') {
-          rawHandleLogout();
-        } else if (pending?.type === 'role') {
-          switchViewToRole(pending.targetRole, true);
-        }
-      } else {
-        setShowLeaveGuard(false);
-      }
-    }
   };
 
   // ----------------------------------------------------
@@ -4862,6 +5013,16 @@ export default function App() {
           setProfileBroadbandPartnerId('');
           setProfileNoBroadband(true);
         }
+
+        setCustomerProfileSaved({
+          name: data.user?.name || '',
+          address: data.user?.address || '',
+          cablePartnerId: data.bindings?.cable_partner_id || '',
+          noCable: !data.bindings?.cable_partner_id,
+          hasBroadband: Boolean(data.bindings?.broadband_partner_id),
+          broadbandPartnerId: data.bindings?.broadband_partner_id || '',
+          noBroadband: !data.bindings?.broadband_partner_id
+        });
       }
     } catch (err) {
       console.error('Failed to fetch customer profile data', err);
@@ -4900,9 +5061,12 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'CUSTOMER') {
+      if (customerAppTab === 'profile' && isCustomerDirty) {
+        return;
+      }
       fetchCustomerProfileData();
     }
-  }, [currentUser?.id, customerAppTab]);
+  }, [currentUser?.id, customerAppTab, isCustomerDirty]);
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'CUSTOMER' && (customerAppTab === 'pointshop' || customerAppTab === 'rewards')) {
@@ -4918,7 +5082,7 @@ export default function App() {
   }, [currentUser?.id, customerAppTab]);
 
   const handleSaveProfile = async () => {
-    if (!currentUser || currentUser.role !== 'CUSTOMER') return;
+    if (!currentUser || currentUser.role !== 'CUSTOMER') return false;
     setProfileSaving(true);
     try {
       const pRes = await fetch(`${API_BASE}/customer/${currentUser.id}/profile`, {
@@ -4945,16 +5109,53 @@ export default function App() {
       if (pRes.ok && bRes.ok) {
         showToast(t('Profile updated successfully', 'प्रोफाइल सफलतापूर्वक अपडेट किया गया', 'প্রোফাইল সফলভাবে আপডেট করা হয়েছে'));
         setCurrentUser(prev => ({ ...prev, name: profileName, address: profileAddress }));
+        setCustomerProfileSaved({
+          name: profileName,
+          address: profileAddress,
+          cablePartnerId: cableIdToSave || '',
+          noCable: Boolean(profileNoCable),
+          hasBroadband: Boolean(profileHasBroadband),
+          broadbandPartnerId: broadbandIdToSave || '',
+          noBroadband: Boolean(profileNoBroadband)
+        });
         fetchCustomerProfileData();
+        return true;
       } else {
         const err = pData.error || bData.error || 'Failed to update profile';
         showToast(err, 'error');
+        return false;
       }
     } catch (err) {
       showToast('Profile update error', 'error');
+      return false;
     } finally {
       setProfileSaving(false);
     }
+  };
+
+  const handleDiscardProfile = () => {
+    if (!customerProfileSaved) return;
+    setProfileName(customerProfileSaved.name || '');
+    setProfileAddress(customerProfileSaved.address || '');
+    setProfileCablePartnerId(customerProfileSaved.cablePartnerId || '');
+    setProfileNoCable(Boolean(customerProfileSaved.noCable));
+    setProfileHasBroadband(Boolean(customerProfileSaved.hasBroadband));
+    setProfileBroadbandPartnerId(customerProfileSaved.broadbandPartnerId || '');
+    setProfileNoBroadband(Boolean(customerProfileSaved.noBroadband));
+  };
+
+  const customerLeaveGuard = useLeaveGuard(isCustomerDirty, handleSaveProfile, handleDiscardProfile);
+
+  const handleCustomerTabClick = (tab, cb) => {
+    if (customerAppTab === 'profile' && isCustomerDirty && tab !== 'profile') {
+      customerLeaveGuard.confirmLeave(() => {
+        setCustomerAppTab(tab);
+        if (cb) cb();
+      });
+      return;
+    }
+    setCustomerAppTab(tab);
+    if (cb) cb();
   };
 
   // Sign-up phone check: inline error on the phone field + focus. Used by both register handlers.
@@ -7977,6 +8178,16 @@ export default function App() {
         setPProfPayoutBankIfsc(data.partner.payout_bank_ifsc || '');
         setPProfPayoutAccountName(data.partner.payout_account_name || '');
         setPProfCounts(data.counts || { bound_customers: 0, redemptions_all_time: 0, disputes_open: 0 });
+        setPartnerProfileSaved({
+          displayName: data.partner.display_name || '',
+          contactPhone: data.partner.contact_phone || data.user.phone || '',
+          contactEmail: data.partner.contact_email || '',
+          address: data.partner.address || '',
+          payoutUpiId: data.partner.payout_upi_id || '',
+          payoutBankAccount: data.partner.payout_bank_account || '',
+          payoutBankIfsc: data.partner.payout_bank_ifsc || '',
+          payoutAccountName: data.partner.payout_account_name || ''
+        });
       }
     } catch (err) {
       console.error('Error fetching partner profile:', err);
@@ -8228,13 +8439,21 @@ export default function App() {
     }
   };
 
-  const handlePartnerLogout = () => {
+  const rawHandlePartnerLogout = () => {
     localStorage.removeItem('fastnet_partner_session');
     setPartnerSessionToken('');
     clearSession();
     setPartnerData(null);
     setActiveRole('marketing');
     showToast('Logged out of partner account.', 'info');
+  };
+
+  const handlePartnerLogout = () => {
+    if (partnerAppTab === 'profile' && isPartnerDirty) {
+      partnerLeaveGuard.confirmLeave(() => rawHandlePartnerLogout());
+      return;
+    }
+    rawHandlePartnerLogout();
   };
 
   const handleFulfillRedemption = async () => {
@@ -8568,7 +8787,7 @@ export default function App() {
     const isPhoneChanged = pProfContactPhone !== initialContactPhone;
     if (isPhoneChanged && !confirmPhoneChangeCheck) {
       showToast(t('Please confirm phone number change by checking the checkbox', 'कृपया चेकबॉक्स को चेक करके फ़ोन नंबर बदलने की पुष्टि करें', 'অনুগ্রহ করে চেকবক্সে টিক দিয়ে ফোন নম্বর পরিবর্তনের বিষয়টি নিশ্চিত করুন'), 'warning');
-      return;
+      return false;
     }
 
     const tDisplayName = pProfDisplayName ? pProfDisplayName.trim() : '';
@@ -8580,32 +8799,32 @@ export default function App() {
 
     if (pProfContactPhone && (pProfContactPhone.length !== 10 || !/^[6-9]\d{9}$/.test(pProfContactPhone))) {
       showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
-      return;
+      return false;
     }
 
     if (tDisplayName.length > 100) {
       showToast(t("Display name cannot exceed 100 characters.", "प्रदर्शन नाम 100 वर्णों से अधिक नहीं हो सकता।", "প্রদর্শন নাম 100 অক্ষরের বেশি হতে পারে না।"), 'error');
-      return;
+      return false;
     }
     if (tAddress.length > 300) {
       showToast(t("Address cannot exceed 300 characters.", "पता 300 वर्णों से अधिक नहीं हो सकता।", "ঠিকানা 300 অক্ষরের বেশি হতে পারে না।"), 'error');
-      return;
+      return false;
     }
     if (tUpi && !/^[a-z0-9.\-_]{2,}@[a-z]{2,}$/i.test(tUpi)) {
       showToast(t("Enter a valid UPI ID like name@bank.", "name@bank की तरह एक मान्य UPI ID दर्ज करें।", "name@bank এর মত একটি বৈধ UPI ID লিখুন।"), 'error');
-      return;
+      return false;
     }
     if (tIfsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(tIfsc)) {
       showToast(t("IFSC must be 11 characters, like SBIN0000300.", "IFSC 11 वर्णों का होना चाहिए, जैसे SBIN0000300।", "IFSC অবশ্যই 11 অক্ষরের হতে হবে, যেমন SBIN0000300।"), 'error');
-      return;
+      return false;
     }
     if (tAccount && !/^\d{9,18}$/.test(tAccount)) {
       showToast(t("Bank account number must be 9 to 18 digits.", "बैंक खाता संख्या 9 से 18 अंकों की होनी चाहिए।", "ব্যাঙ্ক অ্যাকাউন্ট নম্বর 9 থেকে 18 অঙ্কের হতে হবে।"), 'error');
-      return;
+      return false;
     }
     if (tName && !/^[A-Za-z\s.-]{2,80}$/.test(tName)) {
       showToast(t("Enter the account holder's name.", "खाताधारक का नाम दर्ज करें।", "অ্যাকাউন্ট হোল্ডারের নাম লিখুন।"), 'error');
-      return;
+      return false;
     }
 
     const payload = {
@@ -8619,6 +8838,7 @@ export default function App() {
       payout_account_name: tName,
       confirm_phone_change: isPhoneChanged ? confirmPhoneChangeCheck : false
     };
+    setSavingPartnerProfile(true);
     try {
       const res = await fetch(`${API_BASE}/partner/me`, {
         method: 'PATCH',
@@ -8644,13 +8864,58 @@ export default function App() {
           setPProfPayoutAccountName(data.partner.payout_account_name || '');
           setInitialContactPhone(data.partner.contact_phone || '');
           setConfirmPhoneChangeCheck(false);
+          setPartnerProfileSaved({
+            displayName: data.partner.display_name || '',
+            contactPhone: data.partner.contact_phone || '',
+            contactEmail: data.partner.contact_email || '',
+            address: data.partner.address || '',
+            payoutUpiId: data.partner.payout_upi_id || '',
+            payoutBankAccount: data.partner.payout_bank_account || '',
+            payoutBankIfsc: data.partner.payout_bank_ifsc || '',
+            payoutAccountName: data.partner.payout_account_name || ''
+          });
         }
+        return true;
       } else {
         showToast(data.error || data.message || t('Something went wrong', 'कुछ गलत हो गया', 'কিছু একটা ভুল হয়েছে'), 'error');
+        return false;
       }
     } catch (err) {
       showToast(t('Network error updating profile', 'प्रोफ़ाइल अपडेट करने में नेटवर्क त्रुटि', 'প্রোফাইল আপডেট করার সময় নেটওয়ার্ক ত্রুটি'), 'error');
+      return false;
+    } finally {
+      setSavingPartnerProfile(false);
     }
+  };
+
+  const handleDiscardPartnerProfile = () => {
+    if (!partnerProfileSaved) return;
+    setPProfDisplayName(partnerProfileSaved.displayName || '');
+    setPProfContactPhone(partnerProfileSaved.contactPhone || '');
+    setPProfContactEmail(partnerProfileSaved.contactEmail || '');
+    setPProfAddress(partnerProfileSaved.address || '');
+    setPProfPayoutUpiId(partnerProfileSaved.payoutUpiId || '');
+    setPProfPayoutBankAccount(partnerProfileSaved.payoutBankAccount || '');
+    setPProfPayoutBankIfsc(partnerProfileSaved.payoutBankIfsc || '');
+    setPProfPayoutAccountName(partnerProfileSaved.payoutAccountName || '');
+    setConfirmPhoneChangeCheck(false);
+  };
+
+  const partnerLeaveGuard = useLeaveGuard(isPartnerDirty, handleSavePartnerProfile, handleDiscardPartnerProfile);
+
+  const handlePartnerTabClick = (tab, cb) => {
+    if (partnerAppTab === 'profile' && isPartnerDirty && tab !== 'profile') {
+      partnerLeaveGuard.confirmLeave(() => {
+        setPartnerAppTab(tab);
+        if (cb) cb();
+      });
+      return;
+    }
+    setPartnerAppTab(tab);
+    if (tab === 'profile' && isPartnerDirty) {
+      return;
+    }
+    if (cb) cb();
   };
 
   const handleChangePartnerPassword = async () => {
@@ -9473,7 +9738,7 @@ export default function App() {
 
               {/* TAB 6: PROFILE */}
               {partnerAppTab === 'profile' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '6rem' }}>
                   <h4 style={{ margin: 0, fontSize: '0.9rem' }}>{t('Partner Profile', 'साझेदार प्रोफ़ाइल', 'পার্টনার প্রোফাইল')}</h4>
 
                   <div style={{ background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.75rem' }}>
@@ -9645,33 +9910,50 @@ export default function App() {
 
             {/* Bottom Nav Bar (6 Tabs) */}
             <div className="phone-footer phone-bottom-nav" style={{ background: 'var(--bg-surface-elevated)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-around', padding: '0.5rem 0' }}>
-              <button className={`phone-nav-btn ${partnerAppTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setPartnerAppTab('dashboard'); fetchPartnerDashboard(); }}>
+              <button className={`phone-nav-btn ${partnerAppTab === 'dashboard' ? 'active' : ''}`} onClick={() => handlePartnerTabClick('dashboard', fetchPartnerDashboard)}>
                 <BarChart2 size={16} />
                 <span style={{ fontSize: '0.65rem' }}>Dashboard</span>
               </button>
-              <button className={`phone-nav-btn ${partnerAppTab === 'queue' ? 'active' : ''}`} onClick={() => { setPartnerAppTab('queue'); fetchPartnerQueue(); }}>
+              <button className={`phone-nav-btn ${partnerAppTab === 'queue' ? 'active' : ''}`} onClick={() => handlePartnerTabClick('queue', fetchPartnerQueue)}>
                 <Clock size={16} />
                 <span style={{ fontSize: '0.65rem' }}>Queue</span>
               </button>
-              <button className={`phone-nav-btn ${partnerAppTab === 'packages' ? 'active' : ''}`} onClick={() => { setPartnerAppTab('packages'); fetchPartnerPackages(); }}>
+              <button className={`phone-nav-btn ${partnerAppTab === 'packages' ? 'active' : ''}`} onClick={() => handlePartnerTabClick('packages', fetchPartnerPackages)}>
                 <Package size={16} />
                 <span style={{ fontSize: '0.65rem' }}>Packages</span>
               </button>
-              <button className={`phone-nav-btn ${partnerAppTab === 'regions' ? 'active' : ''}`} onClick={() => { setPartnerAppTab('regions'); fetchPartnerRegions(); }}>
+              <button className={`phone-nav-btn ${partnerAppTab === 'regions' ? 'active' : ''}`} onClick={() => handlePartnerTabClick('regions', fetchPartnerRegions)}>
                 <MapPin size={16} />
                 <span style={{ fontSize: '0.65rem' }}>Regions</span>
               </button>
-              <button className={`phone-nav-btn ${partnerAppTab === 'feedback' ? 'active' : ''}`} onClick={() => { setPartnerAppTab('feedback'); fetchPartnerFeedback(); }}>
+              <button className={`phone-nav-btn ${partnerAppTab === 'feedback' ? 'active' : ''}`} onClick={() => handlePartnerTabClick('feedback', fetchPartnerFeedback)}>
                 <MessageSquare size={16} />
                 <span style={{ fontSize: '0.65rem' }}>Feedback</span>
               </button>
-              <button className={`phone-nav-btn ${partnerAppTab === 'profile' ? 'active' : ''}`} onClick={() => { setPartnerAppTab('profile'); fetchPartnerProfile(); }}>
+              <button className={`phone-nav-btn ${partnerAppTab === 'profile' ? 'active' : ''}`} onClick={() => handlePartnerTabClick('profile', fetchPartnerProfile)}>
                 <User size={16} />
                 <span style={{ fontSize: '0.65rem' }}>Profile</span>
               </button>
             </div>
 
           </div>
+
+          {/* Unsaved changes bar */}
+          <UnsavedChangesBar
+            isDirty={partnerAppTab === 'profile' && isPartnerDirty}
+            saving={savingPartnerProfile}
+            onSave={handleSavePartnerProfile}
+            onDiscard={handleDiscardPartnerProfile}
+            t={t}
+          />
+
+          {/* Leave Guard Modal */}
+          <LeaveGuardModal
+            show={partnerLeaveGuard.showModal}
+            onAction={partnerLeaveGuard.handleAction}
+            saving={savingPartnerProfile}
+            t={t}
+          />
         </div>
 
         {/* FULFILL MODAL */}
@@ -12060,7 +12342,7 @@ export default function App() {
                   )}
 
                   {customerAppTab === 'profile' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '6rem' }}>
                       <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                         {t('My Profile', 'मेरा प्रोफाइल', 'আমার প্রোফাইল')}
                       </h3>
@@ -12739,30 +13021,47 @@ export default function App() {
                 )}
 
                 <div className="phone-footer">
-                  <button className={`phone-nav-btn ${customerAppTab === 'store' ? 'active' : ''}`} onClick={() => setCustomerAppTab('store')}>
+                  <button className={`phone-nav-btn ${customerAppTab === 'store' ? 'active' : ''}`} onClick={() => handleCustomerTabClick('store')}>
                     <ShoppingBag size={18} />
                     {t('Shop', 'दुकान', 'বাজার')}
                   </button>
-                  <button className={`phone-nav-btn ${customerAppTab === 'ledger' ? 'active' : ''}`} onClick={() => setCustomerAppTab('ledger')}>
+                  <button className={`phone-nav-btn ${customerAppTab === 'ledger' ? 'active' : ''}`} onClick={() => handleCustomerTabClick('ledger')}>
                     <Sparkles size={18} />
                     {t('Points', 'पॉइंट्स', 'পয়েন্ট')}
                   </button>
-                  <button id="nav-pointshop" className={`phone-nav-btn ${customerAppTab === 'pointshop' ? 'active' : ''}`} onClick={() => setCustomerAppTab('pointshop')} style={{ position: 'relative' }}>
+                  <button id="nav-pointshop" className={`phone-nav-btn ${customerAppTab === 'pointshop' ? 'active' : ''}`} onClick={() => handleCustomerTabClick('pointshop')} style={{ position: 'relative' }}>
                     <Gift size={18} />
                     {t('Rewards', 'इनाम', 'রিওয়ার্ডস')}
                     {customerBalance > 0 && <span style={{ position: 'absolute', top: '4px', right: '6px', background: 'var(--accent)', color: 'var(--on-primary)', fontSize: '0.45rem', fontWeight: 'bold', borderRadius: '99px', padding: '1px 4px', lineHeight: 1.2 }}>{Math.floor(customerBalance)}</span>}
                   </button>
-                  <button className={`phone-nav-btn ${customerAppTab === 'orders' ? 'active' : ''}`} onClick={() => setCustomerAppTab('orders')}>
+                  <button className={`phone-nav-btn ${customerAppTab === 'orders' ? 'active' : ''}`} onClick={() => handleCustomerTabClick('orders')}>
                     <ArrowRightLeft size={18} />
                     {t('Orders', 'ऑर्डर', 'অর্ডার')}
                   </button>
-                  <button className={`phone-nav-btn ${customerAppTab === 'profile' ? 'active' : ''}`} onClick={() => setCustomerAppTab('profile')}>
+                  <button className={`phone-nav-btn ${customerAppTab === 'profile' ? 'active' : ''}`} onClick={() => handleCustomerTabClick('profile')}>
                     <User size={18} />
                     {t('My Profile', 'मेरा प्रोफाइल', 'আমার প্রোফাইল')}
                   </button>
                 </div>
               </>
             )}
+
+          {/* Unsaved changes bar */}
+          <UnsavedChangesBar
+            isDirty={customerAppTab === 'profile' && isCustomerDirty}
+            saving={profileSaving}
+            onSave={handleSaveProfile}
+            onDiscard={handleDiscardProfile}
+            t={t}
+          />
+
+          {/* Leave Guard Modal */}
+          <LeaveGuardModal
+            show={customerLeaveGuard.showModal}
+            onAction={customerLeaveGuard.handleAction}
+            saving={profileSaving}
+            t={t}
+          />
 
             {/* Carts Sheet (Zomato-style) */}
             {showCartsSheet && (
@@ -14364,95 +14663,22 @@ export default function App() {
             )}
           </div>
 
-          {/* Unsaved changes bar */}
-          {stockistActiveTab === 'settings' && isSettingsDirty && (
-            <div className="settings-unsaved-bar">
-              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                {t('Unsaved changes', 'बदलाव सहेजे नहीं गए', 'পরিবর্তন সংরক্ষিত হয়নি')}
-              </span>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', minHeight: '32px' }}
-                  onClick={handleDiscardSettings}
-                >
-                  {t('Discard', 'खारिज करें', 'বাতিল করুন')}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-accent"
-                  disabled={savingSettings}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', minHeight: '32px' }}
-                  onClick={() => handleSaveSettings()}
-                >
-                  {savingSettings ? t('Saving...', 'सहेजा जा रहा है...', 'সংরক্ষণ করা হচ্ছে...') : t('Save', 'सहेजें', 'সংরক্ষণ করুন')}
-                </button>
-              </div>
-            </div>
-          )}
+                    {/* Unsaved changes bar */}
+          <UnsavedChangesBar
+            isDirty={stockistActiveTab === 'settings' && isSettingsDirty}
+            saving={savingSettings}
+            onSave={handleSaveSettings}
+            onDiscard={handleDiscardSettings}
+            t={t}
+          />
 
           {/* Leave Guard Modal */}
-          {showLeaveGuard && (
-            <ModalLayer>
-              <div className="modal-overlay" onClick={() => handleLeaveGuardAction('stay')}>
-                <div 
-                  className="modal-content" 
-                  style={{
-                    width: '90%',
-                    maxWidth: '340px',
-                    padding: '1.25rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.85rem',
-                    background: 'var(--bg-surface-elevated)',
-                    color: 'var(--text-main)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '12px'
-                  }}
-                  onClick={e => e.stopPropagation()}
-                >
-                  <h3 style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-main)', fontWeight: 600 }}>
-                    {t('Save your changes?', 'क्या आप अपने बदलाव सहेजना चाहते हैं?', 'আপনি কি আপনার পরিবর্তন সংরক্ষণ করতে চান?')}
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                    {t(
-                      'You have unsaved changes in your shop settings. Do you want to save them before leaving?',
-                      'आपकी दुकान की सेटिंग्स में बिना सहेजे गए बदलाव हैं। क्या आप छोड़ने से पहले उन्हें सहेजना चाहते हैं?',
-                      'আপনার দোকান সেটিংসে সংরক্ষিত না হওয়া পরিবর্তন রয়েছে। আপনি কি প্রস্থান করার আগে সেগুলি সংরক্ষণ করতে চান?'
-                    )}
-                  </p>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}
-                      onClick={() => handleLeaveGuardAction('stay')}
-                    >
-                      {t('Stay', 'यहीं रहें', 'এখানে থাকুন')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', color: 'var(--danger-text)' }}
-                      onClick={() => handleLeaveGuardAction('discard')}
-                    >
-                      {t('Discard', 'खारिज करें', 'বাতিল করুন')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-accent"
-                      disabled={savingSettings}
-                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}
-                      onClick={() => handleLeaveGuardAction('save')}
-                    >
-                      {savingSettings ? t('Saving...', 'सहेजा जा रहा है...', 'সংরক্ষণ করা হচ্ছে...') : t('Save', 'सहेजें', 'সংরক্ষণ করুন')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </ModalLayer>
-          )}
+          <LeaveGuardModal
+            show={stockistLeaveGuard.showModal}
+            onAction={stockistLeaveGuard.handleAction}
+            saving={savingSettings}
+            t={t}
+          />
         </div>
       </div>
     );
