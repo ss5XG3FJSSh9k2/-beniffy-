@@ -7430,8 +7430,6 @@ export default function App() {
               {t('Register Local Shop (KYC Required)', 'स्थानीय दुकान पंजीकरण (KYC आवश्यक)', 'স্থানীয় দোকান নিবন্ধন (KYC প্রয়োজন)')}{signupIdentifierValue ? `: ${signupIdentifierValue}` : ''}
             </div>
             {signupIdentifierType === 'email' ? renderSignupEmailField() : renderSignupPhoneField()}
-            {isCustomerApp && renderCustomerSignupBtn()}
-            {isStockistApp && renderStockistSignupBtn()}
             <div className="input-group">
               <label className="input-label">{t('Owner Name', 'मालिक का नाम', 'মালিকের নাম')}</label>
               <input id="signup-name-input" type="text" placeholder="e.g. Rafiq Ahmed" className="text-input" style={missingBorder('name')} value={regName} onChange={e => setRegName(e.target.value)} />

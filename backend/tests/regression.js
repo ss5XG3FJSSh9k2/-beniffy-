@@ -6708,6 +6708,15 @@ async function main() {
   const s52StkHead = s51Stk.indexOf('flagMissingSignupFields');
   assert(s52StkHead > 0 && s52StkHead < s51Stk.indexOf('Aadhaar must be exactly 12 digits') && s52StkHead < s51Stk.indexOf('validateKycId(') && s51Stk.indexOf('validateKycId(') < s51Stk.indexOf('setSignupSubmitting(true)'), 'Stockist format checks run only after every field is filled, before sending');
 
+  // --- Section 53: Remove stray Open a Shop button inside shop sign-up form ---
+  console.log('\n--- Section 53: Remove stray Open a Shop button inside shop sign-up form ---');
+  const s53StockistForm = (s50App.match(/\/\* Stockist Sign Up Flow \*\/[\s\S]*?id="signup-stockist-submit-btn"[\s\S]*?<\/button>\s*<\/div>\s*<\/>/) || [''])[0];
+  const s53CustomerForm = (s50App.match(/\/\* Customer Sign Up Flow \*\/[\s\S]*?id="signup-customer-submit-btn"[\s\S]*?<\/button>\s*<\/div>\s*<\/div>\s*<\/>/) || [''])[0];
+  assert(s53StockistForm && !s53StockistForm.includes('renderStockistSignupBtn') && !s53StockistForm.includes('renderCustomerSignupBtn'), 'Stockist sign-up form contains no stray signup buttons');
+  assert(s53CustomerForm && !s53CustomerForm.includes('renderStockistSignupBtn') && !s53CustomerForm.includes('renderCustomerSignupBtn'), 'Customer sign-up form contains no stray signup buttons');
+  assert((s50App.match(/renderStockistSignupBtn\(\)/g) || []).length === 2, 'renderStockistSignupBtn is invoked exactly twice (login screen and OTP screen)');
+  assert((s50App.match(/renderCustomerSignupBtn\(\)/g) || []).length === 2, 'renderCustomerSignupBtn is invoked exactly twice (login screen and OTP screen)');
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
