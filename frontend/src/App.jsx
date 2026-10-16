@@ -1365,6 +1365,9 @@ export default function App() {
     setLoginOtp('');
     setRegName('');
     setRegEmail('');
+    setRegPhone('');
+    setRegPhoneError('');
+    setSignupIdentifierType('phone');
     setRegAddress('');
     setRegRegion(regions.length > 0 ? regions[0].id : '');
     setRegShopName('');
@@ -2941,6 +2944,9 @@ export default function App() {
   const [otpSent, setOtpSent] = useState(false);
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regPhoneError, setRegPhoneError] = useState('');
+  const [signupIdentifierType, setSignupIdentifierType] = useState('phone'); // which login identifier opened sign-up: 'phone' | 'email'
   const [regRegion, setRegRegion] = useState('');
   const [customerTermsAgreed, setCustomerTermsAgreed] = useState(false);
   const [regKycType, setRegKycType] = useState('Aadhaar');
@@ -4020,18 +4026,22 @@ export default function App() {
     }
   };
 
-  // Login value -> sign-up fields: an email goes to the Email field (phone left empty);
-  // a valid 10-digit phone prefills the phone field; anything else leaves phone empty.
+  // Login value -> sign-up fields, read once: an email goes to regEmail (shown first, phone asked below);
+  // a valid 10-digit phone goes to regPhone (shown first, email asked below). An email never reaches regPhone.
   const openSignupFromLogin = (role) => {
     setOtpSent(false);
     setLoginOtp('');
+    setRegPhoneError('');
     const raw = (loginPhone || '').trim();
-    const norm = normalizeFrontendPhone(raw);
     if (raw.includes('@')) {
+      setSignupIdentifierType('email');
       setRegEmail(raw.toLowerCase());
-      setLoginPhone('');
+      setRegPhone('');
     } else {
-      setLoginPhone(/^\d{10}$/.test(norm) ? norm : '');
+      const norm = normalizeFrontendPhone(raw);
+      setSignupIdentifierType('phone');
+      setRegPhone(/^\d{10}$/.test(norm) ? norm : '');
+      setRegEmail('');
     }
     setShowCustomerSignup(role === 'customer');
     setShowStockistSignup(role === 'stockist');
@@ -4710,13 +4720,18 @@ export default function App() {
     }
   };
 
+  // Sign-up phone check: inline error on the phone field + focus. Used by both register handlers.
+  const validateSignupPhone = () => {
+    if (/^[6-9]\d{9}$/.test(regPhone)) return true;
+    setRegPhoneError(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'));
+    document.getElementById('signup-phone-input')?.focus();
+    return false;
+  };
+
   // Customer registration
   const handleCustomerRegister = async () => {
-    if (!regName || !loginPhone || !regEmail) { showToast('Name, phone and email required', 'error'); return; }
-    if (!loginPhone || loginPhone.length !== 10 || !/^[6-9]\d{9}$/.test(loginPhone)) {
-      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
-      return;
-    }
+    if (!validateSignupPhone()) return;
+    if (!regName || !regEmail) { showToast(t('Name and email are required', 'नाम और ईमेल आवश्यक हैं', 'নাম ও ইমেল আবশ্যক'), 'error'); return; }
     if (!noCableProvider && !signupCablePartnerId) {
       showToast('Please select your cable operator or choose Not Listed', 'error');
       return;
@@ -4731,7 +4746,7 @@ export default function App() {
     }
 
     try {
-      const payload = { phone: loginPhone, email: regEmail, name: regName, regionId: regRegion, address: regAddress, termsAgreed: customerTermsAgreed };
+      const payload = { phone: regPhone, email: regEmail, name: regName, regionId: regRegion, address: regAddress, termsAgreed: customerTermsAgreed };
       if (signupCablePartnerId && !noCableProvider) {
         payload.cable_partner_id = signupCablePartnerId;
       }
@@ -4836,12 +4851,9 @@ export default function App() {
   };
 
   const handleStockistRegister = async () => {
-    if (!regName || !loginPhone || !regEmail || !regShopName || !regAddress || !regRegion) {
-      showToast('All fields required (including email)', 'error'); return;
-    }
-    if (!loginPhone || loginPhone.length !== 10 || !/^[6-9]\d{9}$/.test(loginPhone)) {
-      showToast(t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন'), 'error');
-      return;
+    if (!validateSignupPhone()) return;
+    if (!regName || !regEmail || !regShopName || !regAddress || !regRegion) {
+      showToast(t('All fields required (including email)', 'सभी फ़ील्ड आवश्यक हैं (ईमेल सहित)', 'সব ঘর পূরণ করা আবশ্যক (ইমেল সহ)'), 'error'); return;
     }
     const isAadhaar = String(regKycType2 || '').toUpperCase().includes('AADHAAR') || String(regKycType2 || '').toUpperCase().includes('AADHAR');
     if (isAadhaar) {
@@ -4862,7 +4874,7 @@ export default function App() {
     }
     try {
       const formData = new FormData();
-      formData.append('phone', loginPhone);
+      formData.append('phone', regPhone);
       formData.append('email', regEmail);
       formData.append('name', regName);
       formData.append('shopName', regShopName);
@@ -4874,7 +4886,7 @@ export default function App() {
 
       const res = await fetch(`${API_BASE}/auth/register-stockist`, { method: 'POST', body: formData });
       const data = await res.json().catch(() => ({}));
-      logApi('POST', '/auth/register-stockist', { phone: loginPhone, email: regEmail, name: regName, shopName: regShopName }, res.status, data);
+      logApi('POST', '/auth/register-stockist', { phone: regPhone, email: regEmail, name: regName, shopName: regShopName }, res.status, data);
       if (res.ok) {
         setStockistPendingUser(data.user);
         showToast(t('Registration submitted! Awaiting admin approval.', 'पंजीकरण सबमिट!', 'নিবন্ধন জমা হয়েছে!'), 'warning', null, { keepOnScreenChange: true });
@@ -7030,6 +7042,30 @@ export default function App() {
       </button>
     );
 
+    // Sign-up identifier fields (customer + stockist). The login identifier's field renders first, the other below the name.
+    const signupIdentifierValue = signupIdentifierType === 'email' ? regEmail : (/^\d{10}$/.test(regPhone) ? regPhone : '');
+    const renderSignupPhoneField = () => (
+      <div className="input-group">
+        <label className="input-label" htmlFor="signup-phone-input">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'ফোন নম্বর (১০ সংখ্যা)')}</label>
+        <PhoneInput
+          id="signup-phone-input"
+          className={regPhoneError ? 'input-error' : ''}
+          placeholder="e.g. 9876543210"
+          required
+          aria-invalid={regPhoneError ? 'true' : undefined}
+          value={regPhone}
+          onChange={e => { setRegPhone(e.target.value); setRegPhoneError(''); }}
+        />
+        <FieldError error={regPhoneError} />
+      </div>
+    );
+    const renderSignupEmailField = () => (
+      <div className="input-group">
+        <label className="input-label" htmlFor="signup-email-input">{t('Email Address', 'ईमेल पता', 'ইমেল ঠিকানা')}</label>
+        <input id="signup-email-input" type="email" required placeholder="example@beniffy.com" className="text-input" value={regEmail} onChange={e => setRegEmail(e.target.value.trim().toLowerCase())} />
+      </div>
+    );
+
     return (
       <div className="login-content-container" style={{ padding: isAdminApp ? '1.5rem' : '2.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: (isCustomerApp || isStockistApp) ? 0 : '1.25rem', justifyContent: 'flex-start', minHeight: '100%', overflowY: 'auto' }}>
         <div style={{ textAlign: 'center', marginBottom: (isCustomerApp || isStockistApp) ? '28px' : '1rem', paddingTop: isAdminApp ? '1rem' : 0 }}>
@@ -7174,25 +7210,14 @@ export default function App() {
           <>
             <div style={{ background: 'var(--primary-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.75rem', textAlign: 'center' }}>
               <UserPlus size={14} style={{ color: 'var(--primary)', marginRight: '0.35rem', verticalAlign: 'middle' }} />
-              {t('New Customer Registration', 'नया ग्राहक पंजीकरण', 'নতুন ক্রেতা নিবন্ধন')}{/^\d{10}$/.test(loginPhone) ? `: ${loginPhone}` : ''}
+              {t('New Customer Registration', 'नया ग्राहक पंजीकरण', 'নতুন ক্রেতা নিবন্ধন')}{signupIdentifierValue ? `: ${signupIdentifierValue}` : ''}
             </div>
-            <div className="input-group">
-              <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'ফোন নম্বর (১০ সংখ্যা)')}</label>
-              <PhoneInput 
-                className="text-input" 
-                placeholder="e.g. 9876543210" 
-                value={loginPhone} 
-                onChange={e => { setLoginPhone(e.target.value); setLoginErrorMessage(''); }} 
-              />
-            </div>
+            {signupIdentifierType === 'email' ? renderSignupEmailField() : renderSignupPhoneField()}
             <div className="input-group">
               <label className="input-label">{t('Full Name', 'पूरा नाम', 'পুরো নাম')}</label>
               <input type="text" placeholder="e.g. Joy Dev" className="text-input" value={regName} onChange={e => setRegName(e.target.value)} />
             </div>
-            <div className="input-group">
-              <label className="input-label">{t('Email Address', 'ईमेल पता', 'ইমেল ঠিকানা')}</label>
-              <input type="email" placeholder="example@beniffy.com" className="text-input" value={regEmail} onChange={e => setRegEmail(e.target.value.trim().toLowerCase())} />
-            </div>
+            {signupIdentifierType === 'email' ? renderSignupPhoneField() : renderSignupEmailField()}
             <div className="input-group">
               <label className="input-label">{t('Select Region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</label>
               <select className="text-input" value={regRegion} onChange={e => setRegRegion(e.target.value)}>
@@ -7380,27 +7405,16 @@ export default function App() {
           <>
             <div style={{ background: 'var(--warning-glow)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.2)', fontSize: '0.75rem', textAlign: 'center' }}>
               <Store size={14} style={{ color: 'var(--warning-text)', marginRight: '0.35rem', verticalAlign: 'middle' }} />
-              {t('Register Local Shop (KYC Required)', 'स्थानीय दुकान पंजीकरण (KYC आवश्यक)', 'স্থানীয় দোকান নিবন্ধন (KYC প্রয়োজন)')}{/^\d{10}$/.test(loginPhone) ? `: ${loginPhone}` : ''}
+              {t('Register Local Shop (KYC Required)', 'स्थानीय दुकान पंजीकरण (KYC आवश्यक)', 'স্থানীয় দোকান নিবন্ধন (KYC প্রয়োজন)')}{signupIdentifierValue ? `: ${signupIdentifierValue}` : ''}
             </div>
-            <div className="input-group">
-              <label className="input-label">{t('Phone Number (10 digits)', 'फ़ोन नंबर (10 अंक)', 'ফোন নম্বর (১০ সংখ্যা)')}</label>
-              <PhoneInput 
-                className="text-input" 
-                placeholder="e.g. 9876543210" 
-                value={loginPhone} 
-                onChange={e => { setLoginPhone(e.target.value); setLoginErrorMessage(''); }} 
-              />
-            </div>
+            {signupIdentifierType === 'email' ? renderSignupEmailField() : renderSignupPhoneField()}
             {isCustomerApp && renderCustomerSignupBtn()}
             {isStockistApp && renderStockistSignupBtn()}
             <div className="input-group">
               <label className="input-label">{t('Owner Name', 'मालिक का नाम', 'মালিকের নাম')}</label>
               <input type="text" placeholder="e.g. Rafiq Ahmed" className="text-input" value={regName} onChange={e => setRegName(e.target.value)} />
             </div>
-            <div className="input-group">
-              <label className="input-label">{t('Email Address', 'ईमेल पता', 'ইমেল ঠিকানা')}</label>
-              <input type="email" placeholder="example@beniffy.com" className="text-input" value={regEmail} onChange={e => setRegEmail(e.target.value.trim().toLowerCase())} />
-            </div>
+            {signupIdentifierType === 'email' ? renderSignupPhoneField() : renderSignupEmailField()}
             <div className="input-group">
               <label className="input-label">{t('Shop Name', 'दुकान का नाम', 'দোকানের নাম')}</label>
               <input type="text" placeholder="e.g. Ahmed General Store" className="text-input" value={regShopName} onChange={e => setRegShopName(e.target.value)} />

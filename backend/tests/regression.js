@@ -6627,9 +6627,9 @@ async function main() {
   assert(s50Norm('98310000012345') === '9831000001', 'normalizeFrontendPhone: max 10 digits');
   const s50PhoneInput = (s50App.match(/const PhoneInput = [\s\S]*?\n\};/) || [''])[0];
   assert(/normalizeFrontendPhone\(value\)/.test(s50PhoneInput) && s50PhoneInput.includes('value={sanitizedValue}'), 'PhoneInput sanitizes its value prop before rendering');
-  assert(!s50App.includes('{loginPhone ? `: ${loginPhone}` : \'\'}') && (s50App.match(/\{\/\^\\d\{10\}\$\/\.test\(loginPhone\) \? `: \$\{loginPhone\}` : ''\}/g) || []).length === 2, 'Sign-up banners show the phone only when it is exactly 10 digits');
+  assert(!s50App.includes('{loginPhone ? `: ${loginPhone}` : \'\'}') && (s50App.match(/\{signupIdentifierValue \? `: \$\{signupIdentifierValue\}` : ''\}/g) || []).length === 2 && /const signupIdentifierValue = signupIdentifierType === 'email' \? regEmail : \(\/\^\\d\{10\}\$\/\.test\(regPhone\) \? regPhone : ''\);/.test(s50App), 'Sign-up banners show the phone only when it is exactly 10 digits');
   const s50Open = (s50App.match(/const openSignupFromLogin = \(role\) => \{[\s\S]*?\n  \};/) || [''])[0];
-  assert(/raw\.includes\('@'\)[\s\S]*setRegEmail\(raw\.toLowerCase\(\)\);\s*setLoginPhone\(''\)/.test(s50Open), 'Opening sign-up with an email puts it in Email and leaves phone empty');
+  assert(/raw\.includes\('@'\)[\s\S]*setRegEmail\(raw\.toLowerCase\(\)\);\s*setRegPhone\(''\)/.test(s50Open), 'Opening sign-up with an email puts it in Email and leaves phone empty');
   assert((s50App.match(/onClick[=:] ?\{?handleOpen(Customer|Stockist)Signup/g) || []).length === 4, 'All four sign-up entry points use the shared login->sign-up helper');
   assert(!s50App.includes('\u092b\u094b\u0928 \u09a8\u09ae\u09cd\u09ac\u09b0') && (s50App.match(/'\u09ab\u09cb\u09a8 \u09a8\u09ae\u09cd\u09ac\u09b0 \(\u09e7\u09e6 \u09b8\u0982\u0996\u09cd\u09af\u09be\)'/g) || []).length >= 3, 'Bengali phone label is fully Bengali at every sign-up form');
   const s50Deva = /[\u0900-\u0963\u0966-\u097F]/; // Devanagari letters; shared danda U+0964/5 excluded
@@ -6645,6 +6645,36 @@ async function main() {
   });
   if (s50Mixed.length) console.log('  Mixed-script literals:\n  ' + s50Mixed.join('\n  '));
   assert(s50Mixed.length === 0, 'No string literal in App.jsx mixes Bengali and Devanagari letters');
+
+  // --- Section 51: Sign-up puts the login email or phone in its own field; both required ---
+  console.log('\n--- Section 51: Sign-up puts the login email or phone in its own field; both required ---');
+  // Run the real openSignupFromLogin against stub setters.
+  const s51RunOpen = (loginValue) => {
+    const st = {};
+    const set = (k) => (v) => { st[k] = v; };
+    const body = s50Open.replace(/^const openSignupFromLogin = /, 'return ');
+    const fn = new Function('loginPhone', 'normalizeFrontendPhone', 'setOtpSent', 'setLoginOtp', 'setRegPhoneError', 'setSignupIdentifierType', 'setRegEmail', 'setRegPhone', 'setShowCustomerSignup', 'setShowStockistSignup', body)(
+      loginValue, s50Norm, set('otpSent'), set('loginOtp'), set('regPhoneError'), set('type'), set('regEmail'), set('regPhone'), set('customer'), set('stockist'));
+    fn('customer');
+    return st;
+  };
+  const s51Email = s51RunOpen('  Tapas.Kundu@Beniffy.test ');
+  assert(s51Email.type === 'email' && s51Email.regEmail === 'tapas.kundu@beniffy.test' && s51Email.regPhone === '', 'Sign-up from an email login: type=email, regEmail trimmed+lowercased, regPhone empty');
+  const s51Phone = s51RunOpen('+91 98310 00001');
+  assert(s51Phone.type === 'phone' && s51Phone.regPhone === '9831000001' && s51Phone.regEmail === '', 'Sign-up from a phone login: type=phone, regPhone normalized, regEmail empty');
+  const s51Junk = s51RunOpen('abc');
+  assert(s51Junk.type === 'phone' && s51Junk.regPhone === '', 'Sign-up from an invalid login value: phone-first with empty phone');
+  const s51Cust = (s50App.match(/const handleCustomerRegister = async \(\) => \{[\s\S]*?\n  \};/) || [''])[0];
+  const s51Stk = (s50App.match(/const handleStockistRegister = async \(\) => \{[\s\S]*?\n  \};/) || [''])[0];
+  assert(s51Cust && s51Stk && !s51Cust.includes('loginPhone') && !s51Stk.includes('loginPhone'), 'Register handlers never read loginPhone');
+  assert(s51Cust.includes('phone: regPhone, email: regEmail') && s51Stk.includes("formData.append('phone', regPhone)") && s51Stk.includes("formData.append('email', regEmail)"), 'Register handlers send regPhone and regEmail');
+  assert(/^\s*if \(!validateSignupPhone\(\)\) return;/m.test(s51Cust.split('\n')[1]) && /^\s*if \(!validateSignupPhone\(\)\) return;/m.test(s51Stk.split('\n')[1]), 'Both handlers validate the sign-up phone first');
+  const s51Validate = (s50App.match(/const validateSignupPhone = \(\) => \{[\s\S]*?\n  \};/) || [''])[0];
+  assert(s51Validate.includes('/^[6-9]\\d{9}$/.test(regPhone)') && s51Validate.includes('setRegPhoneError(') && s51Validate.includes("document.getElementById('signup-phone-input')?.focus()"), 'Invalid sign-up phone sets the field error and focuses the phone field');
+  assert((s50App.match(/\{signupIdentifierType === 'email' \? renderSignupEmailField\(\) : renderSignupPhoneField\(\)\}/g) || []).length === 2 && (s50App.match(/\{signupIdentifierType === 'email' \? renderSignupPhoneField\(\) : renderSignupEmailField\(\)\}/g) || []).length === 2, 'Customer and stockist forms render the login identifier first and the other in the lower slot');
+  const s51PhoneField = (s50App.match(/const renderSignupPhoneField = \(\) => \([\s\S]*?\n    \);/) || [''])[0];
+  const s51EmailField = (s50App.match(/const renderSignupEmailField = \(\) => \([\s\S]*?\n    \);/) || [''])[0];
+  assert(/\brequired\b/.test(s51PhoneField) && /\brequired\b/.test(s51EmailField) && s51PhoneField.includes('value={regPhone}') && s51EmailField.includes('value={regEmail}') && s51PhoneField.includes('<FieldError error={regPhoneError} />'), 'Both sign-up identifier fields are required and bound to their own state');
 
   clearLogin();
 
