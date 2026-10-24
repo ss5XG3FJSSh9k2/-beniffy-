@@ -2775,7 +2775,20 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const formatClock12 = (d) => {
+    if (!d) return '';
+    const date = d instanceof Date ? d : new Date(d);
+    if (isNaN(date.getTime())) return '';
+    const h = date.getHours();
+    const m = date.getMinutes();
+    const period = h >= 12 ? 'PM' : 'AM';
+    const displayHour = h % 12 === 0 ? 12 : h % 12;
+    const displayMin = String(m).padStart(2, '0');
+    return `${displayHour}:${displayMin} ${period}`;
+  };
+
   const formatHour12 = (h) => {
+    if (h instanceof Date) return formatClock12(h);
     if (typeof h === 'string' && h.includes(':')) {
       h = parseInt(h.split(':')[0], 10);
     } else if (typeof h === 'string') {
@@ -2792,19 +2805,25 @@ export default function App() {
     if (!slotStr) return '';
     const match = slotStr.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/);
     if (match) {
-      const [, dateStr, hStr] = match;
+      const [, dateStr, hStr, mStr] = match;
       const h = parseInt(hStr, 10);
-      const startFmt = formatHour12(h);
-      const endFmt = formatHour12(h + 1);
-      const todayStr = new Date().toISOString().split('T')[0];
-      const isToday = dateStr === todayStr;
-      const prefix = isToday ? 'Today' : dateStr;
-      return `${prefix}, ${startFmt} – ${endFmt}`;
+      const m = parseInt(mStr || '0', 10);
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const slotStart = new Date(year, month - 1, day, h, m, 0);
+      const endSlot = new Date(slotStart.getTime() + 60 * 60 * 1000);
+      const now = new Date();
+      const isToday = slotStart.getDate() === now.getDate() && slotStart.getMonth() === now.getMonth() && slotStart.getFullYear() === now.getFullYear();
+      const tomorrowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const isTomorrow = slotStart.getDate() === tomorrowDate.getDate() && slotStart.getMonth() === tomorrowDate.getMonth() && slotStart.getFullYear() === tomorrowDate.getFullYear();
+      const prefix = isToday ? t('Today', 'आज', 'আজ') : (isTomorrow ? t('Tomorrow', 'कल', 'আগামীকাল') : dateStr);
+      return `${prefix}, ${formatClock12(slotStart)} – ${formatClock12(endSlot)}`;
     }
     return slotStr;
   };
 
   const getAvailableSlots = (stockist, now = new Date()) => {
+    const _t = typeof t === 'function' ? t : ((en) => en);
+    const _clock = typeof formatClock12 === 'function' ? formatClock12 : (d => formatHour12(d));
     if (!stockist) return [];
     if (stockist.manual_closed && !stockist.closed_until) return [];
 
@@ -2858,8 +2877,8 @@ export default function App() {
           const tomorrowDate = new Date(todayDate.getTime() + 24 * 60 * 60 * 1000);
           const isTomorrow = slotStart.getDate() === tomorrowDate.getDate() && slotStart.getMonth() === tomorrowDate.getMonth() && slotStart.getFullYear() === tomorrowDate.getFullYear();
           
-          const prefix = isToday ? 'Today' : (isTomorrow ? 'Tomorrow' : `${year}-${month}-${day}`);
-          const label = `${prefix}, ${formatHour12(slotStart)} – ${formatHour12(endSlot)}`;
+          const prefix = isToday ? _t('Today', 'आज', 'আজ') : (isTomorrow ? _t('Tomorrow', 'कल', 'আগামীকাল') : `${year}-${month}-${day}`);
+          const label = `${prefix}, ${_clock(slotStart)} – ${_clock(endSlot)}`;
           
           slots.push({ value, label, day: isToday ? 'today' : 'tomorrow', time: slotTime });
         }

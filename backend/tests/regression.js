@@ -3355,11 +3355,12 @@ async function main() {
     return body;
   };
 
+  const formatClock12Code = bf4cAppJsx.includes('const formatClock12 =') ? extractFnCode(bf4cAppJsx, 'formatClock12') : '';
   const formatHour12Code = extractFnCode(bf4cAppJsx, 'formatHour12');
   const getAvailableSlotsCode = extractFnCode(bf4cAppJsx, 'getAvailableSlots');
 
   const evalSlotsFn = new Function(
-    `${formatHour12Code}; ${getAvailableSlotsCode}; return getAvailableSlots;`
+    `${formatClock12Code}; ${formatHour12Code}; ${getAvailableSlotsCode}; return getAvailableSlots;`
   )();
 
   const testStockist = { id: 's1', opening_time: '08:00', closing_time: '20:00', prep_eta_minutes: 10 };
@@ -6973,6 +6974,49 @@ async function main() {
   // Test 5: Admin UI toast check
   const s54AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
   assert(s54AppJsx.includes("Account removed. This number can register again.") && s54AppJsx.includes("অ্যাকাউন্ট সরানো হয়েছে। এই নম্বরটি আবার নিবন্ধন করতে পারে।"), 'Admin UI contains translated Account removed toast');
+
+  // --- Section 55: Pickup Slot Labels Show Real Clock Times and Translated Day ---
+  console.log('\n--- Section 55: Pickup Slot Labels Show Real Clock Times and Translated Day ---');
+  const s55AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+
+  // Test #1368: formatClock12 exists in App.jsx and formats Date objects with h:mm AM/PM
+  const formatClock12Fn = new Function(`${extractFnCode(s55AppJsx, 'formatClock12')}; return formatClock12;`)();
+  assert(formatClock12Fn(new Date('2026-10-24T14:00:00')) === '2:00 PM', 'formatClock12 formats 14:00 as 2:00 PM');
+  assert(formatClock12Fn(new Date('2026-10-24T08:30:00')) === '8:30 AM', 'formatClock12 formats 08:30 as 8:30 AM');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: formatClock12 formats Date objects with h:mm AM/PM`);
+
+  // Test #1369: getAvailableSlots for shop open 08:30-20:00 at 13:10 with 10 min prep: first label "Today, 2:00 PM – 3:00 PM", labels all distinct
+  const s55SlotsFn = new Function(`
+    ${extractFnCode(s55AppJsx, 'formatClock12')};
+    ${extractFnCode(s55AppJsx, 'formatHour12')};
+    ${extractFnCode(s55AppJsx, 'getAvailableSlots')};
+    return getAvailableSlots;
+  `)();
+  const s55Stockist = { id: 's1', opening_time: '08:30', closing_time: '20:00', prep_eta_minutes: 10 };
+  const s55Now = new Date('2026-10-24T13:10:00');
+  const s55Slots = s55SlotsFn(s55Stockist, s55Now);
+  assert(s55Slots.length > 0, 'getAvailableSlots returns slots');
+  assert(s55Slots[0].label === 'Today, 2:00 PM – 3:00 PM', `first label is "Today, 2:00 PM – 3:00 PM" (got "${s55Slots[0].label}")`);
+  const s55Labels = s55Slots.map(s => s.label);
+  const s55UniqueLabels = new Set(s55Labels);
+  assert(s55UniqueLabels.size === s55Labels.length, 'All slot labels are distinct');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: getAvailableSlots for 08:30-20:00 at 13:10 returns first label "Today, 2:00 PM – 3:00 PM" with distinct labels`);
+
+  // Test #1370: formatPickupSlotDisplay formats matching ISO slot with real clock times
+  const formatPickupSlotDisplayFn = new Function(`
+    const t = (en, hi, bn) => en;
+    ${extractFnCode(s55AppJsx, 'formatClock12')};
+    ${extractFnCode(s55AppJsx, 'formatHour12')};
+    ${extractFnCode(s55AppJsx, 'formatPickupSlotDisplay')};
+    return formatPickupSlotDisplay;
+  `)();
+  const todayIsoDate = new Date().toISOString().split('T')[0];
+  const formattedSlot = formatPickupSlotDisplayFn(`${todayIsoDate}T14:00`);
+  assert(formattedSlot === 'Today, 2:00 PM – 3:00 PM', `formatPickupSlotDisplay returns "Today, 2:00 PM – 3:00 PM" (got "${formattedSlot}")`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: formatPickupSlotDisplay formats matching ISO slot with real clock times`);
 
   clearLogin();
 
