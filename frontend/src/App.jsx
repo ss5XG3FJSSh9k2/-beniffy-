@@ -1886,19 +1886,20 @@ export default function App() {
     if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
     return next;
   });
+  const [customerAppTab, setCustomerAppTab] = useState('store'); // store, ledger, orders
   const [nowTick, setNowTick] = useState(Date.now());
   useEffect(() => {
     if (activeRole !== 'customer') return;
+    setNowTick(Date.now());
     const hasActiveConfirming = (customerOrders || []).some(o => 
       o.status === 'CONFIRMING' && o.cancel_deadline && new Date(o.cancel_deadline).getTime() > Date.now()
     );
-    if (!hasActiveConfirming) return;
+    const intervalMs = hasActiveConfirming ? 1000 : 60000;
     const timer = setInterval(() => {
       setNowTick(Date.now());
-    }, 1000);
+    }, intervalMs);
     return () => clearInterval(timer);
-  }, [activeRole, customerOrders]);
-  const [customerAppTab, setCustomerAppTab] = useState('store'); // store, ledger, orders
+  }, [activeRole, customerOrders, customerAppTab]);
 
   useEffect(() => {
     if (trackingOrder && customerAppTab === "track") {
@@ -2915,6 +2916,22 @@ export default function App() {
     const period = normalizedHour >= 12 ? 'PM' : 'AM';
     const displayHour = normalizedHour % 12 === 0 ? 12 : normalizedHour % 12;
     return `${displayHour}:00 ${period}`;
+  };
+
+  const isPickupSlotPassed = (slotStr, currentTime = Date.now()) => {
+    if (!slotStr) return false;
+    const match = String(slotStr).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    let slotEndMs;
+    if (match) {
+      const [, yStr, mStr, dStr, hStr, minStr] = match;
+      const slotStart = new Date(Number(yStr), Number(mStr) - 1, Number(dStr), Number(hStr), Number(minStr), 0);
+      slotEndMs = slotStart.getTime() + 60 * 60 * 1000;
+    } else {
+      const parsed = Date.parse(slotStr);
+      if (isNaN(parsed)) return false;
+      slotEndMs = parsed + 60 * 60 * 1000;
+    }
+    return currentTime >= slotEndMs;
   };
 
   const formatPickupSlotDisplay = (slotStr) => {
@@ -11093,7 +11110,17 @@ export default function App() {
                 )}
 
                 {/* Inner Content based on App Tab */}
-                <div style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+                <div style={{
+                  flex: 1,
+                  padding: '1rem',
+                  paddingBottom: activeOrderList.length > 0
+                    ? (activeOrderList.length > 1 && !hasSeenSwipeHint ? '220px' : '160px')
+                    : '5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  overflowY: 'auto'
+                }}>
                   
                   {/* Top Customer info bar */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -12237,14 +12264,32 @@ export default function App() {
                           const isPrepElapsed = prepElapsedOrders.includes(o.id);
                           return (
                             <div key={o.id} className="glass-card" style={{ padding: '0.65rem', fontSize: '0.7rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 <span style={{ fontWeight: 'bold' }}>{t('Order', 'ऑर्डर', 'অর্ডার')} #{o.id.substring(2).toUpperCase()}</span>
-                                 <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                                   <span key={o.status} className={`badge ${o.status === 'DELIVERED' ? 'badge-success' : o.status === 'CANCELLED' ? 'badge-danger' : o.status === 'CONFIRMING' ? 'badge-primary' : 'badge-warning'} status-badge-glow`}>
-                                     {o.status === 'CONFIRMING' ? t('Received (1 min cancel window)', 'प्राप्त (1 मिनट रद्द विंडो)', 'গৃহীত (১ মিনিট বাতিল সুযোগ)') : formatOrderStatusDisplay(o.status, o.fulfillment_type)}
-                                   </span>
-                                   {renderCustomerPaymentBadge(o)}
-                                 </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem', maxWidth: '100%' }}>
+                                  <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                    <span key={o.status} className={`badge ${o.status === 'DELIVERED' ? 'badge-success' : o.status === 'CANCELLED' ? 'badge-danger' : o.status === 'CONFIRMING' ? 'badge-primary' : 'badge-warning'} status-badge-glow`}>
+                                      {o.status === 'CONFIRMING' ? t('Received', 'प्राप्त', 'গৃহীত') : formatOrderStatusDisplay(o.status, o.fulfillment_type)}
+                                    </span>
+                                    {renderCustomerPaymentBadge(o)}
+                                  </div>
+                                  {(() => {
+                                    const isConfirming = o.status === 'CONFIRMING';
+                                    const hasDeadline = !!o.cancel_deadline;
+                                    const deadlineMs = hasDeadline ? new Date(o.cancel_deadline).getTime() : 0;
+                                    const isWithinWindow = isConfirming && hasDeadline && nowTick < deadlineMs;
+                                    if (!isWithinWindow) return null;
+                                    const diffSecs = Math.max(0, Math.floor((deadlineMs - nowTick) / 1000));
+                                    const mins = Math.floor(diffSecs / 60);
+                                    const secs = diffSecs % 60;
+                                    const mmss = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                                    return (
+                                      <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                        {t(`Free cancel: ${mmss} left`, `निःशुल्क रद्द: ${mmss} बचे हैं`, `ফ্রি বাতিল: ${mmss} বাকি`)}
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
                               </div>
                               <div style={{ color: 'var(--text-muted)' }}>{t('Store', 'दुकान', 'দোকান')}: {o.stockist_name}</div>
                               <div style={{ color: 'var(--text-muted)', fontSize: '0.625rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -12334,7 +12379,7 @@ export default function App() {
                               {renderCancelButtonOrClosed(o)}
 
                               {/* §F19: No-show alert for missed pickup */}
-                              {o.status === 'READY' && o.fulfillment_type === 'PICKUP' && (
+                              {o.status === 'READY' && o.fulfillment_type === 'PICKUP' && isPickupSlotPassed(o.pickup_slot, nowTick) && (
                                 <button
                                   className="btn btn-secondary"
                                   style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', background: 'rgba(245,158,11,0.1)', color: 'var(--warning-text)', border: '1px solid var(--warning)' }}
@@ -13101,15 +13146,32 @@ export default function App() {
                 {activeOrderList.length > 0 && (
                   <div style={{ position: 'absolute', left: 0, right: 0, bottom: '60px', zIndex: 'var(--z-float)' }}>
                     {activeOrderList.length > 1 && !hasSeenSwipeHint && (
-                      <div style={{ textAlign: 'center', fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '0.2rem', animation: 'pulse 2s infinite' }}>
-                        {t('Swipe to see your other order', 'अपना दूसरा ऑर्डर देखने के लिए स्वाइप करें', 'আপনার অন্য অর্ডার দেখতে সোয়াইপ করুন')}
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.4rem' }}>
+                        <div style={{
+                          fontSize: '0.65rem',
+                          color: 'var(--text-main)',
+                          background: 'var(--bg-surface)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '16px',
+                          padding: '0.25rem 0.75rem',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          animation: 'pulse 2s infinite'
+                        }}>
+                          {t('Swipe to see your other order', 'अपना दूसरा ऑर्डर देखने के लिए स्वाइप करें', 'আপনার অন্য অর্ডার দেখতে সোয়াইপ করুন')}
+                        </div>
                       </div>
                     )}
                     <div style={{ position: 'relative' }}>
                       {activeOrderList.length > 1 && (
                         <button
                           style={{ position: 'absolute', left: '-5px', top: '50%', transform: 'translateY(-50%)', zIndex: 'var(--z-float)', background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: '0.5rem' }}
-                          onClick={() => stripScrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
+                          onClick={() => {
+                            if (!hasSeenSwipeHint) setHasSeenSwipeHint(true);
+                            stripScrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' });
+                          }}
                         >‹</button>
                       )}
                       <div 
@@ -13121,6 +13183,9 @@ export default function App() {
                         onScroll={(e) => {
                           const idx = Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth);
                           setActiveStripIndex(idx);
+                          if (!hasSeenSwipeHint && Math.abs(e.currentTarget.scrollLeft) > 10) {
+                            setHasSeenSwipeHint(true);
+                          }
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'ArrowRight') {
@@ -13171,7 +13236,10 @@ export default function App() {
                       {activeOrderList.length > 1 && (
                         <button
                           style={{ position: 'absolute', right: '-5px', top: '50%', transform: 'translateY(-50%)', zIndex: 'var(--z-float)', background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: '0.5rem' }}
-                          onClick={() => stripScrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
+                          onClick={() => {
+                            if (!hasSeenSwipeHint) setHasSeenSwipeHint(true);
+                            stripScrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
+                          }}
                         >›</button>
                       )}
                     </div>

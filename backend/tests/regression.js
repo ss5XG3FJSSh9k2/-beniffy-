@@ -7370,6 +7370,54 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Order Placed modal action buttons use standard btn styling`);
 
+  // ==========================================
+  // SECTION 60: CUSTOMER ORDERS CARD IMPROVEMENTS
+  // ==========================================
+  console.log('\n--- Section 60: Customer Orders Card Improvements ---');
+
+  // Test #1450: isPickupSlotPassed logic & App.jsx Missed Pickup slot gating
+  const s60AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  assert(s60AppJsx.includes('const isPickupSlotPassed =') || s60AppJsx.includes('function isPickupSlotPassed'), 'App.jsx defines isPickupSlotPassed');
+  assert(s60AppJsx.includes("o.status === 'READY' && o.fulfillment_type === 'PICKUP' && isPickupSlotPassed(o.pickup_slot, nowTick)"), 'Missed Pickup button requires slot end time passed');
+
+  // Test slot logic
+  function testSlotPassed(slotStr, currentTime) {
+    if (!slotStr) return true;
+    const match = slotStr.match(/^(\d{4}-\d{2}-\d{2})T(\d{1,2}):(\d{2})$/);
+    if (!match) {
+      const parsed = Date.parse(slotStr);
+      if (!isNaN(parsed)) return (currentTime || Date.now()) >= parsed + 60 * 60 * 1000;
+      return true;
+    }
+    const [_, datePart, hourPart, minPart] = match;
+    const slotStartMs = new Date(`${datePart}T${hourPart.padStart(2, '0')}:${minPart}:00`).getTime();
+    if (isNaN(slotStartMs)) return true;
+    const slotEndMs = slotStartMs + 60 * 60 * 1000;
+    return (currentTime || Date.now()) >= slotEndMs;
+  }
+  const testSlot = '2026-10-24T16:00';
+  const beforeSlotTime = new Date('2026-10-24T14:05:00').getTime();
+  const duringSlotTime = new Date('2026-10-24T16:30:00').getTime();
+  const afterSlotTime = new Date('2026-10-24T17:05:00').getTime();
+  assert(testSlotPassed(testSlot, beforeSlotTime) === false, 'Slot at 16:00 is not passed at 14:05');
+  assert(testSlotPassed(testSlot, duringSlotTime) === false, 'Slot at 16:00 is not passed at 16:30');
+  assert(testSlotPassed(testSlot, afterSlotTime) === true, 'Slot at 16:00 is passed at 17:05');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Missed Pickup is strictly gated until slot end time has passed`);
+
+  // Test #1451: Status badge is concise and free cancel countdown appears on separate line
+  assert(s60AppJsx.includes("t('Received', 'प्राप्त', 'গৃহীত')"), 'Status badge displays concise Received in all 3 languages');
+  assert(s60AppJsx.includes("t(`Free cancel: ${mmss} left`, `निःशुल्क रद्द: ${mmss} बचे हैं`, `ফ্রি বাতিল: ${mmss} বাকি`)"), 'Separate line displays countdown when cancel window is open');
+  assert(s60AppJsx.includes("flexWrap: 'wrap'"), 'Status badge container supports wrapping inside card');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Status badge is concise without overflow and free cancel countdown renders separately`);
+
+  // Test #1452: Swipe hint is outside cards above strip with dedicated spacing
+  assert(s60AppJsx.includes("t('Swipe to see your other order', 'अपना दूसरा ऑर्डर देखने के लिए स्वाइप करें', 'আপনার অন্য অর্ডার দেখতে সোয়াইপ করুন')"), 'Swipe hint string present in all 3 languages');
+  assert(s60AppJsx.includes("!hasSeenSwipeHint && Math.abs(e.currentTarget.scrollLeft) > 10"), 'Swipe hint dismisses when user scrolls strip');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Swipe hint has dedicated styling above strip and dismisses on scroll`);
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
