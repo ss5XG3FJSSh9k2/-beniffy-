@@ -404,6 +404,78 @@ async function repairPayAtHandoverOrders(dbInterface) {
   }
 }
 
+async function repairCancelledOrders(dbInterface) {
+  try {
+    const orders = dbInterface && typeof dbInterface.getTable === 'function'
+      ? await dbInterface.getTable('orders')
+      : await getTable('orders');
+    const splitPayouts = dbInterface && typeof dbInterface.getTable === 'function'
+      ? await dbInterface.getTable('split_payouts')
+      : await getTable('split_payouts');
+    const codLedger = dbInterface && typeof dbInterface.getTable === 'function'
+      ? await dbInterface.getTable('cod_commission_ledger')
+      : await getTable('cod_commission_ledger');
+
+    const cancelledOrderIds = new Set(orders.filter(o => o.status === 'CANCELLED').map(o => o.id));
+
+    let cancelledPayoutsCount = 0;
+    for (const sp of splitPayouts) {
+      if (cancelledOrderIds.has(sp.order_id) && sp.status !== 'CANCELLED' && !sp.is_paid) {
+        sp.status = 'CANCELLED';
+        cancelledPayoutsCount++;
+        if (dbInterface && typeof dbInterface.updateRow === 'function') {
+          await dbInterface.updateRow('split_payouts', sp.id, sp);
+        } else {
+          await updateRow('split_payouts', sp.id, sp);
+        }
+      }
+    }
+
+    let removedCodCount = 0;
+    for (const cl of codLedger) {
+      if (cancelledOrderIds.has(cl.order_id)) {
+        removedCodCount++;
+        if (dbInterface && typeof dbInterface.deleteRow === 'function') {
+          await dbInterface.deleteRow('cod_commission_ledger', cl.id);
+        } else {
+          await deleteRow('cod_commission_ledger', cl.id);
+        }
+      }
+    }
+
+    let repairedRefundDueCount = 0;
+    for (const o of orders) {
+      if (o.payment_status === 'REFUND_DUE') {
+        const receivedMoney = Boolean(o.payment_received_method || o.paid_at || o.payment_method === 'ONLINE');
+        if (!receivedMoney) {
+          o.payment_status = 'CANCELLED_UNPAID';
+          o.refund_amount = 0;
+          repairedRefundDueCount++;
+          if (dbInterface && typeof dbInterface.updateRow === 'function') {
+            await dbInterface.updateRow('orders', o.id, o);
+          } else {
+            await updateRow('orders', o.id, o);
+          }
+        }
+      } else if (o.status === 'CANCELLED' && o.payment_status === 'UNPAID') {
+        o.payment_status = 'CANCELLED_UNPAID';
+        o.refund_amount = 0;
+        if (dbInterface && typeof dbInterface.updateRow === 'function') {
+          await dbInterface.updateRow('orders', o.id, o);
+        } else {
+          await updateRow('orders', o.id, o);
+        }
+      }
+    }
+
+    console.log(`[Data repair] Cancelled ${cancelledPayoutsCount} open payout(s) for cancelled orders; converted ${repairedRefundDueCount} unpaid REFUND_DUE order(s) to CANCELLED_UNPAID.`);
+    return { cancelledPayoutsCount, repairedRefundDueCount, removedCodCount };
+  } catch (e) {
+    console.error('[Data repair] Error repairing cancelled orders:', e);
+    return { cancelledPayoutsCount: 0, repairedRefundDueCount: 0, removedCodCount: 0 };
+  }
+}
+
 let initPromise = null;
 
 async function init() {
@@ -484,6 +556,7 @@ async function init() {
     await repairStockistVendors(dbInterface);
     await repairReleasedUsers(dbInterface);
     await repairPayAtHandoverOrders(dbInterface);
+    await repairCancelledOrders(dbInterface);
   })();
   return initPromise;
 }
@@ -517,6 +590,7 @@ async function resetForTest() {
     await repairStockistVendors(dbInterface);
     await repairReleasedUsers(dbInterface);
     await repairPayAtHandoverOrders(dbInterface);
+    await repairCancelledOrders(dbInterface);
   }
 }
 
@@ -782,5 +856,6 @@ module.exports = {
   repairProductRegions,
   repairStockistVendors,
   repairReleasedUsers,
-  repairPayAtHandoverOrders
+  repairPayAtHandoverOrders,
+  repairCancelledOrders
 };

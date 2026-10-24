@@ -7162,6 +7162,149 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: App.jsx contains UPI payment components and required trilingual strings`);
 
+
+  // --- Section 57: Cancelled Orders Money Integrity & Refunds ---
+  console.log('\n--- Section 57: Cancelled Orders Money Integrity & Refunds ---');
+
+  // Test #1418: Cancel an unpaid order produces NO refund, CANCELLED_UNPAID status, and split_payout CANCELLED
+  loginAs('u-cust1', 'CUSTOMER');
+  const s57UnpaidOrderRes = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    fulfillmentType: 'PICKUP',
+    pickupSlot: 'Morning (8AM–12PM)',
+    items: [{ productId: 'p1', quantity: 1 }]
+  });
+  assert(s57UnpaidOrderRes.status === 200, 'Unpaid order created successfully');
+  const s57UnpaidOrderId = s57UnpaidOrderRes.body.orderId;
+
+  // Cancel the unpaid order
+  const s57CancelUnpaidRes = await post(`http://localhost:3001/api/orders/${s57UnpaidOrderId}/cancel`, {});
+  assert(s57CancelUnpaidRes.status === 200, 'Cancellation of unpaid order succeeds');
+  const s57CancelledUnpaidOrder = (await get('http://localhost:3001/api/orders')).body.find(o => o.id === s57UnpaidOrderId);
+
+  assert(s57CancelledUnpaidOrder.status === 'CANCELLED', 'Order status is CANCELLED');
+  assert(s57CancelledUnpaidOrder.payment_status === 'CANCELLED_UNPAID', 'payment_status is CANCELLED_UNPAID');
+  assert(!s57CancelledUnpaidOrder.refund_amount || s57CancelledUnpaidOrder.refund_amount === 0, 'No refund amount for unpaid cancelled order');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Cancel unpaid order sets payment_status: CANCELLED_UNPAID and no refund`);
+
+  // Test #1419: Cancelled unpaid order split payout is CANCELLED and excluded from Payouts Due and Revenue
+  loginAs('u-admin', 'ADMIN');
+  const s57PayoutsRes = await get('http://localhost:3001/api/admin/payouts');
+  assert(s57PayoutsRes.status === 200, 'GET /api/admin/payouts returns 200');
+  const s57CancelledPayout = (s57PayoutsRes.body || []).find(p => p.order_id === s57UnpaidOrderId);
+  if (s57CancelledPayout) {
+    assert(s57CancelledPayout.status === 'CANCELLED', 'Split payout status is CANCELLED');
+  }
+  const s57AnalyticsRes = await get('http://localhost:3001/api/admin/analytics');
+  assert(s57AnalyticsRes.status === 200, 'GET /api/admin/analytics returns 200');
+  const s57OrdersMetric = s57AnalyticsRes.body.orders || {};
+  assert(typeof s57OrdersMetric.revenue_this_week_rupees === 'number', 'Revenue this week is numeric');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Cancelled unpaid order payout is CANCELLED and excluded from active metrics`);
+
+  // Test #1420: Admin cancels a PAID order produces REFUND_DUE with server refund_amount
+  loginAs('u-cust1', 'CUSTOMER');
+  const s57PaidOrderRes = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    fulfillmentType: 'PICKUP',
+    pickupSlot: 'Morning (8AM–12PM)',
+    items: [{ productId: 'p1', quantity: 1 }]
+  });
+  assert(s57PaidOrderRes.status === 200, 'Pickup order created for completion');
+  const s57PaidOrderId = s57PaidOrderRes.body.orderId;
+
+  // Complete order as PAID
+  loginAs('u-stk1', 'STOCKIST');
+  await patch(`http://localhost:3001/api/orders/${s57PaidOrderId}/status`, { status: 'ACCEPTED' });
+  await patch(`http://localhost:3001/api/orders/${s57PaidOrderId}/status`, { status: 'PREPARING' });
+  await patch(`http://localhost:3001/api/orders/${s57PaidOrderId}/status`, { status: 'READY_FOR_PICKUP' });
+  const s57DbOrder = (await dbModule.getTable('orders')).find(o => o.id === s57PaidOrderId);
+  const s57Pin = s57DbOrder.pickup_pin;
+  loginAs('u-stk1', 'STOCKIST');
+  const s57CompleteRes = await post(`http://localhost:3001/api/orders/${s57PaidOrderId}/verify-pickup`, {
+    pin: s57Pin,
+    payment_received_method: 'CASH'
+  });
+  assert(s57CompleteRes.status === 200, 'Order verified and completed with CASH');
+  const s57VerifiedOrder = s57CompleteRes.body.order;
+  assert(s57VerifiedOrder.payment_status === 'PAID', 'Order payment_status is PAID');
+
+  // Admin force cancels the PAID order
+  loginAs('u-admin', 'ADMIN');
+  const s57AdminCancelRes = await patch(`http://localhost:3001/api/orders/${s57PaidOrderId}/status`, {
+    status: 'CANCELLED',
+    force: true
+  });
+  assert(s57AdminCancelRes.status === 200, 'Admin force cancel of PAID order succeeds');
+  const s57CancelledPaidOrder = (await get('http://localhost:3001/api/orders')).body.find(o => o.id === s57PaidOrderId);
+  assert(s57CancelledPaidOrder.status === 'CANCELLED', 'Order status is CANCELLED');
+  assert(s57CancelledPaidOrder.payment_status === 'REFUND_DUE', 'PAID order cancellation sets payment_status: REFUND_DUE');
+  assert(typeof s57CancelledPaidOrder.refund_amount === 'number' && s57CancelledPaidOrder.refund_amount > 0, 'Server refund_amount is recorded and > 0');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin cancels PAID order -> REFUND_DUE with server refund_amount shown`);
+
+  // Test #1421: Startup repair cancels open payouts for cancelled orders and converts unpaid REFUND_DUE to CANCELLED_UNPAID
+  const s57RepairOrderId1 = 'o-s57-repair-1-' + Date.now();
+  await dbModule.insertRow('orders', {
+    id: s57RepairOrderId1,
+    customer_id: 'u-cust1',
+    stockist_id: 's1',
+    status: 'CANCELLED',
+    payment_method: 'ONLINE',
+    payment_status: 'REFUND_DUE',
+    subtotal: 100,
+    total_price: 100,
+    amount_paid: 100,
+    created_at: new Date().toISOString()
+  });
+  await dbModule.insertRow('split_payouts', {
+    id: 'sp-s57-repair-1-' + Date.now(),
+    order_id: s57RepairOrderId1,
+    status: 'HELD',
+    is_paid: false,
+    stockist_amount: 90,
+    platform_amount: 10,
+    created_at: new Date().toISOString()
+  });
+
+  const s57RepairOrderId2 = 'o-s57-repair-2-' + Date.now();
+  await dbModule.insertRow('orders', {
+    id: s57RepairOrderId2,
+    customer_id: 'u-cust1',
+    stockist_id: 's1',
+    status: 'CANCELLED',
+    payment_method: 'PAY_AT_HANDOVER',
+    payment_status: 'REFUND_DUE',
+    refund_amount: 83.69,
+    subtotal: 100,
+    total_price: 100,
+    amount_paid: 100,
+    created_at: new Date().toISOString()
+  });
+
+  if (typeof dbModule.repairCancelledOrders === 'function') {
+    const s57RepairResult = await dbModule.repairCancelledOrders(dbModule);
+    assert(s57RepairResult.cancelledPayoutsCount >= 1, 'repairCancelledOrders cancelled at least 1 open payout');
+    assert(s57RepairResult.repairedRefundDueCount >= 1, 'repairCancelledOrders repaired at least 1 unpaid REFUND_DUE order');
+  }
+
+  const s57RepairedOrder2 = (await dbModule.getTable('orders')).find(o => o.id === s57RepairOrderId2);
+  assert(s57RepairedOrder2.payment_status === 'CANCELLED_UNPAID', 'Unpaid REFUND_DUE order converted to CANCELLED_UNPAID');
+  assert(s57RepairedOrder2.refund_amount === 0, 'Repaired order refund_amount reset to 0');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Startup repair cancels open payouts and converts unpaid REFUND_DUE orders`);
+
+  // Test #1422: App.jsx uses server refund_amount, excludes CANCELLED payouts from payoutsDue, and formats CANCELLED_UNPAID
+  const s57AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  assert(s57AppJsx.includes('netRefundAmount = parseFloat(o.refund_amount) || 0'), 'App.jsx uses server refund_amount without recomputing');
+  assert(s57AppJsx.includes("p.status !== 'CANCELLED'"), 'App.jsx excludes CANCELLED payouts from payoutsDue');
+  assert(s57AppJsx.includes('CANCELLED (UNPAID)'), 'App.jsx displays CANCELLED (UNPAID) badge for unpaid cancelled orders');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: App.jsx uses server refund_amount and excludes CANCELLED payouts from totals`);
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);

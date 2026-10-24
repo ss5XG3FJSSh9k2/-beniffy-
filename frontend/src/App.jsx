@@ -2716,6 +2716,9 @@ export default function App() {
       if (order.payment_status === 'UNPAID') {
         return `${fulfillment} - Pay at handover (Unpaid)`;
       }
+      if (order.payment_status === 'CANCELLED_UNPAID') {
+        return `${fulfillment} - Pay at handover (Cancelled, Unpaid)`;
+      }
       return `${fulfillment} - Pay at handover (${order.payment_status})`;
     }
     return `${fulfillment} - ${order.payment_method || 'N/A'}`;
@@ -3659,7 +3662,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/admin/kyc-queue`); // Just testing backend online
       if (res.ok) {
-        const ordersRes = await fetch(`${API_BASE}/orders`);
+        const ordersRes = await adminFetch('/orders');
         const kycRes = await fetch(`${API_BASE}/admin/kyc-queue`);
         const ratesRes = await fetch(`${API_BASE}/admin/commission-rates`);
         const anomaliesRes = await fetch(`${API_BASE}/admin/anomalies`);
@@ -3756,7 +3759,7 @@ export default function App() {
         setDbState(prev => ({
           ...(prev || {}),
           users: [], // we will fetch user list or mock it
-          orders: asList(ordersRes, orders, prev?.orders || []),
+          orders: asList(ordersRes, Array.isArray(orders) ? orders : orders?.orders, prev?.orders || []),
           commission_rates: asList(ratesRes, rates, prev?.commission_rates || []),
           anomaly_logs: asList(anomaliesRes, anomalies, prev?.anomaly_logs || []),
           points_ledger: asList(redRes, redemptions, prev?.points_ledger || []),
@@ -4357,6 +4360,7 @@ export default function App() {
       fetchAdminRegions();
       fetchAdminPayouts();
       fetchAdminPayoutChanges();
+      fetchDbState();
     }
     if (devToolsEnabled && showDevSettings) {
       syncInspectorTable();
@@ -14914,8 +14918,8 @@ export default function App() {
     }
 
     const refundDueCount = (Array.isArray(dbState?.orders) ? dbState.orders : []).filter(o => o.payment_status === 'REFUND_DUE').length || 0;
-    const payoutsDue = (adminPayouts || []).filter(p => !p.is_paid && p.direction === 'OUTGOING');
-    const commissionOwed = (adminPayouts || []).filter(p => !p.is_paid && p.source === 'cod_commission_ledger');
+    const payoutsDue = (adminPayouts || []).filter(p => !p.is_paid && p.direction === 'OUTGOING' && p.status !== 'CANCELLED');
+    const commissionOwed = (adminPayouts || []).filter(p => !p.is_paid && p.source === 'cod_commission_ledger' && p.status !== 'CANCELLED');
     const partnerPayoutsDue = adminPartnerPayouts.filter(p => p.amount_owed > 0);
     const UNPAID = payoutsDue.length + commissionOwed.length + partnerPayoutsDue.length;
     return (
@@ -14977,7 +14981,7 @@ export default function App() {
                   </span>
                 )}
               </button>
-              <button className={`admin-nav-item ${adminTab === 'transactions' ? 'active' : ''}`} onClick={() => goToAdminTab('transactions')}>
+              <button className={`admin-nav-item ${adminTab === 'transactions' ? 'active' : ''}`} onClick={() => goToAdminTab('transactions', () => { fetchDbState(); fetchAdminPayouts(); })}>
                 <ArrowRightLeft size={16} /> Transactions 
                 {refundDueCount > 0 && <span className="badge badge-danger" style={{ marginLeft: '0.25rem', fontSize: '0.65rem' }} title="Refunds Due">{refundDueCount}</span>}
                 {UNPAID > 0 && <span className="badge badge-warning" style={{ marginLeft: '0.25rem', fontSize: '0.65rem', background: 'var(--warning)', color: 'black' }} title="Unpaid Payouts">{UNPAID}</span>}
@@ -18273,7 +18277,7 @@ export default function App() {
                         const isRefundDue = o.payment_status === 'REFUND_DUE';
                         const platformCommission = o.platform_amount || 0;
                         const orderAmountPaid = o.amount_paid !== undefined && o.amount_paid !== null ? o.amount_paid : o.total_price;
-                        const netRefundAmount = orderAmountPaid - platformCommission;
+                        const netRefundAmount = parseFloat(o.refund_amount) || 0;
                         
                         const isCod = o.payment_method?.includes('COD');
                         const correspondingPayout = isCod 
@@ -18312,10 +18316,11 @@ export default function App() {
                             <td>{formatPoints(o.points_credited || 0)}</td>
                             <td>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                                <span className={`badge ${o.payment_status === 'PAID' || o.payment_status === 'RELEASED' ? 'badge-success' : o.payment_status === 'UNPAID' || o.payment_status === 'COD' ? 'badge-warning' : o.payment_status === 'REFUNDED' ? 'badge-secondary' : o.payment_status === 'REFUND_DUE' ? 'badge-danger' : 'badge-primary'}`} style={{ fontSize: '0.55rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
+                                <span className={`badge ${o.payment_status === 'PAID' || o.payment_status === 'RELEASED' ? 'badge-success' : o.payment_status === 'UNPAID' || o.payment_status === 'COD' ? 'badge-warning' : o.payment_status === 'REFUNDED' || o.payment_status === 'CANCELLED_UNPAID' ? 'badge-secondary' : o.payment_status === 'REFUND_DUE' ? 'badge-danger' : 'badge-primary'}`} style={{ fontSize: '0.55rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
                                   {o.payment_status === 'HELD' ? <><Lock size={9} /> HELD</> : 
                                    o.payment_status === 'PAID' ? <><Check size={9} /> PAID ({o.payment_received_method || 'CASH'})</> : 
                                    o.payment_status === 'UNPAID' ? 'UNPAID' : 
+                                   o.payment_status === 'CANCELLED_UNPAID' ? 'CANCELLED (UNPAID)' :
                                    o.payment_status === 'RELEASED' ? <><Check size={9} /> RELEASED</> : 
                                    o.payment_status === 'COD' ? <><Banknote size={9} /> COD</> : 
                                    o.payment_status === 'REFUND_DUE' ? 'REFUND DUE' :
@@ -18360,6 +18365,8 @@ export default function App() {
                                                 </span>
                                             )}
                                         </div>
+                                    ) : correspondingPayout.status === 'CANCELLED' ? (
+                                        <span className="badge badge-secondary" style={{ fontSize: '0.65rem' }}>CANCELLED</span>
                                     ) : (
                                         <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>UNPAID</span>
                                     )
@@ -18368,7 +18375,7 @@ export default function App() {
                                 )}
                             </td>
                             <td style={{ whiteSpace: 'nowrap' }}>
-                                {correspondingPayout && !isPaid && (
+                                {correspondingPayout && !isPaid && correspondingPayout.status !== 'CANCELLED' && (
                                     <button 
                                         className="btn btn-primary" 
                                         style={{ padding: '0.2rem 0.4rem', fontSize: '0.65rem' }}

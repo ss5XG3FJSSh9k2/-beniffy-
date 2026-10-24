@@ -2815,8 +2815,23 @@ async function processOrderCancellation(order, cancelledBy = 'system', { retainC
 
   await reverseOrderPoints(order.id);
 
-  if (order.payment_status === 'HELD') {
-    const splitPayouts = await db.getTable('split_payouts');
+  // Mark split_payouts row and any payout-due entry CANCELLED (keep for history)
+  const splitPayouts = await db.getTable('split_payouts');
+  let spChanged = false;
+  for (const sp of splitPayouts) {
+    if (sp.order_id === order.id && sp.status !== 'CANCELLED') {
+      sp.status = 'CANCELLED';
+      spChanged = true;
+    }
+  }
+  if (spChanged) {
+    await db.saveTable('split_payouts', splitPayouts);
+  }
+
+  // Refund only when money was received:
+  // UNPAID -> payment_status 'CANCELLED_UNPAID', no refund.
+  // Only PAID or HELD orders become REFUND_DUE, with refund_amount = amount received minus any commission the policy keeps.
+  if (order.payment_status === 'HELD' || order.payment_status === 'PAID') {
     const payout = splitPayouts.find(sp => sp.order_id === order.id);
     const platformCommission = retainCommission && payout ? parseFloat(payout.platform_amount) : 0;
 
@@ -2829,6 +2844,9 @@ async function processOrderCancellation(order, cancelledBy = 'system', { retainC
       reason: 'Order cancellation',
       commission_retained: platformCommission
     });
+  } else if (order.payment_status !== 'REFUNDED') {
+    order.payment_status = 'CANCELLED_UNPAID';
+    order.refund_amount = 0;
   }
 }
 
@@ -3570,7 +3588,7 @@ app.post('/api/orders/:id/noshw-action', requireAuth, async (req, res) => {
 // Verify pickup PIN and complete order
 app.post('/api/orders/:id/verify-pickup', requireAuth, async (req, res) => {
   const { id } = req.params;
-  const { pin } = req.body;
+  const pin = req.body.pin || req.body.pickup_pin;
 
   if (!pin || !/^\d{4}$/.test(String(pin).trim())) {
     return res.status(400).json({ error: 'Incorrect pickup verification PIN.' });
@@ -3939,7 +3957,9 @@ const handleOrderStatusUpdate = async (req, res) => {
   // Final states stay final; repeating the current status is a no-op.
   if (FINAL_ORDER_STATUSES.includes(order.status)) {
     if (order.status === status) return res.json({ success: true, order: await enrichOrder(order, req) });
-    return res.status(400).json({ error: `Order is already ${order.status.toLowerCase()}.`, code: 'ORDER_FINAL' });
+    if (!(isAdmin && req.body.force && status === 'CANCELLED')) {
+      return res.status(400).json({ error: `Order is already ${order.status.toLowerCase()}.`, code: 'ORDER_FINAL' });
+    }
   }
   // Orders only move forward (cancellation is handled below).
   if (status !== 'CANCELLED' && (ORDER_STATUS_RANK[status] || 0) < (ORDER_STATUS_RANK[order.status] || 0)) {
@@ -4337,11 +4357,14 @@ app.get('/api/admin/payouts', async (req, res) => {
   const codCommLedger = await db.getTable('cod_commission_ledger');
   const stockistCodComm = await db.getTable('stockist_cod_commissions');
   const stockists = await db.getTable('stockists');
+  const orders = await db.getTable('orders');
+  const cancelledOrderIds = new Set(orders.filter(o => o.status === 'CANCELLED').map(o => o.id));
   
   const payouts = [];
   
   for (const sp of splitPayouts) {
     if (sp.is_cod) continue;
+    const isCancelled = sp.status === 'CANCELLED' || (sp.order_id && cancelledOrderIds.has(sp.order_id));
     payouts.push({
       id: sp.id,
       source: 'split_payouts',
@@ -4351,7 +4374,7 @@ app.get('/api/admin/payouts', async (req, res) => {
       stockist_name: stockists.find(s => s.id === sp.stockist_id)?.name || 'Unknown',
       amount: parseFloat(sp.stockist_amount),
       type: 'ORDER_SPLIT',
-      status: sp.status,
+      status: isCancelled ? 'CANCELLED' : sp.status,
       is_paid: !!sp.is_paid,
       created_at: sp.created_at,
       paid_at: sp.paid_at,
@@ -4529,7 +4552,7 @@ app.post('/api/admin/payouts/mark-paid', async (req, res) => {
   for (const p of payouts) {
     if (p.source === 'split_payouts') {
       const sp = splitPayouts.find(s => s.id === p.id);
-      if (sp && !sp.is_paid) {
+      if (sp && !sp.is_paid && sp.status !== 'CANCELLED') {
         sp.is_paid = true;
         sp.paid_at = now;
         sp.paid_by_admin_id = user.id;
@@ -10357,7 +10380,7 @@ app.get('/api/admin/analytics', async (req, res) => {
     const customers_with_bindings = customerUsers.filter(u => boundCustomerIds.has(u.id)).length;
 
     // Orders metrics
-    const total_all_time = orders.length;
+    const total_all_time = orders.filter(o => o.status !== 'CANCELLED').length;
     let total_today = 0;
     let total_this_week = 0;
     let total_this_month = 0;
@@ -10372,6 +10395,7 @@ app.get('/api/admin/analytics', async (req, res) => {
     const todayStr = getISTDateString(now);
 
     orders.forEach(o => {
+      if (o.status === 'CANCELLED') return;
       const createdTime = o.created_at ? new Date(o.created_at).getTime() : 0;
       const amount = parseFloat(o.subtotal || o.total_amount || 0);
       const istDate = o.created_at ? getISTDateString(new Date(o.created_at)) : '';
@@ -10457,7 +10481,7 @@ app.get('/api/admin/analytics', async (req, res) => {
     const stockistsWithOrdersThisWeek = new Set();
 
     orders.forEach(o => {
-      if (!o.stockist_id) return;
+      if (!o.stockist_id || o.status === 'CANCELLED') return;
       const createdTime = o.created_at ? new Date(o.created_at).getTime() : 0;
       const amount = parseFloat(o.subtotal || o.total_amount || 0);
 
