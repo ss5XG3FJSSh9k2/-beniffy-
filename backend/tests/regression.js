@@ -7305,6 +7305,52 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: App.jsx uses server refund_amount and excludes CANCELLED payouts from totals`);
 
+  // ==========================================
+  // SECTION 58: ORDER MODE DISPLAY (CUSTOMER ORDERS & ORDER PLACED SCREEN)
+  // ==========================================
+  console.log('\n--- Section 58: Order Mode Display ---');
+
+  // Test #1445: App.jsx displays Home delivery and Pickup · <slot> with translations
+  const s58AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  assert(s58AppJsx.includes("t('Home delivery', 'होम डिलीवरी', 'হোম ডেলিভারি')"), 'App.jsx translates Home delivery');
+  assert(s58AppJsx.includes("t('Pickup', 'पिकअप', 'পিকআপ')"), 'App.jsx translates Pickup');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: App.jsx translates Home delivery and Pickup in all 3 languages`);
+
+  // Test #1446: App.jsx contains 0 occurrences of duplicate Mode: DELIVERY and dead Mode: Take Away
+  const s58DeliveryModeCount = (s58AppJsx.match(/Mode:\s*DELIVERY/g) || []).length;
+  const s58TakeAwayModeCount = (s58AppJsx.match(/Mode:\s*Take Away/g) || []).length;
+  const s58StatusTakeAwayCount = (s58AppJsx.match(/Status:\s*Take Away/g) || []).length;
+  assert(s58DeliveryModeCount === 0, `Mode: DELIVERY count is 0 (found ${s58DeliveryModeCount})`);
+  assert(s58TakeAwayModeCount === 0, `Mode: Take Away count is 0 (found ${s58TakeAwayModeCount})`);
+  assert(s58StatusTakeAwayCount === 0, `Status: Take Away count is 0 (found ${s58StatusTakeAwayCount})`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: App.jsx contains 0 instances of duplicate Mode: DELIVERY, Mode: Take Away, or Status: Take Away`);
+
+  // Test #1447: Creation of PICKUP and DELIVERY orders for customer 9876543210 (u-cust1)
+  loginAs('u-cust1', 'CUSTOMER');
+  const s58PickupOrderRes = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    items: [{ productId: 'p1', quantity: 1 }],
+    fulfillmentType: 'PICKUP',
+    pickupSlot: 'Morning (8AM–12PM)'
+  });
+  assert(s58PickupOrderRes.status === 200, 'PICKUP order creation returns 200');
+  assert(s58PickupOrderRes.body.order.fulfillment_type === 'PICKUP', 'Fulfillment type is PICKUP');
+  assert(s58PickupOrderRes.body.order.pickup_slot === 'Morning (8AM–12PM)', 'Pickup slot is saved');
+
+  const s58DeliveryOrderRes = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    items: [{ productId: 'p2', quantity: 1 }],
+    fulfillmentType: 'DELIVERY'
+  });
+  assert(s58DeliveryOrderRes.status === 200, 'DELIVERY order creation returns 200');
+  assert(s58DeliveryOrderRes.body.order.fulfillment_type === 'DELIVERY', 'Fulfillment type is DELIVERY');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Both PICKUP and DELIVERY orders created successfully for customer 9876543210`);
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);

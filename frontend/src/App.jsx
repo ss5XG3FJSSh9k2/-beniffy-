@@ -10848,7 +10848,10 @@ export default function App() {
                             {o.fulfillment_type === 'PICKUP' ? (
                               <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{t('Status: Take Away (Pickup)', 'स्थिति: टेक अवे (पिकअप)', 'অবস্থা: টেক অ্যাওয়ে (পিকআপ)')}</span>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <Store size={12} />
+                                    <span>{t('Pickup', 'पिकअप', 'পিকআপ')}{formatPickupSlotDisplay(o.pickup_slot) ? ` · ${formatPickupSlotDisplay(o.pickup_slot)}` : ''}</span>
+                                  </span>
                                 </div>
                                 <div style={{ background: 'var(--surface-overlay)', padding: '0.5rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px solid var(--border-color)', marginTop: '0.25rem', marginBottom: '0.25rem' }}>
                                   <span style={{ color: 'var(--text-muted)' }}>{t('Scheduled Pickup Slot:', 'निर्धारित पिकअप स्लॉट:', 'নির্ধারিত পিকআপ স্লট:')} </span>
@@ -10885,8 +10888,9 @@ export default function App() {
                               </div>
                             ) : (
                               <div>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--secondary)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                  <Truck size={12} /> {t('Mode: DELIVERY', 'डिलिवरी मोड', 'ডেলিভারি মোড')}
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <Truck size={12} />
+                                  <span>{t('Home delivery', 'होम डिलीवरी', 'হোম ডেলিভারি')}</span>
                                 </span>
                                 <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>{t('Shipping charges applied. Cannot switch back to pickup.', 'डिलिवरी शुल्क लागू। अब पिकअप पर वापस नहीं जा सकते।', 'ডেলিভারি চার্জ যুক্ত হয়েছে। পিকআপে ফিরে যাওয়া সম্ভব নয়।')}</p>
                               </div>
@@ -12244,13 +12248,13 @@ export default function App() {
                               <div style={{ color: 'var(--text-muted)', fontSize: '0.625rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                 {o.fulfillment_type === 'DELIVERY' ? (
                                   <>
-                                    <Truck size={12} style={{ color: 'var(--secondary)' }} />
-                                    <span>{t('Mode: DELIVERY', 'मोड: होम डिलीवरी', 'অবস্থা: হোম ডেলিভারি')}</span>
+                                    <Truck size={12} />
+                                    <span>{t('Home delivery', 'होम डिलीवरी', 'হোম ডেলিভারি')}</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Store size={12} style={{ color: 'var(--primary)' }} />
-                                    <span>{t('Mode: Take Away', 'मोड: पिकअप', 'মোড: পিকআপ')} ({formatPickupSlotDisplay(o.pickup_slot) || t('Pending slot', 'स्लॉट लंबित', 'স্লট পেন্ডিং')})</span>
+                                    <Store size={12} />
+                                    <span>{t('Pickup', 'पिकअप', 'পিকআপ')}{formatPickupSlotDisplay(o.pickup_slot) ? ` · ${formatPickupSlotDisplay(o.pickup_slot)}` : ''}</span>
                                   </>
                                 )}
                               </div>
@@ -12364,12 +12368,6 @@ export default function App() {
                                       </button>
                                     );
                                   })()}
-                                </div>
-                              ) : o.fulfillment_type === 'DELIVERY' ? (
-                                <div>
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--secondary)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                    <Truck size={12} /> {t('Mode: DELIVERY', 'डिलिवरी मोड', 'ডেলিভারি মোড')}
-                                  </span>
                                 </div>
                               ) : null}
 
