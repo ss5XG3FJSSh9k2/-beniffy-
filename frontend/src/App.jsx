@@ -1901,6 +1901,13 @@ export default function App() {
     return () => clearInterval(timer);
   }, [activeRole, customerOrders, customerAppTab]);
 
+  // Auto-close carts sheet if customer navigates away or last cart is removed
+  useEffect(() => {
+    if (showCartsSheet && (customerAppTab !== 'store' || selectedStockist || Object.keys(customerCarts).length === 0)) {
+      setShowCartsSheet(false);
+    }
+  }, [showCartsSheet, customerAppTab, selectedStockist, customerCarts]);
+
   useEffect(() => {
     if (trackingOrder && customerAppTab === "track") {
       const isTrackingInOrders = (customerOrders || []).some(o => o.id === trackingOrder.id);
@@ -13118,8 +13125,8 @@ export default function App() {
                 </div>
 
                 {/* Carts affordance & Cart bar */}
-                {(currentCart.length > 0 || Object.keys(customerCarts).length > 0) && customerAppTab === 'store' && (
-                  <div style={{ position: 'absolute', left: 0, right: 0, bottom: activeOrderList.length > 0 ? '110px' : '60px', padding: '0 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', zIndex: 'var(--z-float)', transition: 'bottom 0.3s' }}>
+                {(currentCart.length > 0 || Object.keys(customerCarts).length > 0) && customerAppTab === 'store' && !showCartsSheet && (
+                  <div style={{ position: 'absolute', left: 0, right: 0, bottom: activeOrderList.length > 0 ? (activeOrderList.length > 1 && !hasSeenSwipeHint ? '195px' : '145px') : '60px', padding: '0 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', zIndex: 'var(--z-float)', transition: 'bottom 0.3s' }}>
                     {Object.keys(customerCarts).length > 0 && (
                       <div style={{ alignSelf: 'center', background: 'var(--bg-surface)', color: 'var(--text-main)', padding: '0.35rem 0.75rem', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', border: '1px solid var(--border-color)' }} onClick={() => setShowCartsSheet(true)}>
                         <ShoppingBag size={12} />
@@ -13143,10 +13150,10 @@ export default function App() {
                 )}
 
                 {/* Active Order Strip */}
-                {activeOrderList.length > 0 && (
+                {activeOrderList.length > 0 && !showCartsSheet && (
                   <div style={{ position: 'absolute', left: 0, right: 0, bottom: '60px', zIndex: 'var(--z-float)' }}>
                     {activeOrderList.length > 1 && !hasSeenSwipeHint && (
-                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.4rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.4rem', pointerEvents: 'none' }}>
                         <div style={{
                           fontSize: '0.65rem',
                           color: 'var(--text-main)',
@@ -13299,7 +13306,7 @@ export default function App() {
             {/* Carts Sheet (Zomato-style) */}
             {showCartsSheet && (
               <div 
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'var(--bg-main)', zIndex: 'var(--z-sheet)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'var(--scrim)', zIndex: 'var(--z-sheet)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
                 onClick={() => setShowCartsSheet(false)}
               >
                 <div 
@@ -13333,7 +13340,7 @@ export default function App() {
                             className="btn btn-sm btn-primary" 
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                             onClick={() => { 
-                              const s = customerStockists.find(s=>s.id===cart.stockistId); 
+                              const s = customerStockists.find(s=>s.id===cart.stockistId) || { id: cart.stockistId, name: cart.stockistName }; 
                               if (s) {
                                 setSelectedStockist(s); 
                                 setCustomerAppTab('cart'); 

@@ -7418,6 +7418,36 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Swipe hint has dedicated styling above strip and dismisses on scroll`);
 
+  // --- Section 61: Customer Carts Sheet Button Reachability & Dimmed Backdrop ---
+  console.log('\n--- Section 61: Customer Carts Sheet Button Reachability & Dimmed Backdrop ---');
+  const s61AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  const s61IndexCss = fs.readFileSync(path.join(__dirname, '../../frontend/src/index.css'), 'utf8');
+
+  // Test #1453: Floating carts button and bar hidden while showCartsSheet is true
+  assert(s61AppJsx.includes("customerAppTab === 'store' && !showCartsSheet"), 'Floating carts bar is hidden while showCartsSheet is true');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Floating carts button and bar are hidden while showCartsSheet is active`);
+
+  // Test #1454: Active order strip hidden while showCartsSheet is true
+  assert(s61AppJsx.includes("activeOrderList.length > 0 && !showCartsSheet"), 'Active order strip is hidden while showCartsSheet is true');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Active order strip is hidden while showCartsSheet is active`);
+
+  // Test #1455: Carts sheet backdrop uses var(--scrim) and var(--z-sheet) without blur
+  const cartsSheetIdx = s61AppJsx.indexOf('{showCartsSheet && (');
+  const cartsSheetBlock = s61AppJsx.substring(cartsSheetIdx, cartsSheetIdx + 600);
+  assert(cartsSheetBlock.includes("backgroundColor: 'var(--scrim)'"), 'Carts sheet backdrop uses var(--scrim)');
+  assert(cartsSheetBlock.includes("zIndex: 'var(--z-sheet)'"), 'Carts sheet uses var(--z-sheet) token');
+  assert(!cartsSheetBlock.includes('blur'), 'Carts sheet backdrop does not use blur');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Carts sheet backdrop uses semi-transparent var(--scrim) dim at var(--z-sheet) without blur`);
+
+  // Test #1456: index.css defines --scrim token in light and dark themes
+  assert(s61IndexCss.includes("--scrim: rgba(32, 32, 31, 0.55);") || s61IndexCss.includes("--scrim: rgba(0, 0, 0, 0.55);"), 'Light theme defines --scrim');
+  assert(s61IndexCss.includes("--scrim: rgba(0, 0, 0, 0.55);"), 'Dark theme defines --scrim');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: --scrim CSS token is defined across theme blocks at 55% opacity`);
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
