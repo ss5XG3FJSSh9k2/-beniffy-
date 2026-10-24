@@ -10827,7 +10827,7 @@ export default function App() {
 
                     {/* Fulfillment Setup Block for placed orders */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                      <h4 style={{ fontSize: '0.8rem', color: 'var(--text-main)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>{t('Fulfillment Settings', 'फ़ुलफ़िलमेंट सेटिंग्स', 'ফুলফিলমেন্ট সেটিংস')}</h4>
+                      <h4 style={{ fontSize: '0.8rem', color: 'var(--text-main)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>{t('Your order', 'आपका ऑर्डर', 'আপনার অর্ডার')}</h4>
                       {checkoutResult.orders.map(o => {
                         const isPrepElapsed = prepElapsedOrders.includes(o.id);
                         return (
@@ -10869,9 +10869,9 @@ export default function App() {
                                     const isDisabled = deliveryFeeVal === null;
                                     return (
                                       <button 
-                                        className="btn" 
+                                        className="btn btn-secondary" 
                                         disabled={isDisabled}
-                                        style={{ width: '100%', padding: '0.3rem', fontSize: '0.65rem', marginTop: '0.5rem', background: 'rgba(236,72,153,0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)', opacity: isDisabled ? 0.5 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+                                        style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.5rem', opacity: isDisabled ? 0.5 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }}
                                         onClick={() => !isDisabled && triggerConfirmModal(
                                           t('Switch to Delivery', 'डिलिवरी पर स्विच करें', 'ডেলিভারিতে পরিবর্তন করুন'),
                                           t('Are you sure you want to switch to delivery? A delivery fee of ₹', 'क्या आप डिलीवरी पर स्विच करना चाहते हैं? आपके ऑर्डर में ₹', 'আপনি কি নিশ্চিত যে আপনি ডেলিভারিতে পরিবর্তন করতে চান? আপনার অর্ডারে ₹') + deliveryFeeVal + t(' will be added to your order.', ' का डिलीवरी शुल्क जोड़ा जाएगा।', ' ডেলিভারি ফি যোগ করা হবে।'),
@@ -10940,24 +10940,26 @@ export default function App() {
                             </div>
 
                             {/* WhatsApp Notification Share Trigger (§B1) */}
-                            <button 
-                              className="btn btn-secondary" 
-                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.35rem', background: 'rgba(37,211,102,0.1)', color: 'var(--success-text)', border: '1px solid rgba(37,211,102,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}
-                              onClick={() => {
-                                setSimulatedWaMessage({
-                                  orderId: o.id,
-                                  customerName: currentUser.name,
-                                  stockistName: o.stockist_name,
-                                  totalPrice: o.total_price,
-                                  pickupPin: o.pickup_pin,
-                                  points: o.pointsCredited || o.points_credited || 0,
-                                  subtotal: o.subtotal,
-                                  fulfillmentType: o.fulfillment_type
-                                });
-                              }}
-                            >
-                              <MessageSquare size={12} /> {t('Preview WhatsApp Notification', 'व्हाट्सएप सूचना का पूर्वावलोकन', 'হোয়াটসঅ্যাপ নোটিফিকেশন প্রিভিউ')}
-                            </button>
+                            {devToolsEnabled && (
+                              <button 
+                                className="btn btn-secondary" 
+                                style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.35rem', background: 'var(--success-glow)', color: 'var(--success-text)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}
+                                onClick={() => {
+                                  setSimulatedWaMessage({
+                                    orderId: o.id,
+                                    customerName: currentUser.name,
+                                    stockistName: o.stockist_name,
+                                    totalPrice: o.total_price,
+                                    pickupPin: o.pickup_pin,
+                                    points: o.pointsCredited || o.points_credited || 0,
+                                    subtotal: o.subtotal,
+                                    fulfillmentType: o.fulfillment_type
+                                  });
+                                }}
+                              >
+                                <MessageSquare size={12} /> {t('Preview WhatsApp Notification', 'व्हाट्सएप सूचना का पूर्वावलोकन', 'হোয়াটসঅ্যাপ নোটিফিকেশন প্রিভিউ')}
+                              </button>
+                            )}
 
                           </div>
                         );
@@ -12352,9 +12354,9 @@ export default function App() {
                                     const isDisabled = deliveryFeeVal === null;
                                     return (
                                       <button 
-                                        className="btn" 
+                                        className="btn btn-secondary" 
                                         disabled={isDisabled}
-                                        style={{ width: '100%', padding: '0.3rem', fontSize: '0.65rem', marginTop: '0.5rem', background: 'rgba(236,72,153,0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)', opacity: isDisabled ? 0.5 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+                                        style={{ width: '100%', padding: '0.35rem', fontSize: '0.65rem', marginTop: '0.5rem', opacity: isDisabled ? 0.5 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }}
                                         onClick={() => !isDisabled && triggerConfirmModal(
                                           t('Switch to Delivery', 'डिलिवरी पर स्विच करें', 'ডেলিভারিতে পরিবর্তন করুন'),
                                           t('Are you sure you want to switch to delivery? A delivery fee of ₹', 'क्या आप डिलीवरी पर स्विच करना चाहते हैं? आपके ऑर्डर में ₹', 'আপনি কি নিশ্চিত যে আপনি ডেলিভারিতে পরিবর্তন করতে চান? আপনার অর্ডারে ₹') + deliveryFeeVal + t(' will be added to your order.', ' का डिलीवरी शुल्क जोड़ा जाएगा।', ' ডেলিভারি ফি যোগ করা হবে।'),
@@ -12392,22 +12394,24 @@ export default function App() {
                                     <RefreshCw size={10} /> {t('Reorder', 'पुनः ऑर्डर', 'রিঅর্ডার')}
                                   </button>
 
-                                  <button 
-                                    className="badge badge-success" 
-                                    style={{ border: 'none', cursor: 'pointer', background: 'rgba(37,211,102,0.1)', color: 'var(--success-text)', padding: '0.2rem 0.4rem', fontSize: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.15rem' }}
-                                    onClick={() => setSimulatedWaMessage({
-                                      orderId: o.id,
-                                      customerName: currentUser.name,
-                                      stockistName: o.stockist_name,
-                                      totalPrice: o.total_price,
-                                      pickupPin: o.pickup_pin,
-                                      points: o.pointsCredited || o.points_credited || 0,
-                                      subtotal: o.subtotal,
-                                      fulfillmentType: o.fulfillment_type
-                                    })}
-                                  >
-                                    <MessageSquare size={10} /> {t('Alert', 'अलर्ट', 'প্রিভিউ')}
-                                  </button>
+                                  {devToolsEnabled && (
+                                    <button 
+                                      className="badge badge-success" 
+                                      style={{ border: 'none', cursor: 'pointer', background: 'var(--success-glow)', color: 'var(--success-text)', padding: '0.2rem 0.4rem', fontSize: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.15rem' }}
+                                      onClick={() => setSimulatedWaMessage({
+                                        orderId: o.id,
+                                        customerName: currentUser.name,
+                                        stockistName: o.stockist_name,
+                                        totalPrice: o.total_price,
+                                        pickupPin: o.pickup_pin,
+                                        points: o.pointsCredited || o.points_credited || 0,
+                                        subtotal: o.subtotal,
+                                        fulfillmentType: o.fulfillment_type
+                                      })}
+                                    >
+                                      <MessageSquare size={10} /> {t('Alert', 'अलर्ट', 'প্রিভিউ')}
+                                    </button>
+                                  )}
 
                                   {o.status === 'DELIVERED' ? (
                                     <button 

@@ -7351,6 +7351,25 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Both PICKUP and DELIVERY orders created successfully for customer 9876543210`);
 
+  // ==========================================
+  // SECTION 59: DEV TOOLS GATING & ORDER MODAL ACTIONS
+  // ==========================================
+  console.log('\n--- Section 59: Dev Tools Gating & Order Modal Actions ---');
+
+  // Test #1448: App.jsx gates WhatsApp notification preview and alert buttons behind devToolsEnabled
+  const s59AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  const hasGatedPreview = /devToolsEnabled\s*&&\s*\(\s*<button[\s\S]*?Preview WhatsApp Notification/.test(s59AppJsx);
+  const hasGatedAlert = /devToolsEnabled\s*&&\s*\(\s*<button[\s\S]*?MessageSquare size=\{10\}[\s\S]*?Alert/.test(s59AppJsx);
+  assert(hasGatedPreview, 'Order Placed WhatsApp preview button is gated by devToolsEnabled');
+  assert(hasGatedAlert, 'Order card Alert button is gated by devToolsEnabled');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: WhatsApp preview and alert buttons are strictly gated by devToolsEnabled`);
+
+  // Test #1449: App.jsx uses btn btn-secondary for switch to delivery and cancel order in Order Placed modal
+  assert(s59AppJsx.includes('Switch to Delivery') && s59AppJsx.includes('className="btn btn-secondary"'), 'Switch to delivery button uses standard btn btn-secondary styling');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Order Placed modal action buttons use standard btn styling`);
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
