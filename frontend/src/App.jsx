@@ -10671,7 +10671,7 @@ export default function App() {
               <>
 
                 {checkoutResult && (
-                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 100, display: 'flex', flexDirection: 'column', padding: '1.25rem', overflowY: 'auto' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-sheet)', display: 'flex', flexDirection: 'column', padding: '1.25rem', overflowY: 'auto' }}>
                     <div style={{ textAlign: 'center', marginBottom: '1rem', marginTop: '1rem' }}>
                       <div style={{ display: 'inline-flex', padding: '0.5rem', borderRadius: '50%', background: 'var(--success-glow)', color: 'var(--accent)', marginBottom: '0.5rem' }}>
                         <CheckCircle2 size={36} />
@@ -10821,7 +10821,7 @@ export default function App() {
 
                 {/* Simulated WhatsApp Mockup Overlay */}
                 {simulatedWaMessage && (
-                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-sheet-raised)', display: 'flex', flexDirection: 'column' }}>
                     {/* WhatsApp Header */}
                     <div style={{ background: 'var(--primary)', padding: '0.75rem 0.5rem 0.5rem 0.5rem', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <button 
@@ -10874,7 +10874,7 @@ export default function App() {
 
                 {/* §H: One-way delivery switch confirmation overlay */}
                 {deliverySwitchConfirm && (
-                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-sheet-raised)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning-text)' }}>
                         <AlertTriangle size={20} />
@@ -10899,7 +10899,7 @@ export default function App() {
 
                 {/* §F19: No-show Alert overlay */}
                 {noShowAlert && (
-                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-sheet-raised)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning-text)' }}>
                         <AlertTriangle size={20} />
@@ -11587,7 +11587,7 @@ export default function App() {
                       
                       {/* Fixed Place Order Button */}
                       {currentCart.length > 0 && (
-                        <div style={{ position: 'sticky', bottom: '-1rem', margin: '1rem -1rem -1rem -1rem', background: 'var(--bg-surface)', padding: '1rem', borderTop: '1px solid var(--border-color)', zIndex: 100 }}>
+                        <div style={{ position: 'sticky', bottom: '-1rem', margin: '1rem -1rem -1rem -1rem', background: 'var(--bg-surface)', padding: '1rem', borderTop: '1px solid var(--border-color)', zIndex: 'var(--z-sheet)' }}>
                           {(() => {
                             const activeDeliveryAddr = (deliveryAddress !== undefined && deliveryAddress !== '' ? deliveryAddress : (profileAddress || currentUser?.address || '')).trim();
                             const isDeliveryDisabled = cartFulfillment === 'DELIVERY' && activeDeliveryAddr.length < 5;
@@ -12279,7 +12279,7 @@ export default function App() {
 
                   {/* Customer Rating Modal Overlay */}
                   {submittingFeedbackOrder && submittingFeedbackOrder.customer_id === currentUser.id && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-sheet-raised)', display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>Rate Grocery Store (§11)</h3>
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Rate service quality at {submittingFeedbackOrder.stockist_name}</p>
@@ -12321,7 +12321,7 @@ export default function App() {
 
                   {/* Customer Redemption Success Modal Overlay */}
                   {redemptionSuccessModal && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center', alignItems: 'center' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-sheet-raised)', display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center', alignItems: 'center' }}>
                       <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '300px' }}>
                         <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(16,185,129,0.2)', border: '2px solid var(--accent)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
                           <Check size={28} />
@@ -12909,7 +12909,7 @@ export default function App() {
 
                 {/* Carts affordance & Cart bar */}
                 {(currentCart.length > 0 || Object.keys(customerCarts).length > 0) && customerAppTab === 'store' && (
-                  <div style={{ position: 'absolute', left: 0, right: 0, bottom: activeOrderList.length > 0 ? '110px' : '60px', padding: '0 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', zIndex: 60, transition: 'bottom 0.3s' }}>
+                  <div style={{ position: 'absolute', left: 0, right: 0, bottom: activeOrderList.length > 0 ? '110px' : '60px', padding: '0 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', zIndex: 'var(--z-float)', transition: 'bottom 0.3s' }}>
                     {Object.keys(customerCarts).length > 0 && (
                       <div style={{ alignSelf: 'center', background: 'var(--bg-surface)', color: 'var(--text-main)', padding: '0.35rem 0.75rem', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', border: '1px solid var(--border-color)' }} onClick={() => setShowCartsSheet(true)}>
                         <ShoppingBag size={12} />
@@ -12934,7 +12934,7 @@ export default function App() {
 
                 {/* Active Order Strip */}
                 {activeOrderList.length > 0 && (
-                  <div style={{ position: 'absolute', left: 0, right: 0, bottom: '60px', zIndex: 59 }}>
+                  <div style={{ position: 'absolute', left: 0, right: 0, bottom: '60px', zIndex: 'var(--z-float)' }}>
                     {activeOrderList.length > 1 && !hasSeenSwipeHint && (
                       <div style={{ textAlign: 'center', fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '0.2rem', animation: 'pulse 2s infinite' }}>
                         {t('Swipe to see your other order', 'अपना दूसरा ऑर्डर देखने के लिए स्वाइप करें', 'আপনার অন্য অর্ডার দেখতে সোয়াইপ করুন')}
@@ -12943,7 +12943,7 @@ export default function App() {
                     <div style={{ position: 'relative' }}>
                       {activeOrderList.length > 1 && (
                         <button
-                          style={{ position: 'absolute', left: '-5px', top: '50%', transform: 'translateY(-50%)', zIndex: 60, background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: '0.5rem' }}
+                          style={{ position: 'absolute', left: '-5px', top: '50%', transform: 'translateY(-50%)', zIndex: 'var(--z-float)', background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: '0.5rem' }}
                           onClick={() => stripScrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
                         >‹</button>
                       )}
@@ -13005,7 +13005,7 @@ export default function App() {
                       </div>
                       {activeOrderList.length > 1 && (
                         <button
-                          style={{ position: 'absolute', right: '-5px', top: '50%', transform: 'translateY(-50%)', zIndex: 60, background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: '0.5rem' }}
+                          style={{ position: 'absolute', right: '-5px', top: '50%', transform: 'translateY(-50%)', zIndex: 'var(--z-float)', background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: '0.5rem' }}
                           onClick={() => stripScrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
                         >›</button>
                       )}
@@ -13066,7 +13066,7 @@ export default function App() {
             {/* Carts Sheet (Zomato-style) */}
             {showCartsSheet && (
               <div 
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'var(--bg-main)', zIndex: 'var(--z-modal)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'var(--bg-main)', zIndex: 'var(--z-sheet)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
                 onClick={() => setShowCartsSheet(false)}
               >
                 <div 
@@ -13855,7 +13855,7 @@ export default function App() {
 
                   {/* Stockist-Side Rate Customer Modal Overlay */}
                   {submittingFeedbackOrder && currentUser.role === 'STOCKIST' && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-sheet-raised)', display: 'flex', flexDirection: 'column', padding: '1.5rem', justifyContent: 'center' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <UserCheck size={16} style={{ color: 'var(--accent)' }} />
@@ -13913,7 +13913,7 @@ export default function App() {
                   )}
 
                   {showAddProductModal && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1rem', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-sheet-raised)', display: 'flex', flexDirection: 'column', padding: '1rem', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                         <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <Package size={16} style={{ color: 'var(--accent)' }} />
@@ -14068,7 +14068,7 @@ export default function App() {
                   )}
 
                   {editingProduct && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 110, display: 'flex', flexDirection: 'column', padding: '1rem', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)', zIndex: 'var(--z-sheet-raised)', display: 'flex', flexDirection: 'column', padding: '1rem', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                         <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <Edit size={16} style={{ color: 'var(--accent)' }} />

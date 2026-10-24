@@ -39,8 +39,11 @@
   
   --z-base: 1;
   --z-nav: 40;
-  --z-modal: 50;
-  --z-toast: 60;
+  --z-float: 50;
+  --z-sheet: 100;
+  --z-sheet-raised: 120;
+  --z-modal: 200;
+  --z-toast: 300;
   
   --ui-scale: 1;
   
