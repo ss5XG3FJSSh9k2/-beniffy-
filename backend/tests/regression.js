@@ -429,6 +429,7 @@ async function main() {
     customerId: 'u-cust1',
     stockistId: 's1',
     fulfillmentType: 'PICKUP',
+    paymentMethod: 'ONLINE',
     pickupSlot: 'Morning (8AM–12PM)',
     items: [{ productId: 'p1', quantity: 1 }]
   });
@@ -499,6 +500,7 @@ async function main() {
   const multiStoreSuccess = await post('http://localhost:3001/api/orders', {
     customerId: 'u-cust1',
     fulfillmentType: 'PICKUP',
+    paymentMethod: 'ONLINE',
     stores: [
       { stockistId: 's1', pickupSlot: 'Morning (8AM–12PM)', items: [{ productId: 'p1', quantity: 1 }] },
       { stockistId: 's3', pickupSlot: 'Afternoon (12PM–4PM)', items: [{ productId: 'p2', quantity: 1 }] }
@@ -716,6 +718,7 @@ async function main() {
     customerId: 'u-cust1',
     stockistId: 's1',
     fulfillmentType: 'PICKUP',
+    paymentMethod: 'ONLINE',
     pickupSlot: 'Morning (8AM–12PM)',
     items: [{ productId: 'p1', quantity: 1 }]
   });
@@ -7017,6 +7020,147 @@ async function main() {
   assert(formattedSlot === 'Today, 2:00 PM – 3:00 PM', `formatPickupSlotDisplay returns "Today, 2:00 PM – 3:00 PM" (got "${formattedSlot}")`);
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: formatPickupSlotDisplay formats matching ISO slot with real clock times`);
+
+  // --- Section 56: Pilot Pay-At-Handover (Cash or UPI to Shop; No Fake Prepaid Orders) ---
+  console.log('\n--- Section 56: Pilot Pay-At-Handover ---');
+  loginAs('u-cust1', 'CUSTOMER');
+
+  // Test #1371: Default order creation sets payment_method: 'PAY_AT_HANDOVER', payment_status: 'UNPAID', and no split_payouts row
+  const s56PickupOrder = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    fulfillmentType: 'PICKUP',
+    pickupSlot: 'Morning (8AM–12PM)',
+    items: [{ productId: 'p1', quantity: 1 }]
+  });
+  assert(s56PickupOrder.status === 200, 'Pickup order created successfully');
+  const s56PickupId = s56PickupOrder.body.orderId;
+  const s56PickupData = (await get('http://localhost:3001/api/orders')).body.find(o => o.id === s56PickupId);
+  assert(s56PickupData.payment_method === 'PAY_AT_HANDOVER', `payment_method is PAY_AT_HANDOVER (got ${s56PickupData.payment_method})`);
+  assert(s56PickupData.payment_status === 'UNPAID', `payment_status is UNPAID (got ${s56PickupData.payment_status})`);
+  const s56Splits1 = (await dbModule.getTable('split_payouts')).filter(sp => sp.order_id === s56PickupId);
+  assert(s56Splits1.length === 0, 'No split_payouts row created for PAY_AT_HANDOVER pickup order');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: New pickup order created with default parameters has payment_method: PAY_AT_HANDOVER, payment_status: UNPAID, and no split_payouts`);
+
+  // Test #1372: Delivery order creation sets payment_method: 'PAY_AT_HANDOVER', payment_status: 'UNPAID', and no split_payouts row
+  const s56DelivOrder = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    fulfillmentType: 'DELIVERY',
+    items: [{ productId: 'p1', quantity: 1 }]
+  });
+  assert(s56DelivOrder.status === 200, 'Delivery order created successfully');
+  const s56DelivId = s56DelivOrder.body.orderId;
+  const s56DelivData = (await get('http://localhost:3001/api/orders')).body.find(o => o.id === s56DelivId);
+  assert(s56DelivData.payment_method === 'PAY_AT_HANDOVER', `delivery payment_method is PAY_AT_HANDOVER (got ${s56DelivData.payment_method})`);
+  assert(s56DelivData.payment_status === 'UNPAID', `delivery payment_status is UNPAID (got ${s56DelivData.payment_status})`);
+  const s56Splits2 = (await dbModule.getTable('split_payouts')).filter(sp => sp.order_id === s56DelivId);
+  assert(s56Splits2.length === 0, 'No split_payouts row created for PAY_AT_HANDOVER delivery order');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: New delivery order has payment_method: PAY_AT_HANDOVER, payment_status: UNPAID, and no split_payouts`);
+
+  // Test #1373: Verifying pickup PIN without payment_received_method is rejected with 400
+  loginAs('u-stk1', 'STOCKIST');
+  await patch(`http://localhost:3001/api/orders/${s56PickupId}/status`, { status: 'RECEIVED' });
+  await patch(`http://localhost:3001/api/orders/${s56PickupId}/status`, { status: 'READY' });
+  const verifyNoMethod = await post(`http://localhost:3001/api/orders/${s56PickupId}/verify-pickup`, {
+    pin: s56PickupData.pickup_pin
+  });
+  assert(verifyNoMethod.status === 400, 'Completing UNPAID order without payment_received_method returns 400');
+  assert(verifyNoMethod.body.code === 'PAYMENT_METHOD_REQUIRED', 'Response returns PAYMENT_METHOD_REQUIRED code');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Verifying pickup PIN without payment_received_method is rejected with 400 PAYMENT_METHOD_REQUIRED`);
+
+  // Test #1374: Verifying pickup PIN with payment_received_method: 'UPI' sets payment_status: 'PAID', payment_received_method: 'UPI', paid_at
+  const verifyWithUpi = await post(`http://localhost:3001/api/orders/${s56PickupId}/verify-pickup`, {
+    pin: s56PickupData.pickup_pin,
+    payment_received_method: 'UPI'
+  });
+  assert(verifyWithUpi.status === 200, 'Verification with UPI succeeds');
+  const completedOrder = verifyWithUpi.body.order;
+  assert(completedOrder.payment_status === 'PAID', `payment_status is PAID (got ${completedOrder.payment_status})`);
+  assert(completedOrder.payment_received_method === 'UPI', `payment_received_method is UPI (got ${completedOrder.payment_received_method})`);
+  assert(typeof completedOrder.paid_at === 'string' && completedOrder.paid_at.length > 0, 'paid_at is set to ISO timestamp');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Verifying pickup PIN with payment_received_method: 'UPI' marks order PAID with timestamp`);
+
+  // Test #1375: Commission entry owed in cod_commission_ledger exists after completion
+  const s56CodLedger = (await dbModule.getTable('cod_commission_ledger')).filter(e => e.order_id === s56PickupId);
+  assert(s56CodLedger.length > 0, 'Platform commission owed by shop recorded in cod_commission_ledger');
+  assert(s56CodLedger[0].settled === false, 'Commission entry is marked unsettled (owed by shop)');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Commission entry owed by shop recorded in cod_commission_ledger`);
+
+  // Test #1376: Switching pickup to delivery updates fulfillment and amount_paid without altering PAY_AT_HANDOVER
+  loginAs('u-cust1', 'CUSTOMER');
+  const s56SwitchOrder = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    fulfillmentType: 'PICKUP',
+    pickupSlot: 'Morning (8AM–12PM)',
+    items: [{ productId: 'p1', quantity: 1 }]
+  });
+  const s56SwitchId = s56SwitchOrder.body.orderId;
+  const s56PreSwitch = (await get('http://localhost:3001/api/orders')).body.find(o => o.id === s56SwitchId);
+  const switchRes = await patch(`http://localhost:3001/api/orders/${s56SwitchId}/fulfillment`, {
+    fulfillmentType: 'DELIVERY'
+  });
+  assert(switchRes.status === 200, 'Switching pickup to delivery succeeds');
+  const s56PostSwitch = (await get('http://localhost:3001/api/orders')).body.find(o => o.id === s56SwitchId);
+  assert(s56PostSwitch.fulfillment_type === 'DELIVERY', 'fulfillment_type updated to DELIVERY');
+  assert(s56PostSwitch.delivery_fee > 0, 'delivery_fee added');
+  assert(s56PostSwitch.amount_paid === s56PreSwitch.amount_paid + s56PostSwitch.delivery_fee, 'amount_paid incremented by delivery_fee');
+  assert(s56PostSwitch.payment_method === 'PAY_AT_HANDOVER' && s56PostSwitch.payment_status === 'UNPAID', 'Order remains PAY_AT_HANDOVER / UNPAID');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Switching pickup to delivery updates amount_paid with delivery fee and preserves PAY_AT_HANDOVER`);
+
+  // Test #1377: Startup repair converts pending HELD/COD orders to PAY_AT_HANDOVER/UNPAID and removes HELD splits
+  const legacyHeldOrderId = 'o-legacy-held-' + Date.now();
+  await dbModule.insertRow('orders', {
+    id: legacyHeldOrderId,
+    customer_id: 'u-cust1',
+    stockist_id: 's1',
+    status: 'RECEIVED',
+    payment_method: 'UPI',
+    payment_status: 'HELD',
+    subtotal: 100,
+    total_price: 100,
+    amount_paid: 100,
+    created_at: new Date().toISOString()
+  });
+  await dbModule.insertRow('split_payouts', {
+    id: 'sp-legacy-' + Date.now(),
+    order_id: legacyHeldOrderId,
+    status: 'HELD',
+    stockist_amount: 90,
+    platform_amount: 10,
+    created_at: new Date().toISOString()
+  });
+  if (typeof dbModule.repairPayAtHandoverOrders === 'function') {
+    const repairCounts = await dbModule.repairPayAtHandoverOrders(dbModule);
+    assert(repairCounts.repairedOrdersCount >= 1, 'repairPayAtHandoverOrders repaired at least 1 order');
+    assert(repairCounts.removedHeldSplitsCount >= 1, 'repairPayAtHandoverOrders removed at least 1 HELD split');
+  }
+  const repairedLegacyOrder = (await dbModule.getTable('orders')).find(o => o.id === legacyHeldOrderId);
+  assert(repairedLegacyOrder.payment_method === 'PAY_AT_HANDOVER', 'Repaired legacy order has payment_method: PAY_AT_HANDOVER');
+  assert(repairedLegacyOrder.payment_status === 'UNPAID', 'Repaired legacy order has payment_status: UNPAID');
+  const lingeringSplits = (await dbModule.getTable('split_payouts')).filter(sp => sp.order_id === legacyHeldOrderId);
+  assert(lingeringSplits.length === 0, 'No HELD split remains for repaired legacy order');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Startup repair converts pending HELD orders to PAY_AT_HANDOVER/UNPAID and purges HELD splits`);
+
+  // Test #1378: App.jsx contains UPI QR Code, direct payment helper, and required translations
+  const s56AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  assert(s56AppJsx.includes('UpiQrCode'), 'App.jsx contains UpiQrCode component');
+  assert(s56AppJsx.includes('getShopUpiUri'), 'App.jsx contains getShopUpiUri helper');
+  assert(s56AppJsx.includes('upi://pay?pa='), 'App.jsx constructs valid upi://pay URI');
+  assert(s56AppJsx.includes("Payment received?"), 'App.jsx contains Payment received? prompt');
+  assert(s56AppJsx.includes("To pay at pickup:") && s56AppJsx.includes("পিকআপে প্রদেয়:"), 'App.jsx contains translated To pay at pickup string');
+  assert(s56AppJsx.includes("To pay on delivery:") && s56AppJsx.includes("ডেলিভারিতে প্রদেয়:"), 'App.jsx contains translated To pay on delivery string');
+  assert(s56AppJsx.includes("Cancelled · nothing charged") && s56AppJsx.includes("বাতিল · কোনো চার্জ নেই"), 'App.jsx contains translated Cancelled nothing charged string');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: App.jsx contains UPI payment components and required trilingual strings`);
 
   clearLogin();
 

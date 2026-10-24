@@ -3,6 +3,7 @@
 /* global CustomEvent, Notification */
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal, flushSync } from 'react-dom';
+import QRCode from 'qrcode';
 import { 
   ShoppingBag, 
   Home,
@@ -1275,6 +1276,43 @@ const validateKycId = (idType, idNumber, t) => {
   }
   return null;
 };
+
+function UpiQrCode({ upiUrl, size = 120 }) {
+  const [svgMarkup, setSvgMarkup] = useState('');
+  useEffect(() => {
+    let active = true;
+    if (!upiUrl) {
+      setSvgMarkup('');
+      return;
+    }
+    QRCode.toString(upiUrl, { type: 'svg', margin: 1, width: size })
+      .then(svg => {
+        if (active) setSvgMarkup(svg);
+      })
+      .catch(() => {
+        if (active) setSvgMarkup('');
+      });
+    return () => {
+      active = false;
+    };
+  }, [upiUrl, size]);
+
+  if (!svgMarkup) return null;
+  return (
+    <div
+      className="upi-qr-wrapper"
+      style={{
+        display: 'inline-block',
+        background: '#ffffff',
+        padding: '0.35rem',
+        borderRadius: '8px',
+        border: '1px solid var(--border-color)',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+      }}
+      dangerouslySetInnerHTML={{ __html: svgMarkup }}
+    />
+  );
+}
 
 export default function App() {
   const [osDark, setOsDark] = React.useState(systemDark);
@@ -2607,6 +2645,81 @@ export default function App() {
     } catch {}
   };
   const t = (en, hi, bn) => lang === 'hi' ? hi : lang === 'bn' ? bn : en;
+
+  const [handoverPaymentMethods, setHandoverPaymentMethods] = useState({});
+
+  const getOrderAmountToPay = (order) => {
+    const val = order.amount_paid !== undefined && order.amount_paid !== null ? order.amount_paid : order.total_price;
+    const num = Number(val) || 0;
+    return num % 1 === 0 ? String(num) : num.toFixed(2);
+  };
+
+  const renderCustomerPaymentText = (order) => {
+    const amt = getOrderAmountToPay(order);
+    const isPaid = order.payment_status === 'PAID' || order.payment_status === 'RELEASED';
+    const isCancelled = order.status === 'CANCELLED';
+
+    if (isCancelled && !isPaid) {
+      return t('Cancelled · nothing charged', 'रद्द · कोई शुल्क नहीं', 'বাতিল · কোনো চার্জ নেই');
+    }
+    if (isPaid) {
+      const method = (order.payment_received_method || 'Cash').toUpperCase() === 'UPI' ? 'UPI' : 'Cash';
+      if (method === 'UPI') {
+        return t(`Paid ₹${amt} (UPI)`, `भुगतान ₹${amt} (UPI)`, `পরিশোধিত ₹${amt} (UPI)`);
+      }
+      return t(`Paid ₹${amt} (Cash)`, `भुगतान ₹${amt} (नकद)`, `পরিশোধিত ₹${amt} (নগদ)`);
+    }
+    if (order.fulfillment_type === 'DELIVERY') {
+      return t(`To pay on delivery: ₹${amt}`, `डिलीवरी पर देय: ₹${amt}`, `ডেলিভারিতে প্রদেয়: ₹${amt}`);
+    }
+    return t(`To pay at pickup: ₹${amt}`, `पिकअप पर देय: ₹${amt}`, `পিকআপে প্রদেয়: ₹${amt}`);
+  };
+
+  const renderCustomerPaymentBadge = (order) => {
+    const isPaid = order.payment_status === 'PAID' || order.payment_status === 'RELEASED';
+    const isCancelled = order.status === 'CANCELLED';
+
+    if (isCancelled) {
+      return <span className="badge badge-secondary" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem' }}>{t('Cancelled', 'रद्द', 'বাতিল')}</span>;
+    }
+    if (isPaid) {
+      return <span className="badge badge-success" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}><Check size={9} /> {t('Paid', 'भुगतान किया', 'পরিশোধিত')}</span>;
+    }
+    if (order.fulfillment_type === 'DELIVERY') {
+      return <span className="badge badge-warning" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}><Truck size={9} /> {t('Pay on delivery', 'डिलीवरी पर भुगतान', 'ডেলিভারিতে পেমেন্ট')}</span>;
+    }
+    return <span className="badge badge-primary" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}><Store size={9} /> {t('Pay at pickup', 'पिकअप पर भुगतान', 'পিকআপে পেমেন্ট')}</span>;
+  };
+
+  const getShopUpiUri = (order, stockistsList) => {
+    const stockist = (stockistsList || []).find(s => s.id === order.stockist_id);
+    const shopUpi = order.stockist_upi_id || stockist?.upi_id || stockist?.payout_upi_id;
+    if (!shopUpi) return null;
+
+    const shopName = order.stockist_name || stockist?.name || 'Shop';
+    const amountVal = order.amount_paid !== undefined && order.amount_paid !== null ? order.amount_paid : order.total_price;
+    const am = Number(amountVal || 0).toFixed(2);
+    const orderCode = order.id.startsWith('o-') ? order.id.substring(2).toUpperCase() : order.id;
+    const tn = encodeURIComponent(`Beniffy order ${orderCode}`);
+    const pn = encodeURIComponent(shopName);
+    const pa = encodeURIComponent(shopUpi.trim());
+
+    return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+  };
+
+  const formatFulfillmentPayment = (order) => {
+    const fulfillment = order.fulfillment_type || 'PICKUP';
+    if (order.payment_method === 'PAY_AT_HANDOVER') {
+      if (order.payment_status === 'PAID') {
+        return `${fulfillment} - Pay at handover (Paid, ${order.payment_received_method || 'Cash'})`;
+      }
+      if (order.payment_status === 'UNPAID') {
+        return `${fulfillment} - Pay at handover (Unpaid)`;
+      }
+      return `${fulfillment} - Pay at handover (${order.payment_status})`;
+    }
+    return `${fulfillment} - ${order.payment_method || 'N/A'}`;
+  };
 
   const [changingSlotOrderId, setChangingSlotOrderId] = useState(null);
 
@@ -4852,7 +4965,7 @@ export default function App() {
         stores,
         fulfillmentType: cartFulfillment,
         deliveryAddress: (deliveryAddress !== undefined && deliveryAddress !== '' ? deliveryAddress : (profileAddress || currentUser?.address || '')).trim(),
-        paymentMethod: cartFulfillment === 'PICKUP' ? 'UPI' : 'COD',
+        paymentMethod: 'PAY_AT_HANDOVER',
         coupon_reward_id: appliedCouponId || undefined
       };
 
@@ -7352,16 +7465,26 @@ export default function App() {
       showToast(t('Please enter the 4-digit verification PIN', 'कृपया 4-अंकीय सत्यापन पिन दर्ज करें', 'অনুগ্রহ করে ৪ অঙ্কের যাচাইকরণ পিন লিখুন'), 'error');
       return;
     }
+    const paymentMethod = handoverPaymentMethods[orderId];
+    if (!paymentMethod) {
+      showToast(t('Please select payment method (Cash or UPI)', 'कृपया भुगतान विधि (नकद या UPI) चुनें', 'অনুগ্রহ করে পেমেন্ট পদ্ধতি (নগদ বা UPI) নির্বাচন করুন'), 'error');
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/orders/${orderId}/verify-pickup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin })
+        body: JSON.stringify({ pin, payment_received_method: paymentMethod })
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         showToast('Pickup PIN verified! Order completed.', 'success');
         setEnteredPins(prev => ({ ...prev, [orderId]: '' }));
+        setHandoverPaymentMethods(prev => {
+          const next = { ...prev };
+          delete next[orderId];
+          return next;
+        });
         loadStockistData();
         fetchDbState();
         const justDelivered = (stockistOrders || []).find(o => o.id === orderId);
@@ -10714,7 +10837,8 @@ export default function App() {
                               {parseFloat(o.delivery_fee) > 0 && ` | ${t('Delivery', 'डिलिवरी', 'ডেলিভারি')}: ₹${parseFloat(o.delivery_fee).toFixed(2)}`}
                               {parseFloat(o.coupon_discount || 0) > 0 && ` | ${t('Coupon', 'कूपन', 'কুপন')}: -₹${parseFloat(o.coupon_discount).toFixed(2)}`}
                               <br />
-                              <strong style={{ color: 'var(--text-main)' }}>{t('Paid', 'भुगतान किया', 'পরিশোধিত')}: ₹{parseFloat(o.amount_paid !== undefined && o.amount_paid !== null ? o.amount_paid : o.total_price).toFixed(2)}</strong>
+                              <strong style={{ color: 'var(--text-main)' }}>{renderCustomerPaymentText(o)}</strong>
+                              <div style={{ marginTop: '0.25rem' }}>{renderCustomerPaymentBadge(o)}</div>
                             </div>
                             
                             {o.fulfillment_type === 'PICKUP' ? (
@@ -12109,11 +12233,7 @@ export default function App() {
                                    <span key={o.status} className={`badge ${o.status === 'DELIVERED' ? 'badge-success' : o.status === 'CANCELLED' ? 'badge-danger' : o.status === 'CONFIRMING' ? 'badge-primary' : 'badge-warning'} status-badge-glow`}>
                                      {o.status === 'CONFIRMING' ? t('Received (1 min cancel window)', 'प्राप्त (1 मिनट रद्द विंडो)', 'গৃহীত (১ মিনিট বাতিল সুযোগ)') : formatOrderStatusDisplay(o.status, o.fulfillment_type)}
                                    </span>
-                                   {o.payment_status && (
-                                     <span className={`badge ${o.payment_status === 'RELEASED' ? 'badge-success' : o.payment_status === 'COD' ? 'badge-warning' : 'badge-primary'}`} style={{ fontSize: '0.55rem', padding: '0.1rem 0.3rem' }}>
-                                       {o.payment_status === 'HELD' ? <><Lock size={9} /> HELD</> : o.payment_status === 'RELEASED' ? <><Check size={9} /> RELEASED</> : <><Banknote size={9} /> COD</>}
-                                     </span>
-                                   )}
+                                   {renderCustomerPaymentBadge(o)}
                                  </div>
                               </div>
                               <div style={{ color: 'var(--text-muted)' }}>{t('Store', 'दुकान', 'দোকান')}: {o.stockist_name}</div>
@@ -12181,6 +12301,26 @@ export default function App() {
                                 </div>
                               )}
 
+                              {(() => {
+                                if (['DELIVERED', 'CANCELLED'].includes(o.status) || o.payment_status !== 'UNPAID') return null;
+                                const upiUri = getShopUpiUri(o, customerStockists);
+                                if (!upiUri) return null;
+                                return (
+                                  <div style={{ marginTop: '0.35rem', marginBottom: '0.35rem', padding: '0.5rem', background: 'var(--surface-overlay)', borderRadius: '6px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <a 
+                                      href={upiUri}
+                                      className="btn btn-primary upi-pay-link"
+                                      style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', padding: '0.35rem 0.6rem', fontSize: '0.72rem', fontWeight: 600 }}
+                                    >
+                                      <CreditCard size={13} /> {t(`Pay ₹${getOrderAmountToPay(o)} by UPI`, `UPI द्वारा ₹${getOrderAmountToPay(o)} का भुगतान करें`, `UPI দিয়ে ₹${getOrderAmountToPay(o)} পেমেন্ট করুন`)}
+                                    </a>
+                                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.3 }}>
+                                      {t('Pay the shop directly. The shop confirms when it receives the money.', 'दुकानदार को सीधे भुगतान करें। पैसा मिलने पर दुकानदार पुष्टि करेगा।', 'দোকানদারকে সরাসরি পেমেন্ট করুন। টাকা পেলে দোকানদার নিশ্চিত করবেন।')}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
                               {renderCancelButtonOrClosed(o)}
 
                               {/* §F19: No-show alert for missed pickup */}
@@ -12230,7 +12370,7 @@ export default function App() {
                               ) : null}
 
                               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.3rem' }}>
-                                <span>{t('Paid', 'भुगतान', 'পরিশোধ')}: ₹{o.total_price.toFixed(2)}</span>
+                                <span>{renderCustomerPaymentText(o)}</span>
                                 
                                 <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                                   {!['DELIVERED', 'CANCELLED', 'NO_SHOW'].includes(o.status) && (
@@ -13475,25 +13615,80 @@ export default function App() {
                                       {o.fulfillment_type === 'PICKUP' ? t('Mark Ready', 'तैयार चिह्नित करें', 'রেডি চিহ্নিত করুন') : t('Mark Ready for Delivery', 'वितरण के लिए तैयार', 'ডেলিভারির জন্য তৈরি')}
                                     </button>
                                   )}
-                                  {o.status === 'READY' && (
-                                    <div style={{ display: 'flex', gap: '0.25rem', width: '100%' }}>
-                                      <OtpInput 
-                                        length={4}
-                                        placeholder={o.fulfillment_type === 'DELIVERY' ? t("Enter Delivery PIN", "डिलीवरी पिन दर्ज करें", "ডেলিভারি পিন লিখুন") : t("Enter PIN", "पिन दर्ज करें", "পিন লিখুন")} 
-                                        title={t("Enter customer's PIN to confirm handoff", "हैंडऑफ की पुष्टि के लिए ग्राहक का PIN दर्ज करें", "হ্যান্ডঅফ নিশ্চিত করতে গ্রাহকের পিন লিখুন")} 
-                                        style={{ flex: 1, padding: '0.25rem', fontSize: '0.7rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', textAlign: 'center' }} 
-                                        value={enteredPins[o.id] || ''} 
-                                        onChange={e => setEnteredPins(prev => ({ ...prev, [o.id]: e.target.value }))} 
-                                      />
-                                      <button 
-                                        className="btn btn-accent" 
-                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
-                                        onClick={() => handleVerifyPickupPIN(o.id)}
-                                      >
-                                        Verify
-                                      </button>
-                                    </div>
-                                  )}
+                                  {o.status === 'READY' && (() => {
+                                    const stockistUpiUri = getShopUpiUri(o, customerStockists);
+                                    const currentMethod = handoverPaymentMethods[o.id] || (o.payment_status === 'PAID' ? (o.payment_received_method || 'CASH') : '');
+                                    return (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%', marginTop: '0.2rem' }}>
+                                        {stockistUpiUri && (
+                                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem', background: 'var(--surface-overlay)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                                            <UpiQrCode upiUrl={stockistUpiUri} size={110} />
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.25rem', textAlign: 'center' }}>
+                                              {t('Scan to pay shop directly via UPI', 'दुकानदार को सीधे UPI से भुगतान करने के लिए स्कैन करें', 'সরাসরি দোকানে UPI মাধ্যমে পেমেন্ট করতে স্ক্যান করুন')}
+                                            </span>
+                                          </div>
+                                        )}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                          <span style={{ fontSize: '0.7rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                                            {t('Payment received?', 'भुगतान प्राप्त हुआ?', 'পেমেন্ট পাওয়া গেছে?')}
+                                          </span>
+                                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button 
+                                              type="button" 
+                                              className={`btn ${currentMethod === 'CASH' ? 'btn-accent' : ''}`}
+                                              style={{ 
+                                                flex: 1, 
+                                                padding: '0.3rem 0.5rem', 
+                                                fontSize: '0.7rem',
+                                                border: currentMethod === 'CASH' ? 'none' : '1px solid var(--border-color)',
+                                                background: currentMethod === 'CASH' ? 'var(--accent)' : 'var(--bg-surface)',
+                                                color: currentMethod === 'CASH' ? '#fff' : 'var(--text-main)',
+                                                cursor: 'pointer',
+                                                borderRadius: '4px'
+                                              }}
+                                              onClick={() => setHandoverPaymentMethods(prev => ({ ...prev, [o.id]: 'CASH' }))}
+                                            >
+                                              {t('Cash', 'नकद', 'নগদ')}
+                                            </button>
+                                            <button 
+                                              type="button" 
+                                              className={`btn ${currentMethod === 'UPI' ? 'btn-accent' : ''}`}
+                                              style={{ 
+                                                flex: 1, 
+                                                padding: '0.3rem 0.5rem', 
+                                                fontSize: '0.7rem',
+                                                border: currentMethod === 'UPI' ? 'none' : '1px solid var(--border-color)',
+                                                background: currentMethod === 'UPI' ? 'var(--accent)' : 'var(--bg-surface)',
+                                                color: currentMethod === 'UPI' ? '#fff' : 'var(--text-main)',
+                                                cursor: 'pointer',
+                                                borderRadius: '4px'
+                                              }}
+                                              onClick={() => setHandoverPaymentMethods(prev => ({ ...prev, [o.id]: 'UPI' }))}
+                                            >
+                                              {t('UPI', 'UPI', 'ইউপিআই')}
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.25rem', width: '100%', marginTop: '0.25rem' }}>
+                                          <OtpInput 
+                                            length={4}
+                                            placeholder={o.fulfillment_type === 'DELIVERY' ? t("Enter Delivery PIN", "डिलीवरी पिन दर्ज करें", "ডেলিভারি পিন লিখুন") : t("Enter PIN", "पिन दर्ज करें", "পিন লিখুন")} 
+                                            title={t("Enter customer's PIN to confirm handoff", "हैंडऑफ की पुष्टि के लिए ग्राहक का PIN दर्ज करें", "হ্যান্ডঅফ নিশ্চিত করতে গ্রাহকের পিন লিখুন")} 
+                                            style={{ flex: 1, padding: '0.25rem', fontSize: '0.7rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', textAlign: 'center' }} 
+                                            value={enteredPins[o.id] || ''} 
+                                            onChange={e => setEnteredPins(prev => ({ ...prev, [o.id]: e.target.value }))} 
+                                          />
+                                          <button 
+                                            className="btn btn-accent" 
+                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
+                                            onClick={() => handleVerifyPickupPIN(o.id)}
+                                          >
+                                            {t('Verify', 'सत्यापित करें', 'যাচাই করুন')}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
 
                                 </div>
                               </div>
@@ -18092,7 +18287,7 @@ export default function App() {
                             <td style={{ fontFamily: 'monospace' }}>#{o.id.substring(2).toUpperCase()}</td>
                             <td>{o.stockist_name}</td>
                             <td><span className="badge badge-primary" style={{ fontSize: '0.65rem' }}>{formatOrderStatusDisplay(o.status, o.fulfillment_type)}</span></td>
-                            <td style={{ fontSize: '0.75rem' }}>{o.fulfillment_type || 'N/A'} - {o.payment_method || 'N/A'}</td>
+                            <td style={{ fontSize: '0.75rem' }}>{formatFulfillmentPayment(o)}</td>
                             <td style={{ fontWeight: 'bold' }}>
                               {o.coupon_discount ? (
                                 <>
@@ -18117,8 +18312,10 @@ export default function App() {
                             <td>{formatPoints(o.points_credited || 0)}</td>
                             <td>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                                <span className={`badge ${o.payment_status === 'RELEASED' ? 'badge-success' : o.payment_status === 'COD' ? 'badge-warning' : o.payment_status === 'REFUNDED' ? 'badge-secondary' : o.payment_status === 'REFUND_DUE' ? 'badge-danger' : 'badge-primary'}`} style={{ fontSize: '0.55rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
+                                <span className={`badge ${o.payment_status === 'PAID' || o.payment_status === 'RELEASED' ? 'badge-success' : o.payment_status === 'UNPAID' || o.payment_status === 'COD' ? 'badge-warning' : o.payment_status === 'REFUNDED' ? 'badge-secondary' : o.payment_status === 'REFUND_DUE' ? 'badge-danger' : 'badge-primary'}`} style={{ fontSize: '0.55rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
                                   {o.payment_status === 'HELD' ? <><Lock size={9} /> HELD</> : 
+                                   o.payment_status === 'PAID' ? <><Check size={9} /> PAID ({o.payment_received_method || 'CASH'})</> : 
+                                   o.payment_status === 'UNPAID' ? 'UNPAID' : 
                                    o.payment_status === 'RELEASED' ? <><Check size={9} /> RELEASED</> : 
                                    o.payment_status === 'COD' ? <><Banknote size={9} /> COD</> : 
                                    o.payment_status === 'REFUND_DUE' ? 'REFUND DUE' :

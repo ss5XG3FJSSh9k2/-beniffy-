@@ -116,9 +116,9 @@ const DEFAULT_DB = {
     { id: 'v2', name: 'Bishnupur Agro Suppliers', region_id: 'r2', created_at: new Date().toISOString() }
   ],
   stockists: [
-    { id: 's1', user_id: 'u-stk1', name: 'Madan Grocers', region_id: 'r1', contact_name: 'Madan Shaw', contact_phone: '7654321098', is_active: true, created_at: new Date().toISOString() },
-    { id: 's2', user_id: 'u-stk2', name: 'Sarkar Daily Store', region_id: 'r2', contact_name: 'Prabhat Sarkar', contact_phone: '6543210987', is_active: true, created_at: new Date().toISOString() },
-    { id: 's3', user_id: 'u-stk4', name: 'Banerjee Corner Store', region_id: 'r1', contact_name: 'Soumik Banerjee', contact_phone: '9432109876', is_active: true, created_at: new Date().toISOString() }
+    { id: 's1', user_id: 'u-stk1', name: 'Madan Grocers', region_id: 'r1', contact_name: 'Madan Shaw', contact_phone: '7654321098', payout_upi_id: '7654321098@okaxis', is_active: true, created_at: new Date().toISOString() },
+    { id: 's2', user_id: 'u-stk2', name: 'Sarkar Daily Store', region_id: 'r2', contact_name: 'Prabhat Sarkar', contact_phone: '6543210987', payout_upi_id: '6543210987@okaxis', is_active: true, created_at: new Date().toISOString() },
+    { id: 's3', user_id: 'u-stk4', name: 'Banerjee Corner Store', region_id: 'r1', contact_name: 'Soumik Banerjee', contact_phone: '9432109876', payout_upi_id: '9432109876@okaxis', is_active: true, created_at: new Date().toISOString() }
   ],
   products: [
     { id: 'p1', tenant_id: 't1', region_id: 'r1', stockist_id: 's1', name: 'Fresh Potatoes (Alu, 1kg)', category: 'groceries', price: 30.0, cost_price: 22.0, description: 'Staple local potatoes', image_url: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&q=80&w=300', latest_bill_photo_id: 'pbp-seed1', created_at: new Date().toISOString() },

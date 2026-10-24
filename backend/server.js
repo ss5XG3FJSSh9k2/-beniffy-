@@ -2839,11 +2839,13 @@ async function enrichOrder(o, req = null) {
   const users = await db.getTable('users');
   const splitPayouts = await db.getTable('split_payouts');
   const feedbacks = await db.getTable('feedback_reports');
+  const stockists = await db.getTable('stockists');
 
   const items = orderItems.filter(oi => oi.order_id === o.id);
   const customer = users.find(u => u.id === o.customer_id);
   const payout = splitPayouts.find(sp => sp.order_id === o.id);
   const stockistFeedback = feedbacks.find(fb => fb.order_id === o.id && fb.reporter_role === 'STOCKIST');
+  const stockist = stockists.find(s => s.id === o.stockist_id);
 
   let platformCommission = o.platform_commission;
   let stockistPayout = o.stockist_payout;
@@ -2893,6 +2895,9 @@ async function enrichOrder(o, req = null) {
     stockist_amount: stockistPayout,
     platform_amount: platformPayout,
     stockist_reviewed: !!stockistFeedback,
+    stockist_upi_id: stockist ? (stockist.upi_id || stockist.payout_upi_id || null) : null,
+    payment_received_method: o.payment_received_method || null,
+    paid_at: o.paid_at || null,
     amount_paid: o.amount_paid !== undefined && o.amount_paid !== null ? o.amount_paid : o.total_price,
     points_status: (await db.getTable('points_ledger')).some(l => l.order_id === o.id && l.type === 'EARN_HELD' && l.billing_sync_status === 'HELD') ? 'HELD' : 'CREDITED'
   };
@@ -3002,7 +3007,7 @@ const ORDER_STATUS_RANK = {
 const FINAL_ORDER_STATUSES = ['DELIVERED', 'CANCELLED'];
 const READY_ORDER_STATUSES = ['READY', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'SHIPPED']; // SHIPPED: legacy rows
 const ORDER_FULFILLMENT_TYPES = ['PICKUP', 'DELIVERY', 'HOME_DELIVERY'];
-const ORDER_PAYMENT_METHODS = ['UPI', 'COD', 'ONLINE', 'CARD'];
+const ORDER_PAYMENT_METHODS = ['UPI', 'COD', 'ONLINE', 'CARD', 'PAY_AT_HANDOVER'];
 
 // Returns an error message, or null when the slot is acceptable. Accepts the
 // named slots, a time range ("10:00–11:00", "10:00 AM - 11:00 AM") or the
@@ -3091,7 +3096,7 @@ const handleCreateOrderRoute = async (req, res) => {
       (typeof paymentMethod !== 'string' || !ORDER_PAYMENT_METHODS.includes(paymentMethod.toUpperCase()))) {
     return res.status(400).json({ error: 'Invalid payment method' });
   }
-  const reqPaymentMethod = paymentMethod ? paymentMethod.toUpperCase() : (reqFulfillment === 'PICKUP' ? 'UPI' : 'COD');
+  const reqPaymentMethod = paymentMethod ? paymentMethod.toUpperCase() : 'PAY_AT_HANDOVER';
   
   const couponRewardId = req.body.coupon_reward_id;
   let reward = null;
@@ -3300,9 +3305,11 @@ const handleCreateOrderRoute = async (req, res) => {
     }
 
     // Determine payment status
-    // Pickup = UPI → HELD. Delivery COD = COD. Delivery UPI = HELD.
+    // Default PAY_AT_HANDOVER → UNPAID. COD → COD. Online gateway → HELD.
     const effectivePaymentMethod = reqPaymentMethod;
-    const paymentStatus = effectivePaymentMethod?.includes('COD') ? 'COD' : 'HELD';
+    const paymentStatus = effectivePaymentMethod === 'PAY_AT_HANDOVER'
+      ? 'UNPAID'
+      : (effectivePaymentMethod?.includes('COD') ? 'COD' : 'HELD');
 
     // Stock deduction removed here. It now happens when the order is marked READY.
 
@@ -3338,8 +3345,8 @@ const handleCreateOrderRoute = async (req, res) => {
       cancel_deadline: cancelDeadline,
       no_show_count: 0,
       reschedule_used: false,
-      razorpay_order_id: effectivePaymentMethod?.includes('COD') ? null : ('rzp_order_' + generateId()),
-      razorpay_payment_id: effectivePaymentMethod?.includes('COD') ? null : ('rzp_pay_' + generateId()),
+      razorpay_order_id: (effectivePaymentMethod === 'PAY_AT_HANDOVER' || effectivePaymentMethod?.includes('COD')) ? null : ('rzp_order_' + generateId()),
+      razorpay_payment_id: (effectivePaymentMethod === 'PAY_AT_HANDOVER' || effectivePaymentMethod?.includes('COD')) ? null : ('rzp_pay_' + generateId()),
       split_released: false,
       coupon_reward_id: couponRewardId || null,
       coupon_name: reward ? reward.name : null,
@@ -3359,22 +3366,25 @@ const handleCreateOrderRoute = async (req, res) => {
 
     for (const oi of orderItems) { oi.order_id = orderId; await db.insertRow('order_items', oi); }
 
-    await db.insertRow('split_payouts', {
-      id: 'sp-' + generateId(),
-      order_id: orderId,
-      stockist_id: stockistId,
-      stockist_amount: stockistPayout,
-      platform_amount: platformPayout,
-      commission_rate_used: settlement.commissionRateUsed,
-      earn_rate_used: settlement.earnRateUsed,
-      is_cod: effectivePaymentMethod?.includes('COD'),
-      status: paymentStatus === 'HELD' ? 'HELD' : 'PENDING_COD',
-      coupon_cost: couponDiscount,
-      created_at: now.toISOString()
-    });
+    // Never create HELD split payouts for PAY_AT_HANDOVER
+    if (effectivePaymentMethod !== 'PAY_AT_HANDOVER') {
+      await db.insertRow('split_payouts', {
+        id: 'sp-' + generateId(),
+        order_id: orderId,
+        stockist_id: stockistId,
+        stockist_amount: stockistPayout,
+        platform_amount: platformPayout,
+        commission_rate_used: settlement.commissionRateUsed,
+        earn_rate_used: settlement.earnRateUsed,
+        is_cod: effectivePaymentMethod?.includes('COD'),
+        status: paymentStatus === 'HELD' ? 'HELD' : 'PENDING_COD',
+        coupon_cost: couponDiscount,
+        created_at: now.toISOString()
+      });
+    }
 
     // Payment ledger event
-    appendPaymentEvent(orderId, paymentStatus === 'COD' ? 'COD_ORDER_CREATED' : 'HELD', order.amount_paid, {
+    appendPaymentEvent(orderId, effectivePaymentMethod === 'PAY_AT_HANDOVER' ? 'PAY_AT_HANDOVER_ORDER_CREATED' : (paymentStatus === 'COD' ? 'COD_ORDER_CREATED' : 'HELD'), order.amount_paid, {
       method: effectivePaymentMethod,
       stockist_share: stockistPayout,
       platform_share: platformPayout - couponDiscount,
@@ -3581,6 +3591,27 @@ app.post('/api/orders/:id/verify-pickup', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Incorrect pickup verification PIN.' });
   }
 
+  const isAdmin = req.user.role === 'ADMIN';
+  const paymentReceivedMethod = req.body.payment_received_method ? String(req.body.payment_received_method).trim().toUpperCase() : null;
+  if (order.payment_status === 'UNPAID' || order.payment_method === 'PAY_AT_HANDOVER') {
+    if (!paymentReceivedMethod || !['CASH', 'UPI'].includes(paymentReceivedMethod)) {
+      if (!isAdmin) {
+        return res.status(400).json({ error: 'Payment method required (CASH or UPI)', code: 'PAYMENT_METHOD_REQUIRED' });
+      }
+      order.payment_status = 'PAID';
+      order.payment_received_method = 'CASH';
+      order.paid_at = new Date().toISOString();
+    } else {
+      order.payment_status = 'PAID';
+      order.payment_received_method = paymentReceivedMethod;
+      order.paid_at = new Date().toISOString();
+    }
+  } else if (paymentReceivedMethod && ['CASH', 'UPI'].includes(paymentReceivedMethod)) {
+    order.payment_status = 'PAID';
+    order.payment_received_method = paymentReceivedMethod;
+    order.paid_at = new Date().toISOString();
+  }
+
   order.status = 'DELIVERED';
   await db.updateRow('orders', order.id, order);
 
@@ -3588,14 +3619,14 @@ app.post('/api/orders/:id/verify-pickup', requireAuth, async (req, res) => {
   await _creditPointsOnDelivery(order);
   await _processReferralBonusOnDelivery(order);
 
-  // COD commission accrues ONLY on delivery, for COD orders
-  if (order.payment_method?.includes('COD') || order.payment_status === 'COD') {
+  // Commission accrues ONLY on delivery: for COD and PAY_AT_HANDOVER
+  if (order.payment_method?.includes('COD') || order.payment_status === 'COD' || order.payment_method === 'PAY_AT_HANDOVER') {
     const codLedger = await db.getTable('cod_commission_ledger');
     // guard against double-accrual
     const already = codLedger.some(e => e.order_id === order.id);
     if (!already) {
       const payout = (await db.getTable('split_payouts')).find(sp => sp.order_id === order.id);
-      const platformCommission = payout ? parseFloat(payout.platform_amount) : 0;
+      const platformCommission = payout ? parseFloat(payout.platform_amount) : (parseFloat(order.platform_commission) || 0);
       await db.insertRow('cod_commission_ledger', {
         id: 'cod-' + generateId(),
         stockist_id: order.stockist_id,
@@ -3981,6 +4012,28 @@ const handleOrderStatusUpdate = async (req, res) => {
     }
   }
 
+  if (status === 'DELIVERED') {
+    const paymentReceivedMethod = req.body.payment_received_method ? String(req.body.payment_received_method).trim().toUpperCase() : null;
+    if (order.payment_status === 'UNPAID' || order.payment_method === 'PAY_AT_HANDOVER') {
+      if (!paymentReceivedMethod || !['CASH', 'UPI'].includes(paymentReceivedMethod)) {
+        if (!isAdmin) {
+          return res.status(400).json({ error: 'Payment method required (CASH or UPI)', code: 'PAYMENT_METHOD_REQUIRED' });
+        }
+        order.payment_status = 'PAID';
+        order.payment_received_method = 'CASH';
+        order.paid_at = new Date().toISOString();
+      } else {
+        order.payment_status = 'PAID';
+        order.payment_received_method = paymentReceivedMethod;
+        order.paid_at = new Date().toISOString();
+      }
+    } else if (paymentReceivedMethod && ['CASH', 'UPI'].includes(paymentReceivedMethod)) {
+      order.payment_status = 'PAID';
+      order.payment_received_method = paymentReceivedMethod;
+      order.paid_at = new Date().toISOString();
+    }
+  }
+
   if (status !== 'CANCELLED') order.status = status;
   await db.updateRow('orders', order.id, order);
 
@@ -4006,14 +4059,14 @@ const handleOrderStatusUpdate = async (req, res) => {
     await _creditPointsOnDelivery(order);
     await _processReferralBonusOnDelivery(order);
 
-    // COD commission accrues ONLY on delivery, for COD orders
-    if (order.payment_method?.includes('COD') || order.payment_status === 'COD') {
+    // Commission accrues ONLY on delivery: for COD and PAY_AT_HANDOVER
+    if (order.payment_method?.includes('COD') || order.payment_status === 'COD' || order.payment_method === 'PAY_AT_HANDOVER') {
       const codLedger = await db.getTable('cod_commission_ledger');
       // guard against double-accrual
       const already = codLedger.some(e => e.order_id === order.id);
       if (!already) {
         const payout = (await db.getTable('split_payouts')).find(sp => sp.order_id === order.id);
-        const platformCommission = payout ? parseFloat(payout.platform_amount) : 0;
+        const platformCommission = payout ? parseFloat(payout.platform_amount) : (parseFloat(order.platform_commission) || 0);
         await db.insertRow('cod_commission_ledger', {
           id: 'cod-' + generateId(),
           stockist_id: order.stockist_id,
@@ -4075,6 +4128,7 @@ app.patch('/api/orders/:id/fulfillment', requireAuth, async (req, res) => {
 
         order.delivery_fee = deliveryFee;
         order.total_price = order.subtotal + deliveryFee + (order.low_order_fee || 0);
+        order.amount_paid = Math.max(0, order.subtotal - (order.coupon_discount || 0)) + deliveryFee + (order.low_order_fee || 0);
         order.pickup_slot = null;
 
         // Keep the split computed at checkout and only add the delivery fee to the

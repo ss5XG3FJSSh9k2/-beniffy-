@@ -339,6 +339,71 @@ async function repairReleasedUsers(dbInterface) {
   }
 }
 
+async function repairPayAtHandoverOrders(dbInterface) {
+  try {
+    const orders = dbInterface && typeof dbInterface.getTable === 'function'
+      ? await dbInterface.getTable('orders')
+      : await getTable('orders');
+    const splitPayouts = dbInterface && typeof dbInterface.getTable === 'function'
+      ? await dbInterface.getTable('split_payouts')
+      : await getTable('split_payouts');
+    const stockists = dbInterface && typeof dbInterface.getTable === 'function'
+      ? await dbInterface.getTable('stockists')
+      : await getTable('stockists');
+
+    let stockistsModified = false;
+    for (const s of stockists) {
+      if (!s.payout_upi_id && (s.contact_phone || s.phone)) {
+        const phone = s.contact_phone || s.phone;
+        s.payout_upi_id = `${phone}@okaxis`;
+        stockistsModified = true;
+      }
+    }
+    if (stockistsModified) {
+      if (dbInterface && typeof dbInterface.saveTable === 'function') {
+        await dbInterface.saveTable('stockists', stockists);
+      } else {
+        await saveTable('stockists', stockists);
+      }
+    }
+
+    let repairedOrdersCount = 0;
+    const targetOrderIds = new Set();
+
+    for (const o of orders) {
+      if (['HELD', 'COD'].includes(o.payment_status) && !['DELIVERED', 'CANCELLED'].includes(o.status)) {
+        o.payment_method = 'PAY_AT_HANDOVER';
+        o.payment_status = 'UNPAID';
+        targetOrderIds.add(o.id);
+        repairedOrdersCount++;
+        if (dbInterface && typeof dbInterface.updateRow === 'function') {
+          await dbInterface.updateRow('orders', o.id, o);
+        } else {
+          await updateRow('orders', o.id, o);
+        }
+      }
+    }
+
+    let removedSplitCount = 0;
+    for (const sp of splitPayouts) {
+      if (targetOrderIds.has(sp.order_id) && sp.status === 'HELD') {
+        removedSplitCount++;
+        if (dbInterface && typeof dbInterface.deleteRow === 'function') {
+          await dbInterface.deleteRow('split_payouts', sp.id);
+        } else {
+          await deleteRow('split_payouts', sp.id);
+        }
+      }
+    }
+
+    console.log(`[Data repair] Repaired ${repairedOrdersCount} order(s) to PAY_AT_HANDOVER/UNPAID; removed ${removedSplitCount} HELD split payout(s).`);
+    return { repairedOrdersCount, removedSplitCount, removedHeldSplitsCount: removedSplitCount };
+  } catch (e) {
+    console.error('[Data repair] Error repairing pay-at-handover orders:', e);
+    return { repairedOrdersCount: 0, removedSplitCount: 0, removedHeldSplitsCount: 0 };
+  }
+}
+
 let initPromise = null;
 
 async function init() {
@@ -418,6 +483,7 @@ async function init() {
     await repairProductRegions(dbInterface);
     await repairStockistVendors(dbInterface);
     await repairReleasedUsers(dbInterface);
+    await repairPayAtHandoverOrders(dbInterface);
   })();
   return initPromise;
 }
@@ -450,6 +516,7 @@ async function resetForTest() {
     await repairProductRegions(dbInterface);
     await repairStockistVendors(dbInterface);
     await repairReleasedUsers(dbInterface);
+    await repairPayAtHandoverOrders(dbInterface);
   }
 }
 
@@ -714,5 +781,6 @@ module.exports = {
   getAll,
   repairProductRegions,
   repairStockistVendors,
-  repairReleasedUsers
+  repairReleasedUsers,
+  repairPayAtHandoverOrders
 };
