@@ -5000,20 +5000,101 @@ app.get(['/api/customer/rewards/available/:customerUserId', '/api/customer/avail
 // ----------------------------------------------------
 
 app.post('/api/feedback', requireAuth, async (req, res) => {
-  const { reporterId, reporterRole, targetId, targetRole, orderId, rating, reason, reportFlag } = req.body;
-  if (!assertSelfOrAdmin(req, res, reporterId)) return;
-  if (!reporterId || !reporterRole || !targetId || !targetRole || !orderId || rating === undefined) {
-    return res.status(400).json({ error: 'Reporter, target, order ID, and rating are required.' });
+  const { orderId, rating, reason, reportFlag } = req.body;
+  const targetOrderId = orderId || req.body.order_id;
+  if (!targetOrderId || rating === undefined) {
+    return res.status(400).json({ error: 'Order ID and rating are required.' });
+  }
+
+  const orders = await db.getTable('orders');
+  const order = orders.find(o => o.id === targetOrderId);
+
+  let reporter_id = req.user.userId;
+  let reporter_role = req.user.role;
+  let reporter_stockist_id = null;
+  let target_id = null;
+  let target_role = null;
+
+  if (reporter_role === 'STOCKIST') {
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    const stockists = await db.getTable('stockists');
+    const shop = stockists.find(s => s.user_id === reporter_id);
+    if (!shop) {
+      return res.status(403).json({ error: 'Shop not found for stockist' });
+    }
+    if (order.stockist_id !== shop.id) {
+      return res.status(403).json({ error: 'Forbidden: order does not belong to your shop' });
+    }
+    reporter_stockist_id = shop.id;
+    target_id = order.customer_id;
+    target_role = 'CUSTOMER';
+  } else if (reporter_role === 'CUSTOMER') {
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    if (order.customer_id !== reporter_id) {
+      return res.status(403).json({ error: 'Forbidden: order does not belong to you' });
+    }
+    target_id = order.stockist_id;
+    target_role = 'STOCKIST';
+  } else if (reporter_role === 'ADMIN') {
+    if (req.body.reporterRole === 'STOCKIST') {
+      reporter_role = 'STOCKIST';
+      const stockists = await db.getTable('stockists');
+      const shop = stockists.find(s => s.id === req.body.reporterId || s.user_id === req.body.reporterId) || (order ? stockists.find(s => s.id === order.stockist_id) : null);
+      if (shop) {
+        reporter_stockist_id = shop.id;
+        reporter_id = shop.user_id;
+      } else {
+        reporter_id = req.body.reporterId || req.user.userId;
+      }
+      target_id = order ? order.customer_id : (req.body.targetId || 'u-cust1');
+      target_role = 'CUSTOMER';
+    } else if (req.body.reporterRole === 'CUSTOMER') {
+      reporter_role = 'CUSTOMER';
+      reporter_id = req.body.reporterId || (order ? order.customer_id : 'u-cust1');
+      target_id = order ? order.stockist_id : (req.body.targetId || 's1');
+      target_role = 'STOCKIST';
+    } else {
+      target_id = order ? (order.customer_id || order.stockist_id) : (req.body.targetId || 'unknown');
+      target_role = req.body.targetRole || 'CUSTOMER';
+    }
+  } else {
+    return res.status(403).json({ error: 'Forbidden' });
   }
 
   const feedback = await db.getTable('feedback_reports');
+  const existingIndex = feedback.findIndex(fb => 
+    fb.order_id === targetOrderId && 
+    (fb.reporter_role === reporter_role || fb.reporter_id === reporter_id || (reporter_stockist_id && fb.reporter_stockist_id === reporter_stockist_id))
+  );
+
+  if (existingIndex !== -1) {
+    feedback[existingIndex] = {
+      ...feedback[existingIndex],
+      reporter_id,
+      reporter_role,
+      reporter_stockist_id: reporter_stockist_id || feedback[existingIndex].reporter_stockist_id || null,
+      target_id: target_id || feedback[existingIndex].target_id,
+      target_role: target_role || feedback[existingIndex].target_role,
+      rating: parseInt(rating, 10),
+      reason: reason || '',
+      report_flag: !!reportFlag
+    };
+    await db.saveTable('feedback_reports', feedback);
+    return res.json({ success: true, feedback: feedback[existingIndex], updated: true });
+  }
+
   const newFeedback = {
     id: 'fb-' + generateId(),
-    reporter_id: reporterId,
-    reporter_role: reporterRole,
-    target_id: targetId,
-    target_role: targetRole,
-    order_id: orderId,
+    reporter_id,
+    reporter_role,
+    reporter_stockist_id: reporter_stockist_id || null,
+    target_id,
+    target_role,
+    order_id: targetOrderId,
     rating: parseInt(rating, 10),
     reason: reason || '',
     report_flag: !!reportFlag,
@@ -5038,7 +5119,7 @@ app.get('/api/admin/feedback', async (req, res) => {
       const u = users.find(x => x.id === fb.reporter_id);
       reporterName = u ? u.name : 'Unknown Customer';
     } else {
-      const s = stockists.find(x => x.id === fb.reporter_id);
+      const s = stockists.find(x => x.id === fb.reporter_id || x.id === fb.reporter_stockist_id || x.user_id === fb.reporter_id);
       reporterName = s ? s.name : 'Unknown Shopkeeper';
     }
 
@@ -5046,7 +5127,7 @@ app.get('/api/admin/feedback', async (req, res) => {
       const u = users.find(x => x.id === fb.target_id);
       targetName = u ? u.name : 'Unknown Customer';
     } else {
-      const s = stockists.find(x => x.id === fb.target_id);
+      const s = stockists.find(x => x.id === fb.target_id || x.user_id === fb.target_id);
       targetName = s ? s.name : 'Unknown Shopkeeper';
     }
 

@@ -7077,43 +7077,29 @@ export default function App() {
   const handleSaveFeedback = async (role) => {
     if (!submittingFeedbackOrder) return;
     try {
-      let payload = {};
-      if (role === 'CUSTOMER') {
-        payload = {
-          reporterRole: 'CUSTOMER',
-          reporterId: currentUser.id,
-          reporterName: currentUser.name,
-          targetRole: 'STOCKIST',
-          targetId: submittingFeedbackOrder.stockist_id,
-          targetName: submittingFeedbackOrder.stockist_name,
-          orderId: submittingFeedbackOrder.id,
-          rating: feedbackRating,
-          reason: feedbackReason,
-          reportFlag: reportFlag
-        };
-      } else {
-        payload = {
-          reporterRole: 'STOCKIST',
-          reporterId: stockistProfile.id,
-          reporterName: stockistProfile.name,
-          targetRole: 'CUSTOMER',
-          targetId: submittingFeedbackOrder.customer_id,
-          targetName: submittingFeedbackOrder.customer_name || 'Amit Sen',
-          orderId: submittingFeedbackOrder.id,
-          rating: feedbackRating,
-          reason: feedbackReason,
-          reportFlag: reportFlag
-        };
-      }
+      const payload = {
+        orderId: submittingFeedbackOrder.id,
+        rating: feedbackRating,
+        reason: feedbackReason,
+        reportFlag: reportFlag,
+        targetId: role === 'CUSTOMER' ? submittingFeedbackOrder.stockist_id : submittingFeedbackOrder.customer_id,
+        targetRole: role === 'CUSTOMER' ? 'STOCKIST' : 'CUSTOMER',
+        targetName: role === 'CUSTOMER'
+          ? (submittingFeedbackOrder.stockist_name || 'Stockist')
+          : (submittingFeedbackOrder.customer_name || t('Customer', 'ग्राहक', 'ক্রেতা'))
+      };
       const res = await fetch(`${API_BASE}/feedback`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
         body: JSON.stringify(payload)
       });
       const data = await res.json().catch(() => ({}));
       logApi('POST', '/feedback', payload, res.status, data);
       if (res.ok) {
-        showToast('Feedback submitted successfully!');
+        showToast(t('Feedback submitted', 'प्रतिक्रिया जमा की गई', 'মতামত জমা দেওয়া হয়েছে'));
         setSubmittingFeedbackOrder(null);
         setFeedbackRating(5);
         setFeedbackReason('');
@@ -7122,7 +7108,7 @@ export default function App() {
         loadStockistData();
         fetchDbState();
       } else {
-        showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
+        showToast(data.error || data.message || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
       }
     } catch (err) {
       showToast('Network error submitting feedback', 'error');
@@ -14157,7 +14143,7 @@ export default function App() {
                           {t('Rate Customer', 'ग्राहक को रेट करें', 'ক্রেতাকে রেটিং দিন')}
                         </h3>
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                          {t('Rate behavior of', 'व्यवहार को रेट करें', 'ব্যবহারের রেটিং দিন')}: <strong>{submittingFeedbackOrder.customer_name}</strong>
+                          {t('Rate behavior of', 'व्यवहार को रेट करें', 'ব্যবহারের রেটিং দিন')}: <strong>{submittingFeedbackOrder.customer_name || t('Customer', 'ग्राहक', 'ক্রেতা')}</strong>
                         </p>
                         
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>

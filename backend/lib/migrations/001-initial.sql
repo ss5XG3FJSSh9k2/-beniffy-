@@ -255,6 +255,7 @@ CREATE TABLE IF NOT EXISTS feedback_reports (
   id TEXT PRIMARY KEY,
   reporter_id TEXT,
   reporter_role TEXT,
+  reporter_stockist_id TEXT,
   target_id TEXT,
   target_role TEXT,
   customer_id TEXT,

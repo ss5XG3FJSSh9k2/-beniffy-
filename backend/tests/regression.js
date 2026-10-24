@@ -7448,6 +7448,107 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: --scrim CSS token is defined across theme blocks at 55% opacity`);
 
+  // --- Section 62: Feedback & Order Rating Ownership ---
+  console.log('\n--- Section 62: Feedback & Order Rating Ownership ---');
+  
+  // Create an order at shop s1 for customer u-cust1
+  loginAs('u-cust1', 'CUSTOMER');
+  const s62OrderRes = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    items: [{ productId: 'p1', quantity: 1 }],
+    fulfillmentType: 'PICKUP',
+    pickupSlot: 'Morning (8AM–12PM)'
+  });
+  assert(s62OrderRes.status === 200, 'Order created for feedback tests');
+  const s62OrderId = s62OrderRes.body.order.id;
+
+  // 1. Stockist rates a customer on its own order -> 200
+  loginAs('u-stk1', 'STOCKIST');
+  const s62StkFb1 = await post('http://localhost:3001/api/feedback', {
+    orderId: s62OrderId,
+    rating: 4,
+    reason: 'Great customer, fast pickup',
+    reportFlag: false
+  });
+  assert(s62StkFb1.status === 200, `Stockist rates customer on own order returns 200: got ${s62StkFb1.status}`);
+  assert(s62StkFb1.body.feedback.reporter_role === 'STOCKIST', 'Feedback stored with reporter_role STOCKIST');
+  assert(s62StkFb1.body.feedback.reporter_id === 'u-stk1', 'Feedback stored with reporter_id user id');
+  assert(s62StkFb1.body.feedback.reporter_stockist_id === 's1', 'Feedback stored with reporter_stockist_id shop id');
+  assert(s62StkFb1.body.feedback.target_role === 'CUSTOMER', 'Feedback target_role is CUSTOMER');
+  assert(s62StkFb1.body.feedback.target_id === 'u-cust1', 'Feedback target_id is customer id');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Stockist rates customer on its own order returns 200 with correct IDs`);
+
+  // 2. Stockist rates on another shop's order -> 403
+  loginAs('u-stk2', 'STOCKIST');
+  const s62StkFbCross = await post('http://localhost:3001/api/feedback', {
+    orderId: s62OrderId,
+    rating: 1,
+    reason: 'Trying to rate another shop order'
+  });
+  assert(s62StkFbCross.status === 403, `Stockist rating another shop order returns 403: got ${s62StkFbCross.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Stockist rating another shop order returns 403 Forbidden`);
+
+  // 3. Customer rates a shop on its own order -> 200
+  loginAs('u-cust1', 'CUSTOMER');
+  const s62CustFb1 = await post('http://localhost:3001/api/feedback', {
+    orderId: s62OrderId,
+    rating: 5,
+    reason: 'Excellent fresh groceries'
+  });
+  assert(s62CustFb1.status === 200, `Customer rating shop on own order returns 200: got ${s62CustFb1.status}`);
+  assert(s62CustFb1.body.feedback.reporter_role === 'CUSTOMER', 'Customer feedback stored with reporter_role CUSTOMER');
+  assert(s62CustFb1.body.feedback.reporter_id === 'u-cust1', 'Customer feedback stored with reporter_id u-cust1');
+  assert(s62CustFb1.body.feedback.target_role === 'STOCKIST', 'Customer feedback target_role is STOCKIST');
+  assert(s62CustFb1.body.feedback.target_id === 's1', 'Customer feedback target_id is s1');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer rates shop on own order returns 200`);
+
+  // 4. Customer rates another customer's order -> 403
+  loginAs('u-cust2', 'CUSTOMER');
+  const s62CustCross = await post('http://localhost:3001/api/feedback', {
+    orderId: s62OrderId,
+    rating: 2,
+    reason: 'Trying to rate another customer order'
+  });
+  assert(s62CustCross.status === 403, `Customer rating another customer order returns 403: got ${s62CustCross.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer rating another customer order returns 403 Forbidden`);
+
+  // 5. Second submit for same order and reporter updates the first (one rating per side per order)
+  loginAs('u-stk1', 'STOCKIST');
+  const s62StkFb2 = await post('http://localhost:3001/api/feedback', {
+    orderId: s62OrderId,
+    rating: 5,
+    reason: 'Updated rating: customer returned and was very polite',
+    reportFlag: false
+  });
+  assert(s62StkFb2.status === 200, 'Second submit returns 200');
+  assert(s62StkFb2.body.feedback.id === s62StkFb1.body.feedback.id, 'Second submit updates the same feedback ID');
+  assert(s62StkFb2.body.feedback.rating === 5, 'Second submit updated rating to 5');
+  assert(s62StkFb2.body.feedback.reason === 'Updated rating: customer returned and was very polite', 'Second submit updated reason');
+  
+  // Verify in admin feedback list that there is only one entry for stockist on this order
+  loginAs('u-admin', 'ADMIN');
+  const s62AdminFb = await get('http://localhost:3001/api/admin/feedback');
+  assert(s62AdminFb.status === 200, 'Admin feedback fetch returns 200');
+  const stkFbsOnOrder = s62AdminFb.body.filter(f => f.order_id === s62OrderId && f.reporter_role === 'STOCKIST');
+  assert(stkFbsOnOrder.length === 1, `Exactly one stockist feedback entry on order: got ${stkFbsOnOrder.length}`);
+  assert(stkFbsOnOrder[0].rating === 5, 'Admin feedback reflects updated rating 5');
+  assert(stkFbsOnOrder[0].reporter_name === 'Madan Grocers', `Admin feedback reporter_name is Madan Grocers: got ${stkFbsOnOrder[0].reporter_name}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Second submit updates existing feedback without creating duplicate row`);
+
+  // 6. Client code verification: stops sending reporterId/reporterRole and never falls back to Amit Sen
+  const s62AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  assert(!s62AppJsx.includes("targetName: submittingFeedbackOrder.customer_name || 'Amit Sen'"), 'App.jsx never falls back to Amit Sen in feedback');
+  assert(!s62AppJsx.includes("reporterId: stockistProfile.id"), 'App.jsx stops sending reporterId');
+  assert(!s62AppJsx.includes("reporterRole: 'STOCKIST'"), 'App.jsx stops sending reporterRole');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: App.jsx stops sending reporterId/reporterRole and never falls back to Amit Sen`);
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
