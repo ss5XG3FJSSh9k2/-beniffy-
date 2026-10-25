@@ -17,3 +17,9 @@ frontend/scratch/
 frontend/scratch_fix_app.cjs
 scratch-patch*.js
 diff.txt
+screenshots/
+tests/**/*.png
+tests/*.png
+artifacts/
+fix-regression.js
+update-theme.js
