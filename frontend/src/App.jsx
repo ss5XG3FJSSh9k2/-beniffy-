@@ -1956,6 +1956,46 @@ export default function App() {
       .finally(() => setIsVerifyingSession(false));
   }, []);
 
+  const [supportPhone, setSupportPhone] = useState('');
+  const [supportWhatsapp, setSupportWhatsapp] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+  const [supportHours, setSupportHours] = useState('');
+  const [adminSupportPhone, setAdminSupportPhone] = useState('');
+  const [adminSupportWhatsapp, setAdminSupportWhatsapp] = useState('');
+  const [adminSupportEmail, setAdminSupportEmail] = useState('');
+  const [adminSupportHours, setAdminSupportHours] = useState('');
+  const [savingSupportSettings, setSavingSupportSettings] = useState(false);
+  const [supportSettingsError, setSupportSettingsError] = useState('');
+  const [supportSettingsSuccess, setSupportSettingsSuccess] = useState('');
+  const [supportSettingsDirty, setSupportSettingsDirty] = useState(false);
+  const supportSettingsDirtyRef = useRef(false);
+  useEffect(() => {
+    supportSettingsDirtyRef.current = supportSettingsDirty;
+  }, [supportSettingsDirty]);
+
+  const fetchSystemConfig = useCallback(() => {
+    fetch(`${API_BASE}/config`)
+      .then(res => res.ok ? res.json() : null)
+      .then(cfg => {
+        if (!cfg) return;
+        const sPhone = cfg.support_phone || (cfg.support && cfg.support.phone) || '';
+        const sWhatsapp = cfg.support_whatsapp || (cfg.support && cfg.support.whatsapp) || '';
+        const sEmail = cfg.support_email || (cfg.support && cfg.support.email) || '';
+        const sHours = cfg.support_hours || (cfg.support && cfg.support.hours) || '';
+        setSupportPhone(sPhone);
+        setSupportWhatsapp(sWhatsapp);
+        setSupportEmail(sEmail);
+        setSupportHours(sHours);
+        if (!supportSettingsDirtyRef.current) {
+          setAdminSupportPhone(sPhone);
+          setAdminSupportWhatsapp(sWhatsapp);
+          setAdminSupportEmail(sEmail);
+          setAdminSupportHours(sHours);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetch(`${API_BASE}/regions`)
       .then(res => res.ok ? res.json() : [])
@@ -1965,7 +2005,8 @@ export default function App() {
         setAllSystemRegions(list);
       })
       .catch(() => {});
-  }, []);
+    fetchSystemConfig();
+  }, [fetchSystemConfig]);
   const [confirmCancelOrderId, setConfirmCancelOrderId] = useState(null);
   const [confirmDeliverySwitchOrderId, setConfirmDeliverySwitchOrderId] = useState(null);
 
@@ -4118,6 +4159,8 @@ export default function App() {
           console.error('Error fetching regions:', err);
         }
 
+        fetchSystemConfig();
+
         // Mock state representation of tables for the inspector
         setDbState(prev => ({
           ...(prev || {}),
@@ -4507,6 +4550,41 @@ export default function App() {
       }
     } catch (err) {
       showToast('Network error saving global config', 'error');
+    }
+  };
+
+  const handleSaveSupportSettings = async () => {
+    setSavingSupportSettings(true);
+    setSupportSettingsError('');
+    setSupportSettingsSuccess('');
+    try {
+      const res = await fetch(`${API_BASE}/admin/support-settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          support_phone: adminSupportPhone,
+          support_whatsapp: adminSupportWhatsapp,
+          support_email: adminSupportEmail,
+          support_hours: adminSupportHours
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errMsg = data.message || data.error || 'Failed to save support settings.';
+        setSupportSettingsError(errMsg);
+        showToast(errMsg, 'error');
+        return;
+      }
+      const successMsg = t('Support settings saved successfully.', 'सहायता सेटिंग्स सफलतापूर्वक सहेजी गईं।', 'সহায়তা সেটিংস সফলভাবে সংরক্ষণ করা হয়েছে।');
+      setSupportSettingsSuccess(successMsg);
+      showToast(successMsg);
+      setSupportSettingsDirty(false);
+      fetchSystemConfig();
+    } catch (err) {
+      setSupportSettingsError('Network error saving support settings.');
+      showToast('Network error saving support settings.', 'error');
+    } finally {
+      setSavingSupportSettings(false);
     }
   };
 
@@ -13281,23 +13359,39 @@ export default function App() {
                           <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
                             {t('Need help with an order or subscription?', 'ऑर्डर या सदस्यता में सहायता चाहिए?', 'অর্ডার বা সাবস্ক্রিপশনে সহায়তা প্রয়োজন?')}
                           </p>
-                          <a 
-                            href="tel:1800123456" 
-                            className="btn btn-secondary" 
-                            style={{ 
-                              display: 'inline-flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              gap: '0.4rem', 
-                              fontSize: '0.75rem', 
-                              padding: '0.4rem 0.8rem',
-                              textDecoration: 'none',
-                              width: '100%'
-                            }}
-                          >
-                            <Phone size={14} style={{ color: 'var(--accent)' }} />
-                            {t('Contact Beniffy support (1800-123-456)', 'बेनिफ़ी सहायता से संपर्क करें (1800-123-456)', 'বেনিফি সহায়তায় যোগাযোগ (১৮০০-১২৩-৪৫৬)')}
-                          </a>
+                          {supportPhone ? (
+                            <a 
+                              href={`tel:${supportPhone.replace(/[\s\-\(\)]/g, '')}`} 
+                              className="btn btn-secondary" 
+                              style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                gap: '0.4rem', 
+                                fontSize: '0.75rem', 
+                                padding: '0.4rem 0.8rem',
+                                textDecoration: 'none',
+                                width: '100%'
+                              }}
+                            >
+                              <Phone size={14} style={{ color: 'var(--accent)' }} />
+                              {supportHours
+                                ? t(
+                                    `Call Beniffy support: ${supportPhone} (${supportHours})`,
+                                    `बेनिफ़ी सहायता को कॉल करें: ${supportPhone} (${supportHours})`,
+                                    `বেনিফি সহায়তায় কল করুন: ${supportPhone} (${supportHours})`
+                                  )
+                                : t(
+                                    `Call Beniffy support: ${supportPhone}`,
+                                    `बेनिफ़ी सहायता को कॉल करें: ${supportPhone}`,
+                                    `বেনিফি সহায়তায় কল করুন: ${supportPhone}`
+                                  )}
+                            </a>
+                          ) : (
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                              {t('Support details coming soon', 'सहायता विवरण जल्द ही उपलब्ध होंगे', 'সহায়তার বিশদ শীঘ্রই আসছে')}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -17859,6 +17953,102 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+                  <div className="card" style={{ marginTop: '1.5rem', padding: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Phone size={20} />
+                      {t('Customer Support & Contact Info', 'ग्राहक सहायता और संपर्क जानकारी', 'গ্রাহক সহায়তা ও যোগাযোগের তথ্য')}
+                    </h3>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                      {t(
+                        'Configure official customer support channels shown to customers across help pages, orders, and receipts.',
+                        'सहायता पृष्ठों, आदेशों और रसीदों पर ग्राहकों को दिखाए जाने वाले आधिकारिक ग्राहक सहायता चैनल कॉन्फ़िगर करें।',
+                        'সহায়তা পৃষ্ঠা, অর্ডার এবং রসিদে গ্রাহকদের প্রদর্শিত অফিসিয়াল গ্রাহক সহায়তা চ্যানেলগুলি কনফিগার করুন।'
+                      )}
+                    </p>
+                    {supportSettingsError && (
+                      <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+                        {supportSettingsError}
+                      </div>
+                    )}
+                    {supportSettingsSuccess && (
+                      <div className="alert alert-success" style={{ marginBottom: '1rem' }}>
+                        {supportSettingsSuccess}
+                      </div>
+                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 600 }}>
+                          {t('Support Phone', 'सहायता फ़ोन', 'সহায়তা ফোন')}
+                        </label>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="+91 98765 43210"
+                          value={adminSupportPhone}
+                          onChange={e => {
+                            setAdminSupportPhone(e.target.value);
+                            setSupportSettingsDirty(true);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 600 }}>
+                          {t('WhatsApp Support', 'व्हाट्सएप सहायता', 'হোয়াটসঅ্যাপ সহায়তা')}
+                        </label>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="+91 98765 43210"
+                          value={adminSupportWhatsapp}
+                          onChange={e => {
+                            setAdminSupportWhatsapp(e.target.value);
+                            setSupportSettingsDirty(true);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 600 }}>
+                          {t('Support Email', 'सहायता ईमेल', 'সহায়তা ইমেল')}
+                        </label>
+                        <input
+                          type="email"
+                          className="input"
+                          placeholder="support@beniffy.com"
+                          value={adminSupportEmail}
+                          onChange={e => {
+                            setAdminSupportEmail(e.target.value);
+                            setSupportSettingsDirty(true);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 600 }}>
+                          {t('Support Hours', 'सहायता के घंटे', 'সহায়তার সময়')}
+                        </label>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="9:00 AM - 9:00 PM"
+                          value={adminSupportHours}
+                          onChange={e => {
+                            setAdminSupportHours(e.target.value);
+                            setSupportSettingsDirty(true);
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleSaveSupportSettings}
+                        disabled={savingSupportSettings || !supportSettingsDirty}
+                      >
+                        {savingSupportSettings
+                          ? t('Saving...', 'सहेजा जा रहा है...', 'সংরক্ষণ করা হচ্ছে...')
+                          : t('Save Support Settings', 'सहायता सेटिंग्स सहेजें', 'সহায়তা সেটিংস সংরক্ষণ করুন')}
+                      </button>
+                    </div>
+                  </div>
                   {process.env.NODE_ENV !== 'production' && (
                     <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                       <button 
@@ -21306,7 +21496,7 @@ export default function App() {
             <p style={{ margin: 0 }}>Shop local. Pay less for everything else.</p>
           </div>
           {/* TODO(owner): registered company name, CIN, address, phone required before public launch. */}
-          <p style={{ margin: 0 }}>Email: support@beniffy.com</p>
+          {supportEmail && <p style={{ margin: 0 }}>Email: {supportEmail}</p>}
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }}>
             <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowPrivacyPolicyModal(true)}>
               {t('Privacy Policy', 'Privacy Policy', 'Privacy Policy')}
@@ -21449,7 +21639,14 @@ export default function App() {
             <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               <p><strong>{t('Cancellation Window:', 'Cancellation Window:', 'Cancellation Window:')}</strong> {t('Orders can be cancelled within 1 minute of placement for a refund (minus platform commission fee).', 'ऑर्डर देने के 1 मिनट के भीतर रद्द किए जा सकते हैं, जिसमें से प्लेटफ़ॉर्म कमीशन शुल्क काटा जाएगा।', 'অর্ডার করার ১ মিনিটের মধ্যে বাতিল করা যেতে পারে (প্ল্যাটফর্ম কমিশন ফি কেটে নেওয়া হবে)।')}</p>
               <p><strong>{t('Non-Show / Delivery Issues:', 'Non-Show / Delivery Issues:', 'Non-Show / Delivery Issues:')}</strong> {t('If stockist or delivery fails, refund processed within 24 hours to original payment method.', 'If stockist or delivery fails, refund processed within 24 hours to original payment method.', 'If stockist or delivery fails, refund processed within 24 hours to original payment method.')}</p>
-              <p><strong>{t('Support Contact:', 'Support Contact:', 'Support Contact:')}</strong> {t('Email support@beniffy.com for refund assistance.', 'Email support@beniffy.com for refund assistance.', 'Email support@beniffy.com for refund assistance.')}</p>
+              <p>
+                <strong>{t('Support Contact:', 'Support Contact:', 'Support Contact:')}</strong>{' '}
+                {supportEmail
+                  ? t(`Email ${supportEmail} for refund assistance.`, `रिफंड सहायता के लिए ${supportEmail} पर ईमेल करें।`, `রিফান্ড সহায়তার জন্য ${supportEmail}-এ ইমেল করুন।`)
+                  : (supportPhone
+                    ? t(`Call ${supportPhone} for refund assistance.`, `रिफंड सहायता के लिए ${supportPhone} पर कॉल करें।`, `রিফান্ড সহায়তার জন্য ${supportPhone}-এ কল করুন।`)
+                    : t('Support details coming soon', 'सहायता विवरण जल्द ही उपलब्ध होंगे', 'সহায়তার বিশদ শীঘ্রই আসছে'))}
+              </p>
             </div>
             <div style={{ textAlign: 'right', marginTop: '1.5rem' }}>
               <button className="btn btn-primary" onClick={() => setShowRefundPolicyModal(false)}>Close</button>

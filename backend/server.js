@@ -414,12 +414,40 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-app.get('/api/config', (req, res) => {
+app.get('/api/config', async (req, res) => {
   const isDevAllowed = process.env.SEED_MODE === 'test' || process.env.NODE_ENV !== 'production';
+  let supportPhone = null;
+  let supportWhatsapp = null;
+  let supportEmail = null;
+  let supportHours = null;
+
+  try {
+    const list = await db.getTable('support_settings');
+    const settings = (Array.isArray(list) ? list : []).find(s => s.id === 'default');
+    if (settings) {
+      supportPhone = settings.support_phone || null;
+      supportWhatsapp = settings.support_whatsapp || null;
+      supportEmail = settings.support_email || null;
+      supportHours = settings.support_hours || null;
+    }
+  } catch (err) {
+    // ignore
+  }
+
   res.json({
     status: 'ok',
     version: process.env.APP_VERSION || 'unknown',
-    dev_tools_enabled: isDevAllowed
+    dev_tools_enabled: isDevAllowed,
+    support_phone: supportPhone,
+    support_whatsapp: supportWhatsapp,
+    support_email: supportEmail,
+    support_hours: supportHours,
+    support: {
+      phone: supportPhone,
+      whatsapp: supportWhatsapp,
+      email: supportEmail,
+      hours: supportHours
+    }
   });
 });
 
@@ -10828,6 +10856,136 @@ app.post('/api/admin/insert-table', async (req, res) => {
   await db.saveTable(table, rows);
   return res.json({ success: true, row: newRow });
 });
+
+function validateSupportPhone(raw) {
+  if (!raw || typeof raw !== 'string') return { valid: false, message: 'Support phone is required.' };
+  const cleaned = raw.trim().replace(/[\s\-\(\)\.]/g, '');
+  if (/^(\+91)?1800\d{6,7}$/.test(cleaned)) {
+    return { valid: true, normalized: cleaned.replace(/^\+91/, '') };
+  }
+  let norm = cleaned.replace(/^\+91/, '').replace(/^0/, '');
+  if (norm.length === 12 && norm.startsWith('91')) norm = norm.slice(2);
+  if (/^[6-9]\d{9}$/.test(norm)) {
+    return { valid: true, normalized: norm };
+  }
+  return { valid: false, message: 'Support phone must be a 10-digit Indian number or a 1800 toll-free number.' };
+}
+
+function validateSupportWhatsapp(raw) {
+  if (!raw || typeof raw !== 'string' || !raw.trim()) return { valid: true, normalized: null };
+  const cleaned = raw.trim().replace(/[\s\-\(\)\.]/g, '');
+  let norm = cleaned.replace(/^\+91/, '').replace(/^0/, '');
+  if (norm.length === 12 && norm.startsWith('91')) norm = norm.slice(2);
+  if (/^[6-9]\d{9}$/.test(norm)) {
+    return { valid: true, normalized: norm };
+  }
+  return { valid: false, message: 'WhatsApp number must be a valid 10-digit Indian mobile number.' };
+}
+
+function validateSupportEmail(raw) {
+  if (!raw || typeof raw !== 'string' || !raw.trim()) return { valid: true, normalized: null };
+  const trimmed = raw.trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return { valid: true, normalized: trimmed.toLowerCase() };
+  }
+  return { valid: false, message: 'Please enter a valid email address.' };
+}
+
+async function handleGetSupportSettings(req, res) {
+  if (req.user?.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  const list = await db.getTable('support_settings').catch(() => []) || [];
+  const settings = list.find(s => s.id === 'default') || {};
+  return res.json({
+    support_phone: settings.support_phone || '',
+    support_whatsapp: settings.support_whatsapp || '',
+    support_email: settings.support_email || '',
+    support_hours: settings.support_hours || '',
+    updated_at: settings.updated_at || null,
+    updated_by: settings.updated_by || null
+  });
+}
+
+async function handleUpdateSupportSettings(req, res) {
+  if (req.user?.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const { support_phone, support_whatsapp, support_email, support_hours } = req.body || {};
+
+  let normalizedPhone = null;
+  if (support_phone && typeof support_phone === 'string' && support_phone.trim()) {
+    const phoneVal = validateSupportPhone(support_phone);
+    if (!phoneVal.valid) {
+      return res.status(400).json({ error: 'invalid_phone', message: phoneVal.message });
+    }
+    normalizedPhone = support_phone.trim();
+  }
+
+  const waVal = validateSupportWhatsapp(support_whatsapp);
+  if (!waVal.valid) {
+    return res.status(400).json({ error: 'invalid_whatsapp', message: waVal.message });
+  }
+
+  const emailVal = validateSupportEmail(support_email);
+  if (!emailVal.valid) {
+    return res.status(400).json({ error: 'invalid_email', message: emailVal.message });
+  }
+
+  const hoursVal = (support_hours && typeof support_hours === 'string' && support_hours.trim()) 
+    ? support_hours.trim().slice(0, 100) 
+    : null;
+
+  const list = await db.getTable('support_settings').catch(() => []) || [];
+  const existing = list.find(s => s.id === 'default');
+
+  const newRow = {
+    id: 'default',
+    support_phone: normalizedPhone,
+    support_whatsapp: (support_whatsapp && typeof support_whatsapp === 'string' && support_whatsapp.trim()) ? support_whatsapp.trim() : null,
+    support_email: emailVal.normalized,
+    support_hours: hoursVal,
+    updated_at: new Date().toISOString(),
+    updated_by: req.user.id || req.user.userId || 'admin'
+  };
+
+  if (existing) {
+    await db.updateRow('support_settings', 'default', newRow);
+  } else {
+    await db.insertRow('support_settings', newRow);
+  }
+
+  try {
+    await db.insertRow('admin_audit_log', {
+      id: 'audit-' + generateId(),
+      action: 'UPDATE_SUPPORT_SETTINGS',
+      admin_id: req.user.id || req.user.userId || 'admin',
+      target_type: 'support_settings',
+      target_id: 'default',
+      details: {
+        support_phone: newRow.support_phone,
+        support_whatsapp: newRow.support_whatsapp,
+        support_email: newRow.support_email,
+        support_hours: newRow.support_hours
+      },
+      created_at: new Date().toISOString()
+    });
+  } catch (auditErr) {
+    // ignore
+  }
+
+  return res.json({
+    success: true,
+    message: 'Support contact settings saved successfully.',
+    settings: newRow
+  });
+}
+
+app.get('/api/admin/support-settings', requireAuth, handleGetSupportSettings);
+app.post('/api/admin/support-settings', requireAuth, handleUpdateSupportSettings);
+app.put('/api/admin/support-settings', requireAuth, handleUpdateSupportSettings);
+
 
 app.all(['/api/inspector', '/api/inspector/*', '/api/admin/inspector', '/api/admin/inspector/*'], async (req, res) => {
   const isDevAllowed = process.env.SEED_MODE === 'test' || process.env.NODE_ENV !== 'production';

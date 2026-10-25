@@ -8164,6 +8164,73 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Owner stockist and Admin can access bill photo`);
 
+  // 7. Support settings: public config and admin settings
+  console.log('\n--- BF-SUPPORT-SETTINGS: Public config and admin support settings ---');
+  clearLogin();
+  const pubSuppRes1 = await get('http://localhost:3001/api/config');
+  assert(pubSuppRes1.status === 200, 'GET /api/config returns 200 without auth');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/config returns 200 without auth`);
+
+  // Non-admin cannot get or update support settings
+  const unauthGetSuppRes = await get('http://localhost:3001/api/admin/support-settings');
+  assert(unauthGetSuppRes.status === 401, 'GET /api/admin/support-settings without auth returns 401');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/admin/support-settings without auth returns 401`);
+
+  const unauthSuppRes = await post('http://localhost:3001/api/admin/support-settings', { support_email: 'test@example.com' });
+  assert(unauthSuppRes.status === 401, 'POST /api/admin/support-settings without auth returns 401');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: POST /api/admin/support-settings without auth returns 401`);
+
+  loginAs('u-cust1', 'CUSTOMER');
+  const custSuppRes = await post('http://localhost:3001/api/admin/support-settings', { support_email: 'test@example.com' });
+  assert(custSuppRes.status === 403, 'POST /api/admin/support-settings as customer returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: POST /api/admin/support-settings as customer returns 403`);
+
+  // Invalid email format returns 400
+  loginAs('u-admin', 'ADMIN');
+  const invalidEmailRes = await post('http://localhost:3001/api/admin/support-settings', { support_email: 'not-an-email' });
+  assert(invalidEmailRes.status === 400, 'Invalid support email returns 400');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Invalid support email returns 400`);
+
+  // Invalid phone format returns 400
+  const invalidPhoneRes = await post('http://localhost:3001/api/admin/support-settings', { support_phone: '12345' });
+  assert(invalidPhoneRes.status === 400, 'Invalid support phone returns 400');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Invalid support phone returns 400`);
+
+  // Valid update by admin succeeds
+  const updateSuppRes = await post('http://localhost:3001/api/admin/support-settings', {
+    support_phone: '9876543210',
+    support_email: 'help@beniffy.com',
+    support_hours: '10:00 AM - 8:00 PM'
+  });
+  assert(updateSuppRes.status === 200, 'Admin updating support settings returns 200');
+  assert(updateSuppRes.body.settings.support_phone === '9876543210', 'Returned updated phone');
+  assert(updateSuppRes.body.settings.support_email === 'help@beniffy.com', 'Returned updated email');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin updating support settings returns 200`);
+
+  // Public GET /api/config reflects update
+  clearLogin();
+  const pubSuppRes2 = await get('http://localhost:3001/api/config');
+  assert(pubSuppRes2.status === 200, 'Public GET /api/config returns 200');
+  assert(pubSuppRes2.body.support_phone === '9876543210', 'Public config returns updated phone');
+  assert(pubSuppRes2.body.support_email === 'help@beniffy.com', 'Public config returns updated email');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Public config reflects updated support settings`);
+
+  // Reset back to default
+  loginAs('u-admin', 'ADMIN');
+  await post('http://localhost:3001/api/admin/support-settings', {
+    support_phone: '',
+    support_email: 'support@beniffy.com',
+    support_hours: '9:00 AM - 9:00 PM'
+  });
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 

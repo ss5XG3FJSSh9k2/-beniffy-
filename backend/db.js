@@ -571,7 +571,7 @@ async function resetForTest() {
     'partners', 'partner_regions', 'partner_packages', 'partner_users',
     'customer_partner_bindings', 'redemption_approvals', 'partner_feedback',
     'partner_notifications', 'notifications', 'feedback_reports', 'user_blacklist', 'support_tickets',
-    'stockist_cod_commissions', 'registration_flags'
+    'stockist_cod_commissions', 'registration_flags', 'support_settings'
   ];
 
   for (const table of tables) {
@@ -831,7 +831,7 @@ async function getAll() {
     'partners', 'partner_regions', 'partner_packages', 'partner_users',
     'customer_partner_bindings', 'redemption_approvals', 'partner_feedback',
     'partner_notifications', 'notifications', 'feedback_reports', 'user_blacklist', 'support_tickets',
-    'stockist_cod_commissions'
+    'stockist_cod_commissions', 'support_settings'
   ];
 
   const db = {};
