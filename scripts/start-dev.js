@@ -30,6 +30,7 @@ if (mode === 'dev:seed') {
   console.log('- Stockist: 7654321098 (Madan Grocers, Garia)');
   console.log('- Stockist: 6543210987 (Sarkar Daily Store, Bishnupur)');
   console.log('- Stockist: 9432109876 (Banerjee Corner Store, Garia)');
+  console.log('- Stockist: 8432100001 (Das Variety Stores, Bishnupur)');
   console.log('- Stockist (KYC pending): 8432109876 (Joy Kirana)');
   console.log('- Stockist (KYC pending): 8432109999 (Ramesh Store)');
   console.log('- Partner: 9876500000 (adhya@partners.example, password partner123)');

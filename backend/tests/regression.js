@@ -292,6 +292,8 @@ async function main() {
 
   // 6. Points reversal on cancellation
   console.log('\n--- 6. Points Reversal on Cancellation ---');
+  await post('http://localhost:3001/api/admin/bill-photos/pbp-seed1/verify', {});
+  await post('http://localhost:3001/api/admin/bill-photos/pbp-seed3/verify', {});
   await patch(`http://localhost:3001/api/orders/${orderId}/status`, { status: 'DELIVERED' });
   const balBefore = (await get('http://localhost:3001/api/ledger/balance/u-cust1')).body.balance;
 
@@ -492,7 +494,7 @@ async function main() {
     fulfillmentType: 'DELIVERY',
     stores: [
       { stockistId: 's1', pickupSlot: 'Morning (8AM–12PM)', items: [{ productId: 'p1', quantity: 1 }] },
-      { stockistId: 's3', pickupSlot: 'Morning (8AM–12PM)', items: [{ productId: 'p2', quantity: 1 }] }
+      { stockistId: 's3', pickupSlot: 'Morning (8AM–12PM)', items: [{ productId: 'p1-s3', quantity: 1 }] }
     ]
   });
   assert(multiStoreFailing.status === 400, 'Multi-store DELIVERY checkout is blocked');
@@ -503,7 +505,7 @@ async function main() {
     paymentMethod: 'ONLINE',
     stores: [
       { stockistId: 's1', pickupSlot: 'Morning (8AM–12PM)', items: [{ productId: 'p1', quantity: 1 }] },
-      { stockistId: 's3', pickupSlot: 'Afternoon (12PM–4PM)', items: [{ productId: 'p2', quantity: 1 }] }
+      { stockistId: 's3', pickupSlot: 'Afternoon (12PM–4PM)', items: [{ productId: 'p1-s3', quantity: 1 }] }
     ]
   });
   assert(multiStoreSuccess.status === 200, 'Multi-store PICKUP checkout is successful');
@@ -7750,6 +7752,167 @@ async function main() {
   // 5. Admin/Settings Test Network Signal is dev-tools only
   assert(/\{devToolsEnabled\s*&&\s*showDevSettings\s*&&[\s\S]*?Test Network Signal/.test(s64App),
     'Admin/Settings Test Network Signal switch is dev-tools only');
+
+  // ==========================================
+  // TICKET 65: Realistic seed data covering multi-shop, order states, payouts and notifications
+  // ==========================================
+  console.log('\n--- Ticket 65: Seed Data Realism & Invariants ---');
+  // Reset database to ensure we test freshly seeded state
+  await post('http://localhost:3001/api/admin/reset-db');
+
+  const t65SeedRunnerMod = require('../lib/seed-runner.js');
+  const t65SeededDb = t65SeedRunnerMod.DEFAULT_DB;
+
+  // 1. Invariant: every shop with vendor_id has a matching stockist_vendors row
+  const t65AllStockists = await dbModule.getTable('stockists');
+  const t65AllStockistVendors = await dbModule.getTable('stockist_vendors');
+  for (const s of t65AllStockists) {
+    if (s.vendor_id) {
+      const match = t65AllStockistVendors.find(sv => sv.stockist_id === s.id && sv.vendor_id === s.vendor_id);
+      assert(match, `Stockist ${s.id} with vendor_id ${s.vendor_id} has matching stockist_vendors row`);
+    }
+  }
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Every stockist with vendor_id has a matching stockist_vendors row`);
+
+  // 2. Invariant: every seeded phone matches /^[6-9]\d{9}$/
+  const t65PhoneRegex = /^[6-9]\d{9}$/;
+  for (const u of t65SeededDb.users) {
+    assert(t65PhoneRegex.test(u.phone), `User ${u.id} phone ${u.phone} matches /^[6-9]\\d{9}$/`);
+  }
+  for (const s of t65SeededDb.stockists) {
+    assert(t65PhoneRegex.test(s.contact_phone), `Stockist ${s.id} contact_phone ${s.contact_phone} matches /^[6-9]\\d{9}$/`);
+  }
+  for (const p of t65SeededDb.partners) {
+    assert(t65PhoneRegex.test(p.contact_phone), `Partner ${p.id} contact_phone ${p.contact_phone} matches /^[6-9]\\d{9}$/`);
+  }
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Every seeded phone number matches /^[6-9]\\d{9}$/`);
+
+  // 3. Invariant: no order has a payout without being DELIVERED
+  const t65AllOrders = await dbModule.getTable('orders');
+  const t65AllPayouts = await dbModule.getTable('split_payouts');
+  for (const p of t65AllPayouts) {
+    const ord = t65AllOrders.find(o => o.id === p.order_id);
+    assert(ord && ord.status === 'DELIVERED', `Payout ${p.id} belongs to a DELIVERED order: got ${ord ? ord.status : 'null'}`);
+  }
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: No order has a payout without being DELIVERED`);
+
+  // 4. Invariant: product_count equals customer-visible products
+  const t65ServerProds = await dbModule.getTable('products');
+  const { getCustomerVisibleProducts: t65GetVisibleProds } = require('../server.js');
+  const t65StockistsRes = await get('http://localhost:3001/api/stockists');
+  assert(t65StockistsRes.status === 200, 'GET /api/stockists returns 200');
+  for (const stk of t65StockistsRes.body) {
+    const visibleCount = t65GetVisibleProds(stk, t65ServerProds).length;
+    assert(stk.product_count === visibleCount, `Stockist ${stk.id} product_count (${stk.product_count}) equals visible products count (${visibleCount})`);
+  }
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Stockist product_count equals customer-visible products`);
+
+  // 5. Banerjee Corner Store (s3) has 6 products with cost price, stock, and null image_url
+  const t65S3Prods = t65ServerProds.filter(p => p.stockist_id === 's3' && !p.deleted_at);
+  assert(t65S3Prods.length === 6, `Banerjee Corner Store (s3) has 6 products: got ${t65S3Prods.length}`);
+  for (const p of t65S3Prods) {
+    assert(p.cost_price !== undefined && p.cost_price !== null, `Product ${p.id} has cost_price`);
+    assert(p.image_url === null, `Product ${p.id} has null image_url`);
+  }
+  const t65S3Inv = (await dbModule.getTable('stockist_inventory')).filter(i => i.stockist_id === 's3');
+  assert(t65S3Inv.length === 6 && t65S3Inv.every(i => i.stock_qty > 0), 'All 6 s3 products have positive stock in inventory');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Banerjee Corner Store (s3) has 6 stocked products with cost price and null image_url`);
+
+  // 6. Second approved, stocked shop in Bishnupur (s4, owner phone 8432100001)
+  const t65S4Shop = t65AllStockists.find(s => s.id === 's4');
+  assert(t65S4Shop, 'Second Bishnupur shop s4 exists');
+  assert(t65S4Shop.region_id === 'r2', 's4 is in Bishnupur (r2)');
+  assert(t65S4Shop.contact_phone === '8432100001', 's4 owner contact phone is 8432100001');
+  const t65S4Owner = (await dbModule.getTable('users')).find(u => u.phone === '8432100001');
+  assert(t65S4Owner && t65S4Owner.role === 'STOCKIST' && t65S4Owner.kyc_status === 'APPROVED', 's4 owner is approved stockist');
+  assert(t65S4Owner.email && t65S4Owner.email.includes('@'), 's4 owner has valid email');
+  const t65S4VendorLink = t65AllStockistVendors.find(sv => sv.stockist_id === 's4' && sv.vendor_id === 'v2');
+  assert(t65S4VendorLink, 's4 has its own wholesaler link to v2');
+  const t65S4Prods = t65ServerProds.filter(p => p.stockist_id === 's4' && !p.deleted_at);
+  assert(t65S4Prods.length >= 5, `s4 is stocked with at least 5 products: got ${t65S4Prods.length}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Second approved, stocked shop in Bishnupur (s4, owner 8432100001) with wholesaler link and products`);
+
+  // 7. Payout details on every seeded shop and partner
+  const t65AllPartners = await dbModule.getTable('partners');
+  for (const s of t65AllStockists) {
+    assert(s.payout_upi_id && s.payout_upi_id.includes('@'), `Stockist ${s.id} has payout_upi_id`);
+    assert(s.payout_bank_account && /^\d{9,18}$/.test(s.payout_bank_account), `Stockist ${s.id} has valid bank account`);
+    assert(s.payout_ifsc && /^[A-Z]{4}0[A-Z0-9]{6}$/.test(s.payout_ifsc), `Stockist ${s.id} has valid IFSC`);
+    assert(s.payout_account_name && s.payout_account_name.length >= 2, `Stockist ${s.id} has account holder name`);
+  }
+  for (const p of t65AllPartners) {
+    assert(p.payout_upi_id && p.payout_upi_id.includes('@'), `Partner ${p.id} has payout_upi_id`);
+    assert(p.payout_bank_account && /^\d{9,18}$/.test(p.payout_bank_account), `Partner ${p.id} has valid bank account`);
+    assert((p.payout_bank_ifsc || p.payout_ifsc) && /^[A-Z]{4}0[A-Z0-9]{6}$/.test(p.payout_bank_ifsc || p.payout_ifsc), `Partner ${p.id} has valid IFSC`);
+    assert(p.payout_account_name && p.payout_account_name.length >= 2, `Partner ${p.id} has account holder name`);
+  }
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Payout details (UPI, bank, IFSC, holder) verified on every seeded shop and partner`);
+
+  // 8. Seeded orders for customer 9876543210 cover CONFIRMING, READY, DELIVERED, and CANCELLED
+  loginAs('u-cust1', 'CUSTOMER');
+  const t65CustOrdersRes = await get('http://localhost:3001/api/orders');
+  assert(t65CustOrdersRes.status === 200, 'GET /api/orders returns 200');
+  const t65CustOrders = t65CustOrdersRes.body;
+  const t65ConfOrder = t65CustOrders.find(o => o.status === 'CONFIRMING');
+  assert(t65ConfOrder, 'Customer has a CONFIRMING order');
+  assert(new Date(t65ConfOrder.cancel_deadline) > new Date(), 'CONFIRMING order is inside cancel window');
+
+  const t65ReadyOrder = t65CustOrders.find(o => o.status === 'READY');
+  assert(t65ReadyOrder, 'Customer has a READY order');
+  assert(t65ReadyOrder.fulfillment_type === 'PICKUP', 'READY order is pickup');
+  assert(t65ReadyOrder.pickup_slot, 'READY order has future pickup slot');
+
+  const t65DelivOrder = t65CustOrders.find(o => o.status === 'DELIVERED');
+  assert(t65DelivOrder, 'Customer has a DELIVERED order');
+  assert(t65DelivOrder.payment_status === 'PAID' && (t65DelivOrder.payment_method === 'UPI' || t65DelivOrder.payment_received_method === 'UPI'), 'DELIVERED order is PAID via UPI');
+  assert(parseFloat(t65DelivOrder.points_credited) > 0, 'DELIVERED order has points credited');
+
+  const t65CancOrder = t65CustOrders.find(o => o.status === 'CANCELLED');
+  assert(t65CancOrder, 'Customer has a CANCELLED order');
+  assert(t65CancOrder.payment_status === 'CANCELLED_UNPAID' || t65CancOrder.payment_status === 'UNPAID', 'CANCELLED order is CANCELLED_UNPAID');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer 9876543210 orders cover CONFIRMING, READY, DELIVERED, CANCELLED`);
+
+  // 9. Bill photos: 1 PENDING, 1 REJECTED with reason
+  const t65AllBillPhotos = await dbModule.getTable('product_bill_photos');
+  const t65PendingBill = t65AllBillPhotos.find(b => b.bill_status === 'PENDING');
+  assert(t65PendingBill, 'Seeded bill photos include one PENDING review');
+  const t65RejectedBill = t65AllBillPhotos.find(b => b.bill_status === 'REJECTED');
+  assert(t65RejectedBill && t65RejectedBill.rejection_reason && t65RejectedBill.rejection_reason.length >= 5, 'Seeded bill photos include one REJECTED with a reason');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Product bill photos include one PENDING review and one REJECTED with a reason`);
+
+  // 10. Stockist 7654321098 notifications: 1 unread new order, 1 read bill approval (bell shows 1 unread)
+  loginAs('u-stk1', 'STOCKIST');
+  const t65StkNotifsRes = await get('http://localhost:3001/api/notifications');
+  assert(t65StkNotifsRes.status === 200, 'GET /api/notifications returns 200');
+  const t65StkNotifs = t65StkNotifsRes.body;
+  const t65UnreadOrders = t65StkNotifs.filter(n => n.type === 'new_order' && !n.read_at);
+  assert(t65UnreadOrders.length === 1, `Stockist has 1 unread new order notification: got ${t65UnreadOrders.length}`);
+  const t65ReadApprovals = t65StkNotifs.filter(n => n.type === 'bill_approved' && n.read_at);
+  assert(t65ReadApprovals.length >= 1, `Stockist has read bill approval notification: got ${t65ReadApprovals.length}`);
+  const t65TotalUnread = t65StkNotifs.filter(n => !n.read_at).length;
+  assert(t65TotalUnread === 1, `Stockist bell shows exactly 1 unread: got ${t65TotalUnread}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Stockist 7654321098 notifications has 1 unread new order and 1 read bill approval (total 1 unread)`);
+
+  // 11. Multi-shop carts in Garia: customer can fetch products from two Garia shops (s1 and s3)
+  const t65GariaStockistsRes = await get('http://localhost:3001/api/stockists?regionId=r1');
+  assert(t65GariaStockistsRes.status === 200, 'GET /api/stockists?regionId=r1 returns 200');
+  const t65GariaShops = t65GariaStockistsRes.body.filter(s => s.product_count > 0);
+  assert(t65GariaShops.length >= 2, `Customer can see at least 2 stocked shops in Garia: got ${t65GariaShops.length}`);
+  const t65S1ShopInGaria = t65GariaShops.find(s => s.id === 's1');
+  const t65S3ShopInGaria = t65GariaShops.find(s => s.id === 's3');
+  assert(t65S1ShopInGaria && t65S3ShopInGaria, 'Both Madan Grocers (s1) and Banerjee Corner Store (s3) appear with products in Garia');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer can fill carts at two Garia shops (s1 and s3)`);
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
