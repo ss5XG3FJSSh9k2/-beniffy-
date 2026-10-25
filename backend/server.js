@@ -11,7 +11,7 @@ if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
   console.log('Generated ephemeral VAPID keys for local testing');
 }
 webpush.setVapidDetails(
-  'mailto:support@fastnet.example.com',
+  'mailto:support@beniffy.com',
   VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY
 );

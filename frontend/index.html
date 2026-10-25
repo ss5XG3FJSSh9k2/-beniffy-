@@ -15,7 +15,36 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
       try {
-        var raw = window.localStorage.getItem('fastnet.themes.v1');
+        if (window.localStorage) {
+          var keysToMigrate = [];
+          for (var i = 0; i < window.localStorage.length; i++) {
+            var k = window.localStorage.key(i);
+            if (k && k.indexOf('fastnet') === 0) {
+              keysToMigrate.push(k);
+            }
+          }
+          for (var j = 0; j < keysToMigrate.length; j++) {
+            var oldK = keysToMigrate[j];
+            var newK;
+            if (oldK === 'fastnet.themes.v1') {
+              newK = 'beniffy.themes.v1';
+            } else if (oldK.indexOf('fastnet.') === 0) {
+              newK = 'beniffy.' + oldK.substring(8);
+            } else if (oldK.indexOf('fastnet_') === 0) {
+              newK = 'beniffy_' + oldK.substring(8);
+            } else {
+              newK = 'beniffy' + oldK.substring(7);
+            }
+            var v = window.localStorage.getItem(oldK);
+            if (v !== null) {
+              if (window.localStorage.getItem(newK) === null) {
+                window.localStorage.setItem(newK, v);
+              }
+              window.localStorage.removeItem(oldK);
+            }
+          }
+        }
+        var raw = window.localStorage.getItem('beniffy.themes.v1') || window.localStorage.getItem('fastnet.themes.v1');
         var t = 'light';
         var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (raw) {

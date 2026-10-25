@@ -9,7 +9,7 @@ class RootErrorBoundary extends React.Component {
     super(props);
     const lastCrash = (() => {
       try {
-        const stored = sessionStorage.getItem('fastnet_last_crash');
+        const stored = sessionStorage.getItem('beniffy_last_crash') || sessionStorage.getItem('fastnet_last_crash');
         return stored ? JSON.parse(stored) : null;
       } catch { return null; }
     })();
@@ -26,7 +26,7 @@ class RootErrorBoundary extends React.Component {
     const errorMsg = error ? error.toString() : 'Unknown error';
 
     try {
-      sessionStorage.setItem('fastnet_last_crash', JSON.stringify({ errorMsg, stackLines }));
+      sessionStorage.setItem('beniffy_last_crash', JSON.stringify({ errorMsg, stackLines }));
     } catch {}
 
     this.setState({ errorMsg, stackLines });
@@ -51,6 +51,7 @@ class RootErrorBoundary extends React.Component {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <button className="btn btn-primary" onClick={() => {
+                sessionStorage.removeItem('beniffy_last_crash');
                 sessionStorage.removeItem('fastnet_last_crash');
                 window.location.reload();
               }} style={{ padding: '0.75rem' }}>
@@ -59,8 +60,11 @@ class RootErrorBoundary extends React.Component {
               <button className="btn btn-secondary" onClick={() => {
                 localStorage.removeItem('currentUser');
                 localStorage.removeItem('token');
+                localStorage.removeItem('beniffy_partner_session');
                 localStorage.removeItem('fastnet_partner_session');
+                localStorage.removeItem('beniffy_carts');
                 localStorage.removeItem('fastnet_carts');
+                sessionStorage.removeItem('beniffy_last_crash');
                 sessionStorage.removeItem('fastnet_last_crash');
                 window.location.reload();
               }} style={{ padding: '0.75rem' }}>

@@ -1118,11 +1118,54 @@ const SIGNUP_FIELD_IDS = {
 };
 
 const THEME_APPS = ['marketing', 'customer', 'stockist', 'admin', 'partner'];
-const THEME_KEY = 'fastnet.themes.v1';
+const THEME_KEY = 'beniffy.themes.v1';
+const LEGACY_THEME_KEY = 'fastnet.themes.v1';
+
+function migrateLegacyStorage() {
+  try {
+    if (typeof window === 'undefined') return;
+    const storages = [window.localStorage, window.sessionStorage];
+    for (const storage of storages) {
+      if (!storage) continue;
+      const keysToMigrate = [];
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (k && k.startsWith('fastnet')) {
+          keysToMigrate.push(k);
+        }
+      }
+      for (const oldKey of keysToMigrate) {
+        let newKey;
+        if (oldKey === 'fastnet.themes.v1') {
+          newKey = 'beniffy.themes.v1';
+        } else if (oldKey.startsWith('fastnet.')) {
+          newKey = 'beniffy.' + oldKey.slice(8);
+        } else if (oldKey.startsWith('fastnet_')) {
+          newKey = 'beniffy_' + oldKey.slice(8);
+        } else {
+          newKey = 'beniffy' + oldKey.slice(7);
+        }
+        const val = storage.getItem(oldKey);
+        if (val !== null) {
+          if (storage.getItem(newKey) === null) {
+            storage.setItem(newKey, val);
+          }
+          storage.removeItem(oldKey);
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+migrateLegacyStorage();
+
 const loadThemes = () => {
   const all = (v) => Object.fromEntries(THEME_APPS.map(a => [a, v]));
   try {
-    const raw = window.localStorage.getItem(THEME_KEY);
+    migrateLegacyStorage();
+    const raw = window.localStorage.getItem(THEME_KEY) || window.localStorage.getItem(LEGACY_THEME_KEY);
     if (raw) {
       const saved = JSON.parse(raw) || {};
       return Object.fromEntries(THEME_APPS.map(a => [a, ['light', 'dark', 'system'].includes(saved[a]) ? saved[a] : 'system']));
@@ -1756,7 +1799,7 @@ export default function App() {
   });
   const [activeRole, setActiveRole] = useState(() => {
     try {
-      const p = new URLSearchParams(window.location.search).get('role') || sessionStorage.getItem('fastnet.initialRole');
+      const p = new URLSearchParams(window.location.search).get('role') || sessionStorage.getItem('beniffy.initialRole') || sessionStorage.getItem('fastnet.initialRole');
       if (['marketing', 'customer', 'stockist', 'admin', 'partner', 'db'].includes(p)) return p;
     } catch {}
     return 'marketing';
@@ -1773,13 +1816,14 @@ export default function App() {
   }), [phoneEl, activeRole]);
   const renders = useRef(0);
   renders.current++;
-  if (typeof window !== 'undefined' && (import.meta.env?.DEV || window.__FASTNET_TEST__)) {
+  if (typeof window !== 'undefined' && (import.meta.env?.DEV || window.__BENIFFY_TEST__ || window.__FASTNET_TEST__)) {
+    window.__beniffy_render_count = renders.current;
     window.__fastnet_render_count = renders.current;
   }
 
   const [splash, setSplash] = useState(() => {
     try {
-      const p = new URLSearchParams(window.location.search).get('role') || sessionStorage.getItem('fastnet.initialRole');
+      const p = new URLSearchParams(window.location.search).get('role') || sessionStorage.getItem('beniffy.initialRole') || sessionStorage.getItem('fastnet.initialRole');
       if (['customer', 'stockist', 'partner'].includes(p)) return { app: p, key: 1 };
     } catch {}
     return { app: null, key: 0 };
@@ -1858,7 +1902,9 @@ export default function App() {
       localStorage.removeItem('currentUser');
       localStorage.removeItem('token');
       localStorage.removeItem('adminTabLastSeen');
+      localStorage.removeItem('beniffy_carts');
       localStorage.removeItem('fastnet_carts');
+      localStorage.removeItem('beniffy_partner_session');
       localStorage.removeItem('fastnet_partner_session');
     } catch {}
     setCurrentUser(null);
@@ -1919,7 +1965,7 @@ export default function App() {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showRefundPolicyModal, setShowRefundPolicyModal] = useState(false);
   const [showCookiesPolicyModal, setShowCookiesPolicyModal] = useState(false);
-  const [cookieConsent, setCookieConsent] = useState(() => typeof localStorage !== 'undefined' ? localStorage.getItem('fastnet_cookie_consent') : null);
+  const [cookieConsent, setCookieConsent] = useState(() => typeof localStorage !== 'undefined' ? (localStorage.getItem('beniffy_cookie_consent') || localStorage.getItem('fastnet_cookie_consent')) : null);
 
   // Setup state (Round BF5d)
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -2047,7 +2093,7 @@ export default function App() {
   const [customerProducts, setCustomerProducts] = useState([]);
   const [customerCarts, setCustomerCarts] = useState(() => {
     try {
-      const stored = localStorage.getItem('fastnet_carts');
+      const stored = localStorage.getItem('beniffy_carts') || localStorage.getItem('fastnet_carts');
       if (!stored) return {};
       const parsed = JSON.parse(stored);
       if (!parsed || typeof parsed !== 'object') return {};
@@ -2069,7 +2115,8 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('fastnet_carts', JSON.stringify({ userId: currentUser?.id, carts: customerCarts }));
+    localStorage.setItem('beniffy_carts', JSON.stringify({ userId: currentUser?.id, carts: customerCarts }));
+    try { localStorage.removeItem('fastnet_carts'); } catch {}
   }, [customerCarts, currentUser?.id]);
 
   const currentCart = selectedStockist ? (customerCarts[selectedStockist.id]?.items || []) : [];
@@ -2611,8 +2658,8 @@ export default function App() {
   const [partnerAppTab, setPartnerAppTab] = useState('dashboard');
   const [partnerQueueSubTab, setPartnerQueueSubTab] = useState('to_fulfill');
   const [partnerData, setPartnerData] = useState(null);
-  const [partnerSessionToken, setPartnerSessionToken] = useState(localStorage.getItem('fastnet_partner_session') || '');
-  const [partnerSetupCompleted, setPartnerSetupCompleted] = useState(() => localStorage.getItem('fastnet_partner_setup_completed') === 'true');
+  const [partnerSessionToken, setPartnerSessionToken] = useState(() => (typeof localStorage !== 'undefined' ? (localStorage.getItem('beniffy_partner_session') || localStorage.getItem('fastnet_partner_session') || '') : ''));
+  const [partnerSetupCompleted, setPartnerSetupCompleted] = useState(() => (typeof localStorage !== 'undefined' ? ((localStorage.getItem('beniffy_partner_setup_completed') || localStorage.getItem('fastnet_partner_setup_completed')) === 'true') : false));
   const [partnerSetupToken, setPartnerSetupToken] = useState('');
   const [showFirstTimeSetupFlow, setShowFirstTimeSetupFlow] = useState(false);
   const [setupStep, setSetupStep] = useState(1);
@@ -2859,7 +2906,7 @@ export default function App() {
   // Multi-lingual & Simulation States
   const [lang, setLangState] = useState(() => {
     try {
-      const saved = localStorage.getItem('fastnet_lang');
+      const saved = localStorage.getItem('beniffy_lang') || localStorage.getItem('fastnet_lang');
       if (['en', 'hi', 'bn'].includes(saved)) return saved;
     } catch {}
     return 'en';
@@ -2868,7 +2915,8 @@ export default function App() {
     const val = typeof l === 'function' ? l(lang) : l;
     setLangState(val);
     try {
-      localStorage.setItem('fastnet_lang', val);
+      localStorage.setItem('beniffy_lang', val);
+      localStorage.removeItem('fastnet_lang');
     } catch {}
   };
   const t = (en, hi, bn) => lang === 'hi' ? hi : lang === 'bn' ? bn : en;
@@ -3338,11 +3386,11 @@ export default function App() {
     if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
       if (!navigator.onLine) return true;
     }
-    return localStorage.getItem('fastnet_offline_mode') === 'true';
+    return (localStorage.getItem('beniffy_offline_mode') || localStorage.getItem('fastnet_offline_mode')) === 'true';
   });
   const [offlineQueue, setOfflineQueue] = useState(() => {
     try {
-      const saved = localStorage.getItem('fastnet_offline_queue');
+      const saved = localStorage.getItem('beniffy_offline_queue') || localStorage.getItem('fastnet_offline_queue');
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
       return [];
@@ -3350,11 +3398,13 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('fastnet_offline_mode', offlineMode.toString());
+    localStorage.setItem('beniffy_offline_mode', offlineMode.toString());
+    try { localStorage.removeItem('fastnet_offline_mode'); } catch {}
   }, [offlineMode]);
 
   useEffect(() => {
-    localStorage.setItem('fastnet_offline_queue', JSON.stringify(offlineQueue));
+    localStorage.setItem('beniffy_offline_queue', JSON.stringify(offlineQueue));
+    try { localStorage.removeItem('fastnet_offline_queue'); } catch {}
   }, [offlineQueue]);
 
   const pendingActionableOrdersCount = stockistOrders.filter(o => o.status === 'PENDING' && !o.acknowledged_at).length;
@@ -3691,8 +3741,10 @@ export default function App() {
     }, duration);
   };
 
-  if (typeof window !== 'undefined' && (import.meta.env?.DEV || window.__FASTNET_TEST__)) {
+  if (typeof window !== 'undefined' && (import.meta.env?.DEV || window.__BENIFFY_TEST__ || window.__FASTNET_TEST__)) {
+    window.__beniffy_show_toast = showToast;
     window.__fastnet_show_toast = showToast;
+    window.__beniffy_set_lang = setLang;
     window.__fastnet_set_lang = setLang;
   }
 
@@ -3857,7 +3909,9 @@ export default function App() {
         setDiscountApplied(0);
         setOfflineQueue([]);
         setOfflineMode(false);
+        localStorage.removeItem('beniffy_offline_queue');
         localStorage.removeItem('fastnet_offline_queue');
+        localStorage.removeItem('beniffy_offline_mode');
         localStorage.removeItem('fastnet_offline_mode');
         setActiveRole('marketing');
         fetchDbState();
@@ -4601,7 +4655,7 @@ export default function App() {
       setShowPartnerLogin(true);
     }
 
-    const savedPartnerToken = localStorage.getItem('fastnet_partner_session');
+    const savedPartnerToken = localStorage.getItem('beniffy_partner_session') || localStorage.getItem('fastnet_partner_session');
     if (savedPartnerToken) {
       fetch(`${API_BASE}/partner/auth/session`, {
         headers: { Authorization: `Bearer ${savedPartnerToken}` }
@@ -4618,10 +4672,12 @@ export default function App() {
           setPartnerSessionToken(savedPartnerToken);
           loadPartnerAppData(savedPartnerToken);
         } else {
+          localStorage.removeItem('beniffy_partner_session');
           localStorage.removeItem('fastnet_partner_session');
         }
       })
       .catch(() => {
+        localStorage.removeItem('beniffy_partner_session');
         localStorage.removeItem('fastnet_partner_session');
       });
     }
@@ -6489,7 +6545,7 @@ export default function App() {
     let queue = offlineQueue;
     if (!queue || queue.length === 0) {
       try {
-        const saved = localStorage.getItem('fastnet_offline_queue');
+        const saved = localStorage.getItem('beniffy_offline_queue') || localStorage.getItem('fastnet_offline_queue');
         if (saved) queue = JSON.parse(saved);
       } catch (e) {}
     }
@@ -6514,6 +6570,7 @@ export default function App() {
           showToast(`Synced ${data.synced_count} offline actions successfully!`);
         }
         setOfflineQueue([]);
+        localStorage.removeItem('beniffy_offline_queue');
         localStorage.removeItem('fastnet_offline_queue');
         loadStockistData();
 
@@ -8531,7 +8588,7 @@ export default function App() {
   // PARTNER APP HANDLERS & HELPERS (ROUND P4b)
   // ----------------------------------------------------
   const fetchPartnerDashboard = async (tokenOverride) => {
-    const token = tokenOverride || partnerSessionToken || localStorage.getItem('fastnet_partner_session');
+    const token = tokenOverride || partnerSessionToken || localStorage.getItem('beniffy_partner_session') || localStorage.getItem('fastnet_partner_session');
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/partner/dashboard`, {
@@ -8551,7 +8608,7 @@ export default function App() {
   };
 
   const fetchPartnerQueue = async (tokenOverride) => {
-    const token = tokenOverride || partnerSessionToken || localStorage.getItem('fastnet_partner_session');
+    const token = tokenOverride || partnerSessionToken || localStorage.getItem('beniffy_partner_session') || localStorage.getItem('fastnet_partner_session');
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/partner/redemption-queue`, {
@@ -8575,7 +8632,7 @@ export default function App() {
   };
 
   const fetchPartnerPackages = async (tokenOverride) => {
-    const token = tokenOverride || partnerSessionToken || localStorage.getItem('fastnet_partner_session');
+    const token = tokenOverride || partnerSessionToken || localStorage.getItem('beniffy_partner_session') || localStorage.getItem('fastnet_partner_session');
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/partner/me`, {
@@ -8591,7 +8648,7 @@ export default function App() {
   };
 
   const fetchPartnerRegions = async (tokenOverride) => {
-    const token = tokenOverride || partnerSessionToken || localStorage.getItem('fastnet_partner_session');
+    const token = tokenOverride || partnerSessionToken || localStorage.getItem('beniffy_partner_session') || localStorage.getItem('fastnet_partner_session');
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/partner/regions`, {
@@ -8614,7 +8671,7 @@ export default function App() {
   };
 
   const fetchPartnerFeedback = async (tokenOverride) => {
-    const token = tokenOverride || partnerSessionToken || localStorage.getItem('fastnet_partner_session');
+    const token = tokenOverride || partnerSessionToken || localStorage.getItem('beniffy_partner_session') || localStorage.getItem('fastnet_partner_session');
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/partner/feedback`, {
@@ -8630,7 +8687,7 @@ export default function App() {
   };
 
   const fetchPartnerProfile = async (tokenOverride) => {
-    const token = tokenOverride || partnerSessionToken || localStorage.getItem('fastnet_partner_session');
+    const token = tokenOverride || partnerSessionToken || localStorage.getItem('beniffy_partner_session') || localStorage.getItem('fastnet_partner_session');
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/partner/me`, {
@@ -8666,7 +8723,7 @@ export default function App() {
   };
 
   const fetchPartnerNotifications = async (tokenOverride) => {
-    const token = tokenOverride || partnerSessionToken || localStorage.getItem('fastnet_partner_session');
+    const token = tokenOverride || partnerSessionToken || localStorage.getItem('beniffy_partner_session') || localStorage.getItem('fastnet_partner_session');
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/partner/notifications?unread_only=true`, {
@@ -8706,7 +8763,8 @@ export default function App() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        localStorage.setItem('fastnet_partner_session', data.session_token);
+        localStorage.setItem('beniffy_partner_session', data.session_token);
+        try { localStorage.removeItem('fastnet_partner_session'); } catch {}
         setPartnerSessionToken(data.session_token);
         persistSession(data.user, data.session_token);
         setPartnerData(data.partner);
@@ -8786,8 +8844,12 @@ export default function App() {
           showToast('Please complete account setup', 'info');
         } else if (data.session_token || data.token) {
           const sToken = data.session_token || data.token;
-          localStorage.setItem('fastnet_partner_session', sToken);
-          localStorage.setItem('fastnet_partner_setup_completed', 'true');
+          localStorage.setItem('beniffy_partner_session', sToken);
+          localStorage.setItem('beniffy_partner_setup_completed', 'true');
+          try {
+            localStorage.removeItem('fastnet_partner_session');
+            localStorage.removeItem('fastnet_partner_setup_completed');
+          } catch {}
           setPartnerSetupCompleted(true);
           setPartnerSessionToken(sToken);
           if (data.user) persistSession(data.user, sToken);
@@ -8861,8 +8923,12 @@ export default function App() {
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
           const sToken = data.session_token || data.token;
-          localStorage.setItem('fastnet_partner_session', sToken);
-          localStorage.setItem('fastnet_partner_setup_completed', 'true');
+          localStorage.setItem('beniffy_partner_session', sToken);
+          localStorage.setItem('beniffy_partner_setup_completed', 'true');
+          try {
+            localStorage.removeItem('fastnet_partner_session');
+            localStorage.removeItem('fastnet_partner_setup_completed');
+          } catch {}
           setPartnerSetupCompleted(true);
           setPartnerSessionToken(sToken);
           if (data.user) persistSession(data.user, sToken);
@@ -8911,7 +8977,8 @@ export default function App() {
   };
 
   const rawHandlePartnerLogout = () => {
-    localStorage.removeItem('fastnet_partner_session');
+    localStorage.removeItem('beniffy_partner_session');
+    try { localStorage.removeItem('fastnet_partner_session'); } catch {}
     setPartnerSessionToken('');
     clearSession();
     setPartnerData(null);

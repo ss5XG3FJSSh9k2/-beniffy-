@@ -11,7 +11,7 @@ process.env.R2_MOCK = 'true';
 delete process.env.DATABASE_URL;
 
 console.log('====================================================');
-console.log('                 FASTNET LOYALTY                    ');
+console.log('                     BENIFFY                        ');
 console.log('              TEST MODE INITIALIZED                 ');
 console.log('====================================================');
 console.log('Seeded accounts (OTP is always 123456):');

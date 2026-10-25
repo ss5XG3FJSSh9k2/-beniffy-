@@ -18,7 +18,7 @@ process.env.R2_MOCK = 'true';
 delete process.env.DATABASE_URL;
 
 console.log('====================================================');
-console.log('                 FASTNET LOYALTY                    ');
+console.log('                     BENIFFY                        ');
 console.log('              DEV MODE INITIALIZED                  ');
 console.log('====================================================');
 

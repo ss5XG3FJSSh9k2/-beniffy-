@@ -22,4 +22,5 @@ tests/**/*.png
 tests/*.png
 artifacts/
 fix-regression.js
-update-theme.js
+update-theme.js
+.claude/

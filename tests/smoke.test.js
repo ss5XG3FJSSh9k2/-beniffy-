@@ -315,6 +315,7 @@ async function runSmokeTests() {
             localStorage.setItem('currentUser', JSON.stringify(user));
             localStorage.setItem('token', token);
             if (roleKey === 'partner') {
+              localStorage.setItem('beniffy_partner_session', token);
               localStorage.setItem('fastnet_partner_session', token);
             }
           }, { user: sessionData.user, token: sessionData.token, roleKey: role.roleKey });
