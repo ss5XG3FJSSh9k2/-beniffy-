@@ -3332,7 +3332,12 @@ export default function App() {
     } catch(e) {}
   };
 
+  const syncOfflineQueueRef = useRef();
+
   const [offlineMode, setOfflineMode] = useState(() => {
+    if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
+      if (!navigator.onLine) return true;
+    }
     return localStorage.getItem('fastnet_offline_mode') === 'true';
   });
   const [offlineQueue, setOfflineQueue] = useState(() => {
@@ -6481,12 +6486,22 @@ export default function App() {
   };
 
   const handleSyncOfflineQueue = async () => {
-    if (offlineQueue.length === 0) return;
+    let queue = offlineQueue;
+    if (!queue || queue.length === 0) {
+      try {
+        const saved = localStorage.getItem('fastnet_offline_queue');
+        if (saved) queue = JSON.parse(saved);
+      } catch (e) {}
+    }
+    if (!queue || queue.length === 0) return;
     try {
-      const payload = { updates: offlineQueue };
+      const payload = { updates: queue };
+      const authToken = localStorage.getItem('token') || '';
+      const headers = { 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
       const res = await fetch(`${API_BASE}/orders/sync`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
       const data = await res.json().catch(() => ({}));
@@ -6499,6 +6514,7 @@ export default function App() {
           showToast(`Synced ${data.synced_count} offline actions successfully!`);
         }
         setOfflineQueue([]);
+        localStorage.removeItem('fastnet_offline_queue');
         loadStockistData();
 
       } else {
@@ -6508,6 +6524,34 @@ export default function App() {
       showToast('Connection to server failed during sync', 'error');
     }
   };
+
+  syncOfflineQueueRef.current = handleSyncOfflineQueue;
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setOfflineMode(false);
+      setTimeout(() => {
+        if (syncOfflineQueueRef.current) {
+          syncOfflineQueueRef.current();
+        }
+      }, 300);
+    };
+    const handleOffline = () => {
+      setOfflineMode(true);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setOfflineMode(true);
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handlePurchaseStock = async (productId, quantity, vendorId = null) => {
     if (!stockistProfile) return;
@@ -13796,17 +13840,39 @@ export default function App() {
                           <span style={{ fontSize: '0.7rem', color: 'var(--card-strong-muted)' }}>{t("Settlement to bank", "बैंक में निपटान", "ব্যাংক সেটেলমেন্ট")}</span>
                         </div>
 
-                        {/* COD Commission Owed Widget */}
+                        {/* Commission Owed Widget */}
                         <div style={{ background: 'var(--bg-surface-elevated)', borderRadius: '12px', padding: '0.85rem 1rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '0.15rem', border: '1px solid var(--border-color)', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)', minWidth: 0 }}>
                           <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                            <AlertCircle size={10} style={{ color: 'var(--warning-text)' }} /> {t("COD Commission Owed", "COD कमीशन देय", "COD কমিশন বকেয়া")}
+                            <AlertCircle size={10} style={{ color: 'var(--warning-text)' }} /> {t('Commission owed to Beniffy', 'Beniffy को देय कमीशन', 'Beniffy-কে দেয় কমিশন')}
                           </span>
                           <span style={{ fontSize: '1.4rem', fontWeight: 'bold', fontFamily: 'var(--font-display)', color: 'var(--warning-text)' }}>
                             ₹{stockistAnalytics?.cod_commission_outstanding !== undefined ? stockistAnalytics.cod_commission_outstanding.toFixed(2) : '0.00'}
                           </span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t("Owed to Beniffy", "बेनिफ़ी का देय", "বেনিফি এর বকেয়া")}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t("Pay at handover", "हैंडओवर पर भुगतान", "হ্যান্ডওভারে পেমেন্ট")}</span>
                         </div>
                       </div>
+
+                      {/* Offline banner */}
+                      {offlineMode && (
+                        <div
+                          data-testid="offline-banner"
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid var(--danger)',
+                            borderRadius: '8px',
+                            padding: '0.6rem 0.85rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            fontSize: '0.78rem',
+                            color: 'var(--danger-text)',
+                            fontWeight: 500
+                          }}
+                        >
+                          <WifiOff size={16} style={{ flexShrink: 0 }} />
+                          <span>{t("You're offline. Actions will sync when you reconnect.", "आप ऑफ़लाइन हैं। दोबारा कनेक्ट होने पर कार्रवाइयां सिंक होंगी।", "আপনি অফলাইনে আছেন। পুনরায় সংযোগ হলে কাজগুলি সিঙ্ক হবে।")}</span>
+                        </div>
+                      )}
 
                       {/* Sync bar if offline queue has items */}
                       {offlineQueue.length > 0 && (
@@ -13820,22 +13886,27 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Offline toggle control */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                        <div>
-                          <h4 style={{ fontSize: '0.8rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <Signal size={14} /> {t("Network Signal", "नेटवर्क सिग्नल", "নেটওয়ার্ক সিগন্যাল")}
-                          </h4>
-                          <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>{t("Test offline rural store state", "ऑफ़लाइन ग्रामीण स्टोर स्थिति का परीक्षण करें", "অফলাইন গ্রামীণ স্টোর পরীক্ষা")}</p>
-                        </div>
-                        <button 
-                          onClick={toggleOfflineMode} 
-                          className={`badge ${offlineMode ? 'badge-danger' : 'badge-success'}`}
-                          style={{ border: 'none', cursor: 'pointer', padding: '0.4rem 0.6rem', textTransform: 'uppercase' }}
+                      {/* Offline toggle control (dev-tools only) */}
+                      {devToolsEnabled && (
+                        <div
+                          data-testid="offline-test-card"
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
                         >
-                          {offlineMode ? t('Connect', 'कनेक्ट करें', 'কানেক্ট করুন') : t('Disconnect', 'डिस्कनेक्ट करें', 'ডিসকানেক্ট করুন')}
-                        </button>
-                      </div>
+                          <div>
+                            <h4 style={{ fontSize: '0.8rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Signal size={14} /> {t("Network Signal", "नेटवर्क सिग्नल", "নেটওয়ার্ক সিগন্যাল")}
+                            </h4>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>{t("Test offline rural store state", "ऑफ़लाइन ग्रामीण स्टोर स्थिति का परीक्षण करें", "অফলাইন গ্রামীণ স্টোর পরীক্ষা")}</p>
+                          </div>
+                          <button 
+                            onClick={toggleOfflineMode} 
+                            className={`badge ${offlineMode ? 'badge-danger' : 'badge-success'}`}
+                            style={{ border: 'none', cursor: 'pointer', padding: '0.4rem 0.6rem', textTransform: 'uppercase' }}
+                          >
+                            {offlineMode ? t('Connect', 'कनेक्ट करें', 'কানেক্ট করুন') : t('Disconnect', 'डिस्कनेक्ट करें', 'ডিসকানেক্ট করুন')}
+                          </button>
+                        </div>
+                      )}
 
                       {/* Active Orders Queue */}
                       <h3 style={{ fontSize: '0.9rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.4rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>

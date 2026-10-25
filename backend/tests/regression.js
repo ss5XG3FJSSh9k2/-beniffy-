@@ -7724,7 +7724,32 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: KYC approve writes kyc_approved notification`);
 
-  clearLogin();
+  // ==========================================
+  // TICKET 64: Stockist offline real connection & commission wording
+  // ==========================================
+  const s64AppPath = path.join(__dirname, '../../frontend/src/App.jsx');
+  const s64App = fs.readFileSync(s64AppPath, 'utf8');
+
+  // 1. Stockist home offline test card is guarded by devToolsEnabled
+  assert(/\{devToolsEnabled\s*&&\s*\(\s*<div[^>]*data-testid="offline-test-card"/.test(s64App),
+    'Stockist offline test card is guarded by devToolsEnabled');
+
+  // 2. Offline banner is present with proper wording and data-testid="offline-banner"
+  assert(s64App.includes('data-testid="offline-banner"') && s64App.includes("You're offline. Actions will sync when you reconnect."),
+    'Offline banner is present with t(...) translated strings');
+
+  // 3. Commission tile renamed to t('Commission owed to Beniffy', 'Beniffy को देय कमीशन', 'Beniffy-কে দেয় কমিশন')
+  assert(s64App.includes("t('Commission owed to Beniffy', 'Beniffy को देय कमीशन', 'Beniffy-কে দেয় কমিশন')"),
+    'Commission tile uses updated wording t("Commission owed to Beniffy", ...)');
+
+  // 4. Window online and offline event listeners registered
+  assert(s64App.includes("window.addEventListener('online', handleOnline)") &&
+         s64App.includes("window.addEventListener('offline', handleOffline)"),
+    'Window online and offline event listeners registered');
+
+  // 5. Admin/Settings Test Network Signal is dev-tools only
+  assert(/\{devToolsEnabled\s*&&\s*showDevSettings\s*&&[\s\S]*?Test Network Signal/.test(s64App),
+    'Admin/Settings Test Network Signal switch is dev-tools only');
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
