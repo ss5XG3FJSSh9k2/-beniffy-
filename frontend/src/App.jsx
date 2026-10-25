@@ -13361,7 +13361,7 @@ export default function App() {
                           </p>
                           {supportPhone ? (
                             <a 
-                              href={`tel:${supportPhone.replace(/[\s\-\(\)]/g, '')}`} 
+                              href={`tel:${supportPhone.replace(/[\s\-()]/g, '')}`} 
                               className="btn btn-secondary" 
                               style={{ 
                                 display: 'inline-flex', 

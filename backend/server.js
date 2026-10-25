@@ -107,19 +107,38 @@ app.use((req, res, next) => {
   next();
 });
 
-// HTML escaping helper (Item 17)
+// HTML escaping helper (used only when rendering outside React, e.g. emails)
 function escapeHtml(str) {
-  if (typeof str !== 'string') return str;
-  return str.replace(/[&<>"']/g, (m) => {
+  if (str === undefined || str === null) return '';
+  const s = typeof str === 'string' ? str : String(str);
+  return s.replace(/[&<>"']/g, (m) => {
     switch (m) {
       case '&': return '&amp;';
       case '<': return '&lt;';
       case '>': return '&gt;';
       case '"': return '&quot;';
-      case "'": return '&#039;';
+      case "'": return '&#39;';
       default: return m;
     }
   });
+}
+
+function unescapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&#x27;/gi, "'");
+}
+
+function sanitizePlainText(val, maxLength = 255) {
+  if (val === undefined || val === null) return '';
+  const str = typeof val === 'string' ? val : String(val);
+  const cleaned = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
+  return maxLength ? cleaned.slice(0, maxLength) : cleaned;
 }
 
 function normalizePhone(phone) {
@@ -722,10 +741,10 @@ app.post('/api/auth/register-customer', async (req, res) => {
   if (validationErr) return res.status(400).json({ error: validationErr });
 
   const targetRegionId = regionId || region_id || 'r1';
-  const cleanName = escapeHtml(name);
+  const cleanName = sanitizePlainText(name, 50);
   const validEmail = await checkEmail(email, res);
   if (!validEmail) return;
-  const cleanAddress = address ? escapeHtml(address) : '';
+  const cleanAddress = address ? sanitizePlainText(address, 255) : '';
 
   const users = await db.getTable('users');
   const existing = users.find(u => u.kyc_status !== 'RELEASED' && u.phone === phone);
@@ -856,7 +875,15 @@ app.patch('/api/users/:id', requireAuth, async (req, res) => {
   }
 
   updateKeys.forEach(f => {
-    if (f in req.body && f !== 'email') patch[f] = escapeHtml(req.body[f]);
+    if (f in req.body && f !== 'email') {
+      const val = req.body[f];
+      if (typeof val === 'string') {
+        const maxLen = f === 'name' ? 50 : (f === 'address' ? 255 : 255);
+        patch[f] = sanitizePlainText(val, maxLen);
+      } else {
+        patch[f] = val;
+      }
+    }
   });
 
   const updated = await db.updateRow('users', id, patch);
@@ -893,7 +920,7 @@ app.post('/api/setup/create-admin', async (req, res) => {
     const validEmail = await checkEmail(email, res);
     if (!validEmail) return;
 
-    const cleanName = name.trim();
+    const cleanName = sanitizePlainText(name, 120);
     const cleanPhone = phone.trim();
 
     // Ensure tenant t1 exists
@@ -1127,11 +1154,11 @@ app.post('/api/customer/register-with-referral', async (req, res) => {
     region_id: regionId,
     phone,
     email: validEmail,
-    name,
+    name: sanitizePlainText(name, 50),
     role: 'CUSTOMER',
     kyc_status: 'APPROVED',
     no_show_count: 0,
-    address: address || '',
+    address: address ? sanitizePlainText(address, 255) : '',
     referred_by_user_id: referrerId,
     referral_bonus_paid: false,
     terms_accepted_at: req.body.termsAgreed ? new Date().toISOString() : null,
@@ -9180,8 +9207,8 @@ app.post('/api/customer/:id/profile', requireAuth, async (req, res) => {
   if (!user) return res.status(404).json({ error: 'Customer not found' });
 
   const before = { name: user.name, address: user.address || '' };
-  if (name && name.trim()) user.name = name.trim();
-  if (address !== undefined) user.address = address.trim();
+  if (name && typeof name === 'string' && name.trim()) user.name = sanitizePlainText(name, 50);
+  if (address !== undefined) user.address = typeof address === 'string' ? sanitizePlainText(address, 255) : '';
 
   await db.saveTable('users', users);
   await appendAudit(req, 'EDIT_CUSTOMER_PROFILE', 'customer', id, before, { name: user.name, address: user.address });
@@ -9470,7 +9497,7 @@ app.post('/api/admin/redemption-approvals/:id/approve', async (req, res) => {
       await emailHelper.sendEmail(
         targetPartner.contact_email,
         `New redemption ready for you: ${pkgName}`,
-        `<p>Customer ${custName} (phone: ${custPhone}) has redeemed "${pkgName}". Please verify and mark fulfilled in your partner app. Approval ID: ${approval.id}</p>`,
+        `<p>Customer ${escapeHtml(custName)} (phone: ${escapeHtml(custPhone)}) has redeemed &quot;${escapeHtml(pkgName)}&quot;. Please verify and mark fulfilled in your partner app. Approval ID: ${escapeHtml(approval.id)}</p>`,
         `Customer ${custName} (phone: ${custPhone}) has redeemed "${pkgName}". Please verify and mark fulfilled in your partner app. Approval ID: ${approval.id}`
       );
     } catch (err) {
@@ -11490,7 +11517,10 @@ module.exports = {
   findStockistOwner,
   getCustomerVisibility,
   isCustomerVisible,
-  setMainWholesaler
+  setMainWholesaler,
+  escapeHtml,
+  unescapeHtml,
+  sanitizePlainText
 };
 
 

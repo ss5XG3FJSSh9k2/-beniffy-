@@ -8231,6 +8231,96 @@ async function main() {
     support_hours: '9:00 AM - 9:00 PM'
   });
 
+  // ==========================================
+  // HTML ENTITY SANITIZATION & UNESCAPING TESTS
+  // ==========================================
+  console.log('\n--- Testing HTML Entity Sanitization & Unescaping ---');
+
+  // Test 1: Customer registration with quotes/apostrophes/ampersands stores literal text, not HTML entities
+  clearLogin();
+  const rawLitName = "Joseph D'Souza";
+  const rawLitAddr = "Shop 3 & 4";
+  const regLitPhone = '9831999888';
+  const regLitRes = await post('http://localhost:3001/api/auth/register-customer', {
+    phone: regLitPhone,
+    email: 'test_dsouza@fastnet.test',
+    name: rawLitName,
+    address: rawLitAddr,
+    region_id: 'r1',
+    termsAgreed: true
+  });
+  assert(regLitRes.status === 200, 'Customer registration with quotes and ampersands succeeds');
+  assert(regLitRes.body.user.name === "Joseph D'Souza", 'Registered name matches exact literal string "Joseph D\'Souza" without entity escaping');
+  assert(!regLitRes.body.user.name.includes('&#039;') && !regLitRes.body.user.name.includes('&#39;'), 'Registered name does not contain &#39;');
+  assert(!regLitRes.body.user.name.includes('&amp;'), 'Registered name does not contain &amp;');
+  assert(regLitRes.body.user.address === "Shop 3 & 4", 'Registered address matches exact literal string "Shop 3 & 4" without entity escaping');
+  assert(!regLitRes.body.user.address.includes('&amp;'), 'Registered address does not contain &amp;');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer registration stores literal "Joseph D'Souza" and "Shop 3 & 4" without HTML entities`);
+
+  // Test 2: Customer profile update preserves quotes and ampersands as literal text
+  loginAs(regLitRes.body.user.id, 'CUSTOMER');
+  const updatedLitName = "Joseph D'Souza";
+  const updatedLitAddr = "Shop 3 & 4, Station Road";
+  const updateLitRes = await post(`http://localhost:3001/api/customer/${regLitRes.body.user.id}/profile`, {
+    name: updatedLitName,
+    address: updatedLitAddr
+  });
+  assert(updateLitRes.status === 200, 'Profile update returns 200');
+  assert(updateLitRes.body.user && updateLitRes.body.user.name === "Joseph D'Souza", 'Updated profile name returns exact literal "Joseph D\'Souza"');
+  assert(updateLitRes.body.user && updateLitRes.body.user.address === "Shop 3 & 4, Station Road", 'Updated profile address returns exact literal "Shop 3 & 4, Station Road"');
+  assert(!updateLitRes.body.user.name.includes('&#39;') && !updateLitRes.body.user.name.includes('&amp;'), 'No entity escapes in updated name');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer profile update preserves literal "Joseph D'Souza" and "Shop 3 & 4, Station Road"`);
+
+  // Test 2b: Email containing address renders escaped HTML without double escaping
+  const escapedAddrForEmail = serverModule.escapeHtml(updateLitRes.body.user.address);
+  const emailHtml = `<p>Delivery address: ${escapedAddrForEmail}</p>`;
+  assert(escapedAddrForEmail === "Shop 3 &amp; 4, Station Road", 'escapeHtml properly escapes & to &amp; for email rendering');
+  assert(emailHtml === "<p>Delivery address: Shop 3 &amp; 4, Station Road</p>", 'Email HTML contains correctly escaped address');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Email containing address renders correctly escaped HTML`);
+
+  // Test 3: Plain-text sanitization: trims trailing spaces, removes CRLF / ASCII control chars, enforces maxLen, preserves Unicode
+  const dirtyName = "   Rahul  Sharma \r\n\t \x00\x08   ";
+  const hindiName = "राहुल & शर्मा (दुकान)";
+  const bengaliName = "রাহুল & শর্মা 'দোকান'";
+  const sanitizedDirty = serverModule.sanitizePlainText ? serverModule.sanitizePlainText(dirtyName, 50) : null;
+  assert(sanitizedDirty === "Rahul  Sharma", 'sanitizePlainText trims and removes CRLF/control chars');
+  const sanitizedHindi = serverModule.sanitizePlainText ? serverModule.sanitizePlainText(hindiName, 50) : null;
+  assert(sanitizedHindi === hindiName, 'sanitizePlainText preserves Hindi characters and ampersand');
+  const sanitizedBengali = serverModule.sanitizePlainText ? serverModule.sanitizePlainText(bengaliName, 50) : null;
+  assert(sanitizedBengali === bengaliName, 'sanitizePlainText preserves Bengali characters, quotes and ampersand');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: sanitizePlainText helper correctly strips control chars and preserves non-ASCII/quotes/ampersands`);
+
+  // Test 4: Startup repair / data repair for existing HTML-escaped user fields in database
+  // Insert a mock user directly with HTML-escaped entities
+  const legacyEscapedUser = {
+    id: 'u-escaped-legacy',
+    phone: '9831999777',
+    name: "O&#039;Connor &amp; Sons &quot;Pvt&quot; Ltd",
+    address: "Flat 4, 3&#039;rd Cross &amp; 4&#x27;th Main",
+    role: 'CUSTOMER',
+    region_id: 'r1',
+    created_at: new Date().toISOString()
+  };
+  await dbModule.insertRow('users', legacyEscapedUser);
+
+  // Run repairHtmlEscapedUserFields directly
+  const repairedCount = await dbModule.repairHtmlEscapedUserFields(dbModule);
+  assert(repairedCount >= 1, 'repairHtmlEscapedUserFields repaired at least 1 legacy user');
+
+  const repairedUsers = await dbModule.getTable('users');
+  const checkedUser = repairedUsers.find(u => u.id === 'u-escaped-legacy');
+  assert(checkedUser, 'Legacy user found in users table');
+  assert(checkedUser.name === 'O\'Connor & Sons "Pvt" Ltd', `Legacy name unescaped properly: "${checkedUser.name}"`);
+  assert(checkedUser.address === "Flat 4, 3'rd Cross & 4'th Main", `Legacy address unescaped properly: "${checkedUser.address}"`);
+  assert(!checkedUser.name.includes('&#039;') && !checkedUser.name.includes('&amp;'), 'No HTML entities remain in user name');
+  assert(!checkedUser.address.includes('&#039;') && !checkedUser.address.includes('&amp;'), 'No HTML entities remain in user address');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Startup repair unescapes legacy HTML entities into clean plain text`);
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 

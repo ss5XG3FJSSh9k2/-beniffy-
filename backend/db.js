@@ -476,6 +476,59 @@ async function repairCancelledOrders(dbInterface) {
   }
 }
 
+function unescapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&#x27;/gi, "'");
+}
+
+async function repairHtmlEscapedUserFields(dbInterface) {
+  try {
+    const users = dbInterface && typeof dbInterface.getTable === 'function'
+      ? await dbInterface.getTable('users')
+      : await getTable('users');
+
+    let repairedCount = 0;
+    const pattern = /&(?:amp|lt|gt|quot|#0*39|#x27);/i;
+
+    for (const u of users) {
+      let changed = false;
+      const patch = {};
+
+      if (typeof u.name === 'string' && pattern.test(u.name)) {
+        patch.name = unescapeHtml(u.name);
+        u.name = patch.name;
+        changed = true;
+      }
+      if (typeof u.address === 'string' && pattern.test(u.address)) {
+        patch.address = unescapeHtml(u.address);
+        u.address = patch.address;
+        changed = true;
+      }
+
+      if (changed) {
+        repairedCount++;
+        if (dbInterface && typeof dbInterface.updateRow === 'function') {
+          await dbInterface.updateRow('users', u.id, patch);
+        } else {
+          await updateRow('users', u.id, patch);
+        }
+      }
+    }
+
+    console.log(`[Startup Repair] Unescaped HTML entities in names/addresses for ${repairedCount} user(s).`);
+    return repairedCount;
+  } catch (e) {
+    console.error('[Startup Repair] Error unescaping user names/addresses:', e);
+    return 0;
+  }
+}
+
 let initPromise = null;
 
 async function init() {
@@ -557,6 +610,7 @@ async function init() {
     await repairReleasedUsers(dbInterface);
     await repairPayAtHandoverOrders(dbInterface);
     await repairCancelledOrders(dbInterface);
+    await repairHtmlEscapedUserFields(dbInterface);
   })();
   return initPromise;
 }
@@ -591,6 +645,7 @@ async function resetForTest() {
     await repairReleasedUsers(dbInterface);
     await repairPayAtHandoverOrders(dbInterface);
     await repairCancelledOrders(dbInterface);
+    await repairHtmlEscapedUserFields(dbInterface);
   }
 }
 
@@ -857,5 +912,7 @@ module.exports = {
   repairStockistVendors,
   repairReleasedUsers,
   repairPayAtHandoverOrders,
-  repairCancelledOrders
+  repairCancelledOrders,
+  repairHtmlEscapedUserFields,
+  unescapeHtml
 };
