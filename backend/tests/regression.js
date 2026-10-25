@@ -8091,6 +8091,79 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Customer delivered order does not expose shop UPI ID or contact phone`);
 
+  // 6. Bill photo security and signature verification
+  // 6a. Upload a product with bill photo as stockist s1 (u-stk1)
+  loginAs('u-stk1', 'STOCKIST');
+  const billUploadRes = await postMultipart('http://localhost:3001/api/products', {
+    stockistId: 's1',
+    regionId: 'r1',
+    name: 'Security Test Product',
+    price: 150,
+    costPrice: 110,
+    category: 'groceries',
+    initialStock: 10
+  }, {
+    fieldName: 'bill_photo',
+    filename: 'security-bill.jpg',
+    mime: 'image/jpeg',
+    buffer: Buffer.from('security bill jpeg test data')
+  }, 'POST');
+  assert(billUploadRes.status === 200, 'Product creation with bill photo returns 200');
+  const uploadedBill = billUploadRes.body.bill_photo;
+  assert(uploadedBill && uploadedBill.public_url, 'Uploaded bill has public_url');
+  assert(uploadedBill.public_url.includes('sig=') && uploadedBill.public_url.includes('expires='), 'Bill public_url has HMAC signature and expires params');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Product bill upload produces signed public_url with HMAC signature`);
+
+  // 6b. Accessing /api/bills/:key with valid signature works without auth
+  clearLogin();
+  const signedBillUrl = uploadedBill.public_url.startsWith('http') 
+    ? uploadedBill.public_url 
+    : `http://localhost:3001${uploadedBill.public_url}`;
+  const validSigRes = await get(signedBillUrl);
+  assert(validSigRes.status === 200, 'Valid signature allows accessing bill without authentication');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Valid HMAC signed URL grants bill photo access without auth`);
+
+  // 6c. Accessing bill with tampered signature returns 401
+  const tamperedUrl = signedBillUrl.replace(/sig=[a-f0-9]+/, 'sig=badsignature0000');
+  const tamperedRes = await get(tamperedUrl);
+  assert(tamperedRes.status === 401, 'Tampered signature on bill photo URL returns 401');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Tampered signature returns 401`);
+
+  // 6d. Accessing raw bill path without signature or auth returns 401
+  const rawBillKey = uploadedBill.r2_key;
+  const rawBillUrl = `http://localhost:3001/api/bills/${rawBillKey}`;
+  const rawUnauthRes = await get(rawBillUrl);
+  assert(rawUnauthRes.status === 401, 'Accessing raw bill path without auth or signature returns 401');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Accessing unsigned bill photo without auth returns 401`);
+
+  // 6e. Customer accessing raw bill path without signature returns 403
+  loginAs('u-cust1', 'CUSTOMER');
+  const custRawRes = await get(rawBillUrl);
+  assert(custRawRes.status === 403, 'Customer accessing unsigned bill returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer forbidden from unsigned bill photo`);
+
+  // 6f. Another stockist accessing unsigned bill returns 403
+  loginAs('u-stk2', 'STOCKIST');
+  const otherStkRawRes = await get(rawBillUrl);
+  assert(otherStkRawRes.status === 403, 'Other stockist accessing unsigned bill returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Another stockist forbidden from accessing shop bill photo`);
+
+  // 6g. Owner stockist or Admin accessing raw bill path returns 200
+  loginAs('u-stk1', 'STOCKIST');
+  const ownerRawRes = await get(rawBillUrl);
+  assert(ownerRawRes.status === 200, 'Owner stockist can access their own raw bill photo');
+  loginAs('u-admin', 'ADMIN');
+  const adminRawRes = await get(rawBillUrl);
+  assert(adminRawRes.status === 200, 'Admin can access raw bill photo');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Owner stockist and Admin can access bill photo`);
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 

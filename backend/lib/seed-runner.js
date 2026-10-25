@@ -660,7 +660,11 @@ async function seedDatabase(db) {
   for (const tableName of tableOrder) {
     const rows = DEFAULT_DB[tableName] || [];
     for (const row of rows) {
-      await db.insertRow(tableName, row);
+      const toInsert = { ...row };
+      if (tableName === 'orders' && toInsert.status === 'CONFIRMING') {
+        toInsert.cancel_deadline = new Date(Date.now() + 60 * 1000).toISOString();
+      }
+      await db.insertRow(tableName, toInsert);
     }
   }
 }

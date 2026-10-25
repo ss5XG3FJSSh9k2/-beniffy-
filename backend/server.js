@@ -1381,6 +1381,69 @@ function getCustomerVisibleProducts(stockist, products) {
   );
 }
 
+function signBillUrl(r2KeyOrUrl, ttlSeconds = 3600) {
+  if (!r2KeyOrUrl) return null;
+  let raw = String(r2KeyOrUrl).trim();
+  let billPath = raw;
+  if (!billPath.startsWith('/')) {
+    if (billPath.startsWith('http://') || billPath.startsWith('https://')) {
+      try {
+        const u = new URL(billPath);
+        billPath = u.pathname;
+      } catch (e) {}
+    }
+    if (!billPath.startsWith('/api/bills/')) {
+      if (billPath.startsWith('/bills/')) {
+        billPath = `/api${billPath}`;
+      } else {
+        billPath = `/api/bills/${billPath.replace(/^\/+/, '')}`;
+      }
+    }
+  } else if (!billPath.startsWith('/api/bills/')) {
+    if (billPath.startsWith('/bills/')) {
+      billPath = `/api${billPath}`;
+    } else {
+      billPath = `/api/bills${billPath}`;
+    }
+  }
+
+  const pathPart = billPath.split('?')[0];
+  const crypto = require('crypto');
+  const sessionHelper = require('./lib/session');
+  const expires = Date.now() + (ttlSeconds * 1000);
+  const sig = crypto.createHmac('sha256', sessionHelper.getSecret()).update(pathPart + ':' + expires).digest('hex');
+  return `${pathPart}?expires=${expires}&sig=${sig}`;
+}
+
+function signBillRow(b) {
+  if (!b) return b;
+  const signed = { ...b };
+  const keyToSign = b.r2_key || b.public_url;
+  signed.public_url = signBillUrl(keyToSign);
+  return signed;
+}
+
+function hasValidBillSignature(req) {
+  const { expires, sig } = req.query;
+  if (!expires && !sig) return { hasSig: false, valid: false };
+  if (!expires || !sig || !/^\d+$/.test(expires) || !/^[a-f0-9]{64}$/.test(sig)) {
+    return { hasSig: true, valid: false, error: 'invalid_signature', code: 401 };
+  }
+  if (Date.now() > Number(expires)) {
+    return { hasSig: true, valid: false, error: 'signature_expired', code: 403 };
+  }
+  const crypto = require('crypto');
+  const sessionHelper = require('./lib/session');
+  const pathPart = (req.path || req.originalUrl?.split('?')[0]);
+  const expected = crypto.createHmac('sha256', sessionHelper.getSecret()).update(pathPart + ':' + expires).digest('hex');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  const actualBuf = Buffer.from(sig, 'utf8');
+  if (expectedBuf.length !== actualBuf.length || !crypto.timingSafeEqual(expectedBuf, actualBuf)) {
+    return { hasSig: true, valid: false, error: 'invalid_signature', code: 401 };
+  }
+  return { hasSig: true, valid: true };
+}
+
 app.get('/api/products', async (req, res) => {
   const { regionId, stockistId } = req.query;
   const products = await db.getTable('products');
@@ -1446,7 +1509,36 @@ app.get('/api/products', async (req, res) => {
     };
   }));
 
-  return res.json(filtered);
+  const isAdmin = req.user && req.user.role === 'ADMIN';
+  let callerStockist = null;
+  if (req.user && req.user.role === 'STOCKIST') {
+    callerStockist = await getCallerStockist(req);
+  }
+
+  const result = filtered.map(p => {
+    const isOwnShop = Boolean(callerStockist && callerStockist.id === p.stockist_id);
+    const canSeeFullFields = (isAdmin || isOwnShop) && req.query.customer !== 'true';
+
+    if (canSeeFullFields) {
+      return p;
+    }
+
+    return {
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      price: p.price,
+      description: p.description !== undefined ? p.description : '',
+      image_url: p.image_url !== undefined ? p.image_url : null,
+      stock_qty: p.stock_qty !== undefined ? p.stock_qty : 0,
+      is_available: p.is_available !== undefined ? p.is_available : false,
+      estimated_points: p.estimated_points,
+      stockist_id: p.stockist_id,
+      region_id: p.region_id
+    };
+  });
+
+  return res.json(result);
 });
 
 const handleCreateProductRoute = async (req, res) => {
@@ -1606,7 +1698,7 @@ const handleCreateProductRoute = async (req, res) => {
   newProduct.stock_qty = parseInt(initialStock, 10);
   newProduct.is_available = parseInt(initialStock, 10) > 0;
 
-  return res.json({ success: true, product_id: productId, product: newProduct, bill_photo: billPhotoRow });
+  return res.json({ success: true, product_id: productId, product: newProduct, bill_photo: signBillRow(billPhotoRow) });
 };
 
 app.post('/api/products', requireAuth, uploadBillMiddleware, handleCreateProductRoute);
@@ -1816,7 +1908,7 @@ app.patch('/api/products/:id', requireAuth, uploadBillMiddleware, async (req, re
 
   await db.saveTable('products', products);
 
-  return res.json({ success: true, product, bill_photo: billPhotoRow });
+  return res.json({ success: true, product, bill_photo: billPhotoRow ? signBillRow(billPhotoRow) : undefined });
 });
 
 // GET /api/products/:id/bill-history
@@ -1830,7 +1922,7 @@ app.get('/api/products/:id/bill-history', requireAuth, async (req, res) => {
   const history = billPhotos
     .filter(b => b.product_id === id)
     .sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
-  return res.json(history);
+  return res.json(history.map(signBillRow));
 });
 
 // --- ADMIN GATE ---
@@ -1949,7 +2041,7 @@ app.get('/api/admin/bill-photos', async (req, res) => {
     total: enrichedList.length,
     page: pageNum,
     page_size: pageSize,
-    data: paginated
+    data: paginated.map(signBillRow)
   });
 });
 
@@ -2038,7 +2130,7 @@ app.post('/api/admin/bill-photos/:id/verify', async (req, res) => {
     console.error('[notification] Failed to create bill_approved notification:', notifErr);
   }
 
-  return res.json({ success: true, bill, product });
+  return res.json({ success: true, bill: signBillRow(bill), product });
 });
 
 // POST /api/admin/bill-photos/:id/reject
@@ -2132,7 +2224,7 @@ app.post('/api/admin/bill-photos/:id/reject', async (req, res) => {
     console.error('[notification] Failed to create bill_rejected notification:', notifErr);
   }
 
-  return res.json({ success: true, bill, product });
+  return res.json({ success: true, bill: signBillRow(bill), product });
 });
 
 // POST /api/admin/bill-photos/:id/signed-url
@@ -2144,7 +2236,7 @@ app.post('/api/admin/bill-photos/:id/signed-url', async (req, res) => {
 
   try {
     const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
-    const signedUrl = await r2.getSignedReadUrl(bill.r2_key, 3600);
+    const signedUrl = signBillUrl(bill.r2_key, 3600);
     return res.json({ signed_url: signedUrl, expires_at: expiresAt });
   } catch (err) {
     return res.status(500).json({ error: 'failed_signed_url', message: err.message });
@@ -2156,6 +2248,39 @@ app.get('/api/bills/*', async (req, res) => {
   const rawKey = req.params[0];
   if (!rawKey) return res.status(404).json({ error: 'Bill photo key required' });
   const key = decodeURIComponent(rawKey);
+
+  // 1. Signature check
+  const sigCheck = hasValidBillSignature(req);
+  if (sigCheck.hasSig) {
+    if (!sigCheck.valid) {
+      return res.status(sigCheck.code || 401).json({ error: sigCheck.error || 'Invalid signature' });
+    }
+    // Signature is valid!
+  } else {
+    // 2. Auth check if no signature
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (req.user.role !== 'ADMIN') {
+      if (req.user.role !== 'STOCKIST') {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+      const callerStockist = await getCallerStockist(req);
+      if (!callerStockist) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+      const billPhotos = await db.getTable('product_bill_photos');
+      const bill = billPhotos.find(b => b.r2_key === key || b.r2_key === rawKey || (b.public_url && b.public_url.includes(key)));
+      let stockistId = bill ? bill.stockist_id : null;
+      if (!stockistId) {
+        const match = key.match(/^bills\/([^\/]+)\//);
+        if (match) stockistId = match[1];
+      }
+      if (!stockistId || stockistId !== callerStockist.id) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    }
+  }
 
   const isMock = process.env.R2_MOCK === 'true' || !process.env.R2_ACCOUNT_ID;
   if (isMock) {
