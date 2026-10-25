@@ -1,3 +1,5 @@
+const TEST_PORT = process.env.TEST_PORT || '3002';
+process.env.PORT = TEST_PORT;
 process.env.POSTGRES_MODE = 'mem';
 process.env.SEED_MODE = 'test';
 const fs = require('fs');
@@ -5,6 +7,22 @@ const path = require('path');
 const http = require('http');
 const dbModule = require('../db.js');
 const sessionHelper = require('../lib/session.js');
+
+function resolveUrl(url) {
+  const parsed = new URL(url);
+  if (parsed.port === '3001' && TEST_PORT !== '3001') {
+    parsed.port = TEST_PORT;
+  }
+  return parsed;
+}
+
+const origHttpGet = http.get;
+http.get = function(url, options, cb) {
+  if (typeof url === 'string') {
+    return origHttpGet.call(http, resolveUrl(url).toString(), options, cb);
+  }
+  return origHttpGet.apply(http, arguments);
+};
 
 let currentToken = null;
 function loginAs(userId, role) {
@@ -17,7 +35,7 @@ function clearLogin() {
 function postMultipart(url, fields, fileObj = { fieldName: 'bill_photo', filename: 'bill.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock jpeg data') }, method = 'POST', options = {}) {
   return new Promise((resolve, reject) => {
     const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
-    const parsed = new URL(url);
+    const parsed = resolveUrl(url);
 
     let body = [];
 
@@ -67,7 +85,7 @@ function post(url, body, options = {}) {
     return postMultipart(url, body, options.fileObj || { fieldName: 'bill_photo', filename: 'bill.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock bill photo data') }, 'POST', options);
   }
   return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
+    const parsed = resolveUrl(url);
     const data = JSON.stringify(body || {});
     const headers = Object.assign({
       'Content-Type': 'application/json',
@@ -99,7 +117,7 @@ function patch(url, body, options = {}) {
     return postMultipart(url, body, options.fileObj || { fieldName: 'bill_photo', filename: 'bill.jpg', mime: 'image/jpeg', buffer: Buffer.from('mock bill photo data') }, 'PATCH', options);
   }
   return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
+    const parsed = resolveUrl(url);
     const data = JSON.stringify(body || {});
     const headers = Object.assign({
       'Content-Type': 'application/json',
@@ -128,7 +146,7 @@ function patch(url, body, options = {}) {
 
 function get(url, options = {}) {
   return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
+    const parsed = resolveUrl(url);
     const headers = Object.assign({}, options.headers || {});
     if (currentToken && !headers['Authorization']) headers['Authorization'] = 'Bearer ' + currentToken;
     if (currentToken && !headers['Authorization']) headers['Authorization'] = `Bearer ${currentToken}`;
@@ -153,7 +171,7 @@ function get(url, options = {}) {
 
 function del(url, options = {}) {
   return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
+    const parsed = resolveUrl(url);
     const headers = Object.assign({}, options.headers || {});
     if (currentToken && !headers['Authorization']) headers['Authorization'] = 'Bearer ' + currentToken;
     if (currentToken && !headers['Authorization']) headers['Authorization'] = `Bearer ${currentToken}`;
@@ -7913,6 +7931,58 @@ async function main() {
   assert(t65S1ShopInGaria && t65S3ShopInGaria, 'Both Madan Grocers (s1) and Banerjee Corner Store (s3) appear with products in Garia');
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Customer can fill carts at two Garia shops (s1 and s3)`);
+
+  console.log('\n--- Ticket 66: Admin Payout-Change Alerts & adminFetch Relative Paths ---');
+  // 1. Static check on App.jsx: no doubled API addresses in adminFetch calls
+  const t66AppJsx = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  assert(!t66AppJsx.includes('adminFetch(`${API_BASE}'), 'No adminFetch calls pass doubled API_BASE prefix in App.jsx');
+  assert(t66AppJsx.includes("adminFetch('/admin/payout-changes')"), 'adminFetch uses clean relative path for /admin/payout-changes');
+  assert(t66AppJsx.includes("adminFetch(`/admin/payout-changes/${n.id}/review`"), 'adminFetch uses clean relative path for review');
+  assert(t66AppJsx.includes("path.startsWith('http')"), 'adminFetch contains safety guard for http prefixes');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: App.jsx adminFetch uses clean relative paths with URL safety guard`);
+
+  // 2. Stockist 7654321098 changes UPI ID
+  const t66StkLoginRes = await post('http://localhost:3001/api/auth/verify-otp', { phone: '7654321098', otp: '123456', expected_role: 'STOCKIST' });
+  assert(t66StkLoginRes.status === 200 && t66StkLoginRes.body.token, 'Stockist 7654321098 login returns 200');
+  const t66StkToken = t66StkLoginRes.body.token;
+
+  const t66NewUpi = 'madan.shaw' + Date.now() + '@okhdfcbank';
+  const t66ProfileRes = await patch('http://localhost:3001/api/stockist/profile', {
+    payout_upi_id: t66NewUpi
+  }, { headers: { Authorization: `Bearer ${t66StkToken}` } });
+  assert(t66ProfileRes.status === 200, `Stockist profile update returns 200: got ${t66ProfileRes.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Stockist 7654321098 successfully updates payout UPI ID`);
+
+  // 3. Admin (9999999999) sees payout-change alert with unread count
+  const t66AdmLoginRes = await post('http://localhost:3001/api/auth/verify-otp', { phone: '9999999999', otp: '123456', expected_role: 'ADMIN' });
+  assert(t66AdmLoginRes.status === 200 && t66AdmLoginRes.body.token, 'Admin login returns 200');
+  const t66AdmToken = t66AdmLoginRes.body.token;
+
+  const t66PayoutChangesRes = await get('http://localhost:3001/api/admin/payout-changes', { headers: { Authorization: `Bearer ${t66AdmToken}` } });
+  assert(t66PayoutChangesRes.status === 200, `GET /api/admin/payout-changes returns 200: got ${t66PayoutChangesRes.status}`);
+  assert(Array.isArray(t66PayoutChangesRes.body), 'Payout changes response is an array');
+
+  const t66Alert = t66PayoutChangesRes.body.find(a => a.after && a.after.payout_upi_id === t66NewUpi);
+  assert(t66Alert, 'Admin sees payout-change alert for updated UPI ID');
+  assert(!t66Alert.reviewed_at, 'Newly created alert is unreviewed');
+  const t66UnreadCount = t66PayoutChangesRes.body.filter(a => !a.reviewed_at).length;
+  assert(t66UnreadCount >= 1, `Admin unread payout changes count is at least 1: got ${t66UnreadCount}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin sees payout-change alert with unread count (${t66UnreadCount})`);
+
+  // 4. Mark reviewed clears it
+  const t66ReviewRes = await post(`http://localhost:3001/api/admin/payout-changes/${t66Alert.id}/review`, {}, { headers: { Authorization: `Bearer ${t66AdmToken}` } });
+  assert(t66ReviewRes.status === 200, `POST /api/admin/payout-changes/:id/review returns 200: got ${t66ReviewRes.status}`);
+
+  const t66AfterReviewRes = await get('http://localhost:3001/api/admin/payout-changes', { headers: { Authorization: `Bearer ${t66AdmToken}` } });
+  assert(t66AfterReviewRes.status === 200, 'GET /api/admin/payout-changes after review returns 200');
+  const t66ReviewedAlert = t66AfterReviewRes.body.find(a => a.id === t66Alert.id);
+  assert(t66ReviewedAlert && t66ReviewedAlert.reviewed_at, 'Alert is now marked reviewed');
+  assert(t66ReviewedAlert.reviewed_by, 'Alert records reviewing admin ID');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin "Mark reviewed" clears unread alert status`);
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);

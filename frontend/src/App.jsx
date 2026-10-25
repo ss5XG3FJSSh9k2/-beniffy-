@@ -1781,8 +1781,17 @@ export default function App() {
   const isDevMode = new URLSearchParams(window.location.search).has('dev');
 
   const adminFetch = (path, options = {}) => {
+    let url = path;
+    if (typeof path === 'string' && (path.startsWith('http') || (API_BASE && path.startsWith(API_BASE)))) {
+      if (import.meta.env?.DEV || (typeof window !== 'undefined' && (window.__BENIFFY_TEST__ || window.__FASTNET_TEST__ || isDevMode))) {
+        console.warn(`[adminFetch] Warning: received full URL instead of relative path: ${path}`);
+      }
+      url = path;
+    } else {
+      url = `${API_BASE}${typeof path === 'string' && path.startsWith('/') ? path : `/${path}`}`;
+    }
     const adminId = (currentUser && currentUser.role === 'ADMIN') ? currentUser.id : (currentUser?.id || '');
-    return fetch(`${API_BASE}${path}`, {
+    return fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -2216,7 +2225,7 @@ export default function App() {
 
   const fetchAdminPayoutChanges = async () => {
     try {
-      const res = await adminFetch(`${API_BASE}/admin/payout-changes`);
+      const res = await adminFetch('/admin/payout-changes');
       const data = await res.json();
       if (res.ok) {
         setAdminPayoutChanges(data);
@@ -17554,7 +17563,7 @@ export default function App() {
                                 className="btn btn-primary" 
                                 style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}
                                 onClick={async () => {
-                                  await adminFetch(`${API_BASE}/admin/payout-changes/${n.id}/review`, { method: 'POST' });
+                                  await adminFetch(`/admin/payout-changes/${n.id}/review`, { method: 'POST' });
                                   fetchAdminPayoutChanges();
                                 }}
                               >
