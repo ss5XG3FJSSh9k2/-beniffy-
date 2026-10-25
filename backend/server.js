@@ -534,6 +534,23 @@ async function appendPaymentEvent(orderId, eventType, amount, metadata = {}) {
   await db.saveTable('payment_ledger', ledger);
 }
 
+// Helper: create a notification
+async function createNotification({ userId, type, title, body = '', link = null }) {
+  if (!userId) return null;
+  const notif = {
+    id: 'notif-' + generateId(),
+    user_id: userId,
+    type,
+    title,
+    body: body || '',
+    link: link || null,
+    created_at: new Date().toISOString(),
+    read_at: null
+  };
+  await db.insertRow('notifications', notif);
+  return notif;
+}
+
 // Helper: append an admin audit log entry
 
 async function capturePayoutEvent(req, entityType, entityId, before, finalEntity, userId) {
@@ -1770,6 +1787,33 @@ app.patch('/api/products/:id', requireAuth, uploadBillMiddleware, async (req, re
   product.price = newPrice;
   product.cost_price = newCostPrice;
 
+  if (req.body.stock_qty !== undefined || req.body.stock_quantity !== undefined) {
+    const rawStock = req.body.stock_qty !== undefined ? req.body.stock_qty : req.body.stock_quantity;
+    const newStock = parseInt(rawStock, 10);
+    const prevStock = inv.stock_qty;
+    inv.stock_qty = newStock;
+    inv.stock_quantity = newStock;
+    inv.is_available = newStock > 0;
+    await db.updateRow('stockist_inventory', inv.id, inv);
+    if (prevStock > 0 && newStock <= 0) {
+      try {
+        const stockists = await db.getTable('stockists');
+        const stk = stockists.find(s => s.id === stockistId);
+        if (stk && stk.user_id) {
+          await createNotification({
+            userId: stk.user_id,
+            type: 'product_out_of_stock',
+            title: 'Product out of stock',
+            body: `${product.name} is out of stock`,
+            link: `product:${product.id}`
+          });
+        }
+      } catch (notifErr) {
+        console.error('[notification] Failed to create out_of_stock notification on product update:', notifErr);
+      }
+    }
+  }
+
   await db.saveTable('products', products);
 
   return res.json({ success: true, product, bill_photo: billPhotoRow });
@@ -1980,6 +2024,20 @@ app.post('/api/admin/bill-photos/:id/verify', async (req, res) => {
     }
   }
 
+  try {
+    if (stockist && stockist.user_id) {
+      await createNotification({
+        userId: stockist.user_id,
+        type: 'bill_approved',
+        title: 'Bill approved',
+        body: `Bill for ${product ? product.name : 'product'} approved`,
+        link: `product:${bill.product_id}`
+      });
+    }
+  } catch (notifErr) {
+    console.error('[notification] Failed to create bill_approved notification:', notifErr);
+  }
+
   return res.json({ success: true, bill, product });
 });
 
@@ -2058,6 +2116,20 @@ app.post('/api/admin/bill-photos/:id/reject', async (req, res) => {
         await smsHelper.sendSms(customer.phone, `Beniffy: Your pending points for order ${heldRow.order_id.substring(2).toUpperCase()} could not be credited. Reason: ${reason.trim()}`);
       }
     }
+  }
+
+  try {
+    if (stockist && stockist.user_id) {
+      await createNotification({
+        userId: stockist.user_id,
+        type: 'bill_rejected',
+        title: 'Bill rejected',
+        body: `Bill for ${product ? product.name : 'product'} rejected: ${reason}`,
+        link: `product:${bill.product_id}`
+      });
+    }
+  } catch (notifErr) {
+    console.error('[notification] Failed to create bill_rejected notification:', notifErr);
   }
 
   return res.json({ success: true, bill, product });
@@ -2848,6 +2920,31 @@ async function processOrderCancellation(order, cancelledBy = 'system', { retainC
     order.payment_status = 'CANCELLED_UNPAID';
     order.refund_amount = 0;
   }
+
+  // If cancelled by customer, update new_order notification item text and write order_cancelled notification
+  if (cancelledBy === 'customer') {
+    try {
+      const stockists = await db.getTable('stockists');
+      const stockistRow = stockists.find(s => s.id === order.stockist_id);
+      if (stockistRow && stockistRow.user_id) {
+        const notifs = await db.getTable('notifications');
+        const existing = notifs.find(n => n.link === `order:${order.id}` && n.type === 'new_order');
+        if (existing) {
+          existing.body = 'Cancelled by customer';
+          await db.updateRow('notifications', existing.id, { body: 'Cancelled by customer' });
+        }
+        await createNotification({
+          userId: stockistRow.user_id,
+          type: 'order_cancelled',
+          title: 'Order cancelled',
+          body: 'Cancelled by customer',
+          link: `order:${order.id}`
+        });
+      }
+    } catch (notifErr) {
+      console.error('[notification] Failed to process order cancellation notification:', notifErr);
+    }
+  }
 }
 
 // Helper: Enrich Order
@@ -3428,6 +3525,21 @@ const handleCreateOrderRoute = async (req, res) => {
 
     createdOrders.push(await enrichOrder(order, req));
     await _sendOrderConfirmedSms(order);
+
+    try {
+      const stockistRow = stockistsTable.find(s => s.id === stockistId);
+      if (stockistRow && stockistRow.user_id) {
+        await createNotification({
+          userId: stockistRow.user_id,
+          type: 'new_order',
+          title: 'New order',
+          body: `Order #${orderId} received`,
+          link: `order:${orderId}`
+        });
+      }
+    } catch (notifErr) {
+      console.error('[notification] Failed to create new_order notification:', notifErr);
+    }
   }
 
   try {
@@ -4013,10 +4125,30 @@ const handleOrderStatusUpdate = async (req, res) => {
         for (const oi of orderItems) {
           const inv = inventory.find(i => i.stockist_id === order.stockist_id && i.product_id === oi.product_id);
           if (inv) {
+            const prevStock = inv.stock_qty;
             inv.stock_qty -= parseInt(oi.quantity, 10);
             inv.stock_quantity = inv.stock_qty;
             inv.is_available = inv.stock_qty > 0;
             await db.updateRow('stockist_inventory', inv.id, inv);
+            if (prevStock > 0 && inv.stock_qty <= 0) {
+              try {
+                const stockists = await db.getTable('stockists');
+                const stk = stockists.find(s => s.id === order.stockist_id);
+                if (stk && stk.user_id) {
+                  const products = await db.getTable('products');
+                  const p = products.find(prod => prod.id === oi.product_id);
+                  await createNotification({
+                    userId: stk.user_id,
+                    type: 'product_out_of_stock',
+                    title: 'Product out of stock',
+                    body: `${p ? p.name : 'Product'} is out of stock`,
+                    link: `product:${oi.product_id}`
+                  });
+                }
+              } catch (notifErr) {
+                console.error('[notification] Failed to create out_of_stock notification:', notifErr);
+              }
+            }
           }
         }
         return { success: true };
@@ -4548,6 +4680,7 @@ app.post('/api/admin/payouts/mark-paid', async (req, res) => {
   let modifiedStockistCod = false;
   let modifiedAudit = false;
   const now = new Date().toISOString();
+  const notifiedStockistIds = new Set();
 
   for (const p of payouts) {
     if (p.source === 'split_payouts') {
@@ -4559,6 +4692,7 @@ app.post('/api/admin/payouts/mark-paid', async (req, res) => {
         sp.payment_reference = payment_reference;
         modifiedSplit = true;
         modifiedAudit = true;
+        if (sp.stockist_id) notifiedStockistIds.add(sp.stockist_id);
         auditLogs.push({
           id: 'aud-' + generateId(),
           admin_user_id: user.id,
@@ -4578,6 +4712,7 @@ app.post('/api/admin/payouts/mark-paid', async (req, res) => {
         cc.payment_reference = payment_reference;
         modifiedCodLedger = true;
         modifiedAudit = true;
+        if (cc.stockist_id) notifiedStockistIds.add(cc.stockist_id);
         auditLogs.push({
           id: 'aud-' + generateId(),
           admin_user_id: user.id,
@@ -4597,6 +4732,7 @@ app.post('/api/admin/payouts/mark-paid', async (req, res) => {
         scc.payment_reference = payment_reference;
         modifiedStockistCod = true;
         modifiedAudit = true;
+        if (scc.stockist_id) notifiedStockistIds.add(scc.stockist_id);
         auditLogs.push({
           id: 'aud-' + generateId(),
           admin_user_id: user.id,
@@ -4614,6 +4750,24 @@ app.post('/api/admin/payouts/mark-paid', async (req, res) => {
   if (modifiedCodLedger) await db.saveTable('cod_commission_ledger', codCommLedger);
   if (modifiedStockistCod) await db.saveTable('stockist_cod_commissions', stockistCodComm);
   if (modifiedAudit) await db.saveTable('admin_audit_log', auditLogs);
+
+  try {
+    const stockists = await db.getTable('stockists');
+    for (const sId of notifiedStockistIds) {
+      const stk = stockists.find(s => s.id === sId);
+      if (stk && stk.user_id) {
+        await createNotification({
+          userId: stk.user_id,
+          type: 'payout_paid',
+          title: 'Payout marked paid',
+          body: `Payout marked paid (Ref: ${payment_reference})`,
+          link: 'payout'
+        });
+      }
+    }
+  } catch (notifErr) {
+    console.error('[notification] Failed to create payout_paid notifications:', notifErr);
+  }
 
   return res.json({ success: true });
 });
@@ -5421,6 +5575,18 @@ app.post('/api/admin/approve-kyc', async (req, res) => {
   });
   await db.saveTable('stockist_inventory', inventory);
 
+  try {
+    await createNotification({
+      userId: user.id,
+      type: 'kyc_approved',
+      title: 'KYC approved',
+      body: 'Your KYC application has been approved',
+      link: 'kyc'
+    });
+  } catch (notifErr) {
+    console.error('[notification] Failed to create kyc_approved notification:', notifErr);
+  }
+
   return res.json({ success: true, stockist: targetStockist });
 });
 
@@ -5512,6 +5678,19 @@ app.post('/api/admin/kyc/:userId/approve', async (req, res) => {
   }
 
   await appendAudit(req, 'APPROVE_KYC', 'user', userId, { kyc_status: 'PENDING' }, { kyc_status: 'APPROVED' });
+
+  try {
+    await createNotification({
+      userId: user.id,
+      type: 'kyc_approved',
+      title: 'KYC approved',
+      body: 'Your KYC application has been approved',
+      link: 'kyc'
+    });
+  } catch (notifErr) {
+    console.error('[notification] Failed to create kyc_approved notification:', notifErr);
+  }
+
   return res.json({ success: true, status: 'APPROVED', stockist });
 });
 
@@ -5601,7 +5780,7 @@ app.get('/api/admin/users/:userId/references', async (req, res) => {
     'orders', 'points_ledger', 'split_payouts', 'cod_commission_ledger', 'products', 
     'inventory', 'stockist_inventory', 'redemption_approvals',
     'customer_partner_bindings', 'fraud_reports', 'feedback_reports', 'anomaly_logs',
-    'partner_users', 'partner_notifications', 'partner_feedback',
+    'partner_users', 'partner_notifications', 'notifications', 'partner_feedback',
     'product_bill_photos', 'stockist_commission_rates', 'points_earn_config', 'commission_config'
   ];
 
@@ -5655,7 +5834,7 @@ app.delete('/api/admin/users/:userId/account', async (req, res) => {
     'orders', 'points_ledger', 'split_payouts', 'cod_commission_ledger', 'products', 
     'inventory', 'stockist_inventory', 'redemption_approvals',
     'customer_partner_bindings', 'fraud_reports', 'feedback_reports', 'anomaly_logs',
-    'partner_users', 'partner_notifications', 'partner_feedback',
+    'partner_users', 'partner_notifications', 'notifications', 'partner_feedback',
     'product_bill_photos', 'stockist_commission_rates', 'points_earn_config', 'commission_config'
   ];
 
@@ -10326,6 +10505,47 @@ app.post('/api/partner/notifications/mark-read', requireAuth, async (req, res) =
 
   await db.saveTable('partner_notifications', notifications);
   return res.json({ success: true });
+});
+
+// ----------------------------------------------------
+// NOTIFICATIONS ENDPOINTS (Token auth only)
+// ----------------------------------------------------
+app.get('/api/notifications', requireAuth, async (req, res) => {
+  const userId = req.user.userId;
+  const notifications = await db.getTable('notifications');
+  const userNotifs = (notifications || [])
+    .filter(n => n.user_id === userId)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 50);
+  return res.json(userNotifs);
+});
+
+app.patch('/api/notifications/read-all', requireAuth, async (req, res) => {
+  const userId = req.user.userId;
+  const notifications = await db.getTable('notifications');
+  const now = new Date().toISOString();
+  for (const n of notifications) {
+    if (n.user_id === userId && !n.read_at) {
+      n.read_at = now;
+      await db.updateRow('notifications', n.id, { read_at: now });
+    }
+  }
+  return res.json({ success: true });
+});
+
+app.patch('/api/notifications/:id/read', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const notifications = await db.getTable('notifications');
+  const target = notifications.find(n => n.id === id);
+  if (!target) return res.status(404).json({ error: 'Notification not found' });
+  if (target.user_id !== req.user.userId) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  if (!target.read_at) {
+    target.read_at = new Date().toISOString();
+    await db.updateRow('notifications', target.id, { read_at: target.read_at });
+  }
+  return res.json({ success: true, notification: target });
 });
 
 // Reset DB

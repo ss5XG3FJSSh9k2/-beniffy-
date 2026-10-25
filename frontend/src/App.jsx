@@ -622,6 +622,225 @@ const LeaveGuardModal = ({ show, onAction, saving, t }) => {
   );
 };
 
+const NotificationPanel = ({
+  show,
+  onClose,
+  notifications,
+  onMarkRead,
+  onMarkAllRead,
+  onOpenLink,
+  t
+}) => {
+  if (!show) return null;
+
+  const unreadCount = (notifications || []).filter(n => !n.read_at).length;
+
+  const getTranslatedContent = (notif) => {
+    let title = notif.title;
+    let body = notif.body;
+    if (notif.type === 'new_order') {
+      title = t('New order', 'नया ऑर्डर', 'নতুন অর্ডার');
+      if (notif.body === 'Cancelled by customer') {
+        body = t('Cancelled by customer', 'ग्राहक द्वारा रद्द किया गया', 'গ্রাহক দ্বারা বাতিল');
+      }
+    } else if (notif.type === 'order_cancelled') {
+      title = t('Order cancelled', 'ऑर्डर रद्द', 'অর্ডার বাতিল');
+      if (notif.body === 'Cancelled by customer') {
+        body = t('Cancelled by customer', 'ग्राहक द्वारा रद्द किया गया', 'গ্রাহক দ্বারা বাতিল');
+      }
+    } else if (notif.type === 'bill_approved') {
+      title = t('Bill approved', 'बिल स्वीकृत', 'বিল অনুমোদিত');
+    } else if (notif.type === 'bill_rejected') {
+      title = t('Bill rejected', 'बिल अस्वीकृत', 'বিল প্রত্যাখ্যাত');
+    } else if (notif.type === 'product_out_of_stock') {
+      title = t('Product out of stock', 'उत्पाद स्टॉक समाप्त', 'পণ্য স্টক শেষ');
+    } else if (notif.type === 'payout_paid') {
+      title = t('Payout marked paid', 'भुगतान चिह्नित', 'পেমেন্ট পরিশোধিত');
+    } else if (notif.type === 'kyc_approved') {
+      title = t('KYC approved', 'केवाईसी स्वीकृत', 'কেওয়াইসি অনুমোদিত');
+    }
+    return { title, body };
+  };
+
+  return (
+    <div
+      data-testid="notification-panel-overlay"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'var(--scrim)',
+        zIndex: 'var(--z-sheet)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-end'
+      }}
+      onClick={onClose}
+    >
+      <div
+        data-testid="notification-panel"
+        style={{
+          background: 'var(--bg-surface)',
+          borderTopLeftRadius: '16px',
+          borderTopRightRadius: '16px',
+          padding: '1.25rem',
+          paddingBottom: '2rem',
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'slideUp 0.3s ease-out'
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ width: '40px', height: '4px', background: 'var(--border-color)', borderRadius: '2px', margin: '0 auto 1rem' }} />
+
+        {/* Top Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <strong style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>
+            {t('Notifications', 'सूचनाएं', 'বিজ্ঞপ্তি')}
+          </strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                data-testid="mark-all-read-btn"
+                onClick={onMarkAllRead}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--accent)',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+              >
+                {t('Mark all read', 'सभी पढ़े गए चिह्नित करें', 'সব পঠিত হিসেবে চিহ্নিত করুন')}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: '0.2rem',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              aria-label={t('Close', 'बंद करें', 'বন্ধ করুন')}
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* List or Empty State */}
+        <div
+          data-testid="notification-list"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem',
+            overflowY: 'auto',
+            maxHeight: 'calc(65vh / var(--ui-scale))'
+          }}
+        >
+          {(!notifications || notifications.length === 0) ? (
+            <div
+              data-testid="notification-empty"
+              style={{
+                textAlign: 'center',
+                padding: '2.5rem 1rem',
+                color: 'var(--text-muted)',
+                fontSize: '0.9rem'
+              }}
+            >
+              {t('No notifications yet', 'अभी तक कोई सूचना नहीं', 'এখনও কোনো বিজ্ঞপ্তি নেই')}
+            </div>
+          ) : (
+            notifications.map(item => {
+              const { title, body } = getTranslatedContent(item);
+              const isUnread = !item.read_at;
+              return (
+                <div
+                  key={item.id}
+                  data-testid={`notification-item-${item.id}`}
+                  className="glass-card"
+                  onClick={() => {
+                    if (isUnread && onMarkRead) onMarkRead(item.id);
+                    if (item.link && onOpenLink) onOpenLink(item.link);
+                    onClose();
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 0.85rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    background: isUnread ? 'var(--bg-surface-elevated)' : 'var(--bg-surface)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', flex: 1, minWidth: 0 }}>
+                    {isUnread && (
+                      <span
+                        data-testid="unread-dot"
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--accent)',
+                          marginTop: '0.35rem',
+                          flexShrink: 0
+                        }}
+                      />
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: 0, flex: 1 }}>
+                      <span
+                        style={{
+                          fontSize: '0.88rem',
+                          fontWeight: isUnread ? 700 : 500,
+                          color: 'var(--text-main)',
+                          wordBreak: 'break-word'
+                        }}
+                      >
+                        {title}
+                      </span>
+                      {body && (
+                        <span
+                          style={{
+                            fontSize: '0.78rem',
+                            color: 'var(--text-muted)',
+                            wordBreak: 'break-word'
+                          }}
+                        >
+                          {body}
+                        </span>
+                      )}
+                      {item.created_at && (
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                          {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 const useLeaveGuard = (isDirty, onSave, onDiscard) => {
   const [showModal, setShowModal] = useState(false);
   const pendingActionRef = useRef(null);
@@ -3089,10 +3308,13 @@ export default function App() {
   const setStockistOrders = (v) => setStockistOrdersRaw(prev => toUiOrders(typeof v === 'function' ? v(prev) : v));
 
 
-  const [unacknowledgedOrders, setUnacknowledgedOrders] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const alertedOrderIds = useRef(new Set());
   const isFirstOrderLoad = useRef(true);
   const adminContentRef = useRef(null);
+
+  const unreadNotificationsCount = (notifications || []).filter(n => !n.read_at).length;
 
   const playChime = () => {
     try {
@@ -3109,9 +3331,6 @@ export default function App() {
       osc.stop(ctx.currentTime + 0.5);
     } catch(e) {}
   };
-
-
-
 
   const [offlineMode, setOfflineMode] = useState(() => {
     return localStorage.getItem('fastnet_offline_mode') === 'true';
@@ -3133,22 +3352,43 @@ export default function App() {
     localStorage.setItem('fastnet_offline_queue', JSON.stringify(offlineQueue));
   }, [offlineQueue]);
 
+  const pendingActionableOrdersCount = stockistOrders.filter(o => o.status === 'PENDING' && !o.acknowledged_at).length;
   useEffect(() => {
-    if (unacknowledgedOrders.length > 0) {
-      document.title = `(${unacknowledgedOrders.length}) Beniffy: Stockist`;
+    if (activeRole === 'stockist' && pendingActionableOrdersCount > 0) {
+      document.title = `(${pendingActionableOrdersCount}) Beniffy: Stockist`;
     } else {
       document.title = 'Beniffy';
     }
     return () => { document.title = 'Beniffy'; };
-  }, [unacknowledgedOrders.length]);
+  }, [activeRole, pendingActionableOrdersCount]);
+
+  const fetchNotifications = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/notifications`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setNotifications(prev => JSON.stringify(prev) === JSON.stringify(data) ? prev : data);
+        }
+      }
+    } catch(e) {}
+  }, []);
 
   useEffect(() => {
     if (activeRole !== 'stockist' || !currentUser || currentUser.role !== 'STOCKIST') return;
     
+    fetchNotifications();
+
     const poll = setInterval(async () => {
       if (offlineMode) return;
       if (!stockistProfile) return;
       try {
+        fetchNotifications();
+
         // Refresh stockist profile to keep is_shop_open fresh
         const pRes = await fetch(`${API_BASE}/stockists/by-user/${currentUser.id}`);
         if (pRes.ok) {
@@ -3163,12 +3403,10 @@ export default function App() {
           setStockistOrders(prev => JSON.stringify(prev) === JSON.stringify(oData) ? prev : oData);
         } else return;
 
-        // Only orders that are actionable count as "new" for the bell.
-        // An order is newly-actionable when it is PENDING and we haven't already alerted on it.
+        // Sound/title alert for genuinely new PENDING orders
         const actionable = oData.filter(o => o.status === 'PENDING');
 
         if (isFirstOrderLoad.current) {
-          // On first load, remember which are ALREADY pending so we don't alert for pre-existing ones
           actionable.forEach(o => alertedOrderIds.current.add(o.id));
           isFirstOrderLoad.current = false;
           return;
@@ -3177,28 +3415,61 @@ export default function App() {
         const newlyActionable = actionable.filter(o => !alertedOrderIds.current.has(o.id));
         if (newlyActionable.length > 0) {
           newlyActionable.forEach(o => alertedOrderIds.current.add(o.id));
-          setUnacknowledgedOrders(prev => {
-            // avoid duplicates
-            const existingIds = new Set(prev.map(p => p.id));
-            return [...prev, ...newlyActionable.filter(o => !existingIds.has(o.id))];
-          });
           playChime();
         }
       } catch(e) {}
     }, 10000);
     return () => clearInterval(poll);
-  }, [activeRole, currentUser, stockistProfile, offlineMode]);
+  }, [activeRole, currentUser, stockistProfile, offlineMode, fetchNotifications]);
 
-  const handleAcknowledgeOrders = async () => {
-    for (const o of unacknowledgedOrders) {
-      try {
-        await fetch(`${API_BASE}/orders/${o.id}/acknowledge`, {
-          method: 'PATCH',
-          headers: { 'X-User-Id': currentUser.id }
-        });
-      } catch(e) {}
+  const handleMarkNotificationRead = async (id) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      await fetch(`${API_BASE}/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
+    } catch(e) {}
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      await fetch(`${API_BASE}/notifications/read-all`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
+    } catch(e) {}
+  };
+
+  const handleOpenNotificationLink = (link) => {
+    if (!link) return;
+    if (link.startsWith('order:')) {
+      const orderId = link.replace('order:', '');
+      setStockistActiveTab('orders');
+      setTimeout(() => {
+        const details = document.querySelector('details');
+        if (details && !details.open) {
+          details.open = true;
+        }
+        const el = document.getElementById(`order-${orderId}`) || document.querySelector(`[data-order-id="${orderId}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 150);
+    } else if (link.startsWith('product:')) {
+      const prodId = link.replace('product:', '');
+      setStockistActiveTab('inventory');
+      setHighlightedProductId(prodId);
+    } else if (link.startsWith('payout')) {
+      setStockistActiveTab('analytics');
+    } else if (link.startsWith('kyc')) {
+      setStockistActiveTab('settings');
     }
-    setUnacknowledgedOrders([]);
   };
 
   const [stockistProducts, setStockistProducts] = useState([]);
@@ -13439,23 +13710,24 @@ export default function App() {
                     <>
                       {/* §J: Stockist language selector */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '-0.35rem' }}>
-                        {/* LEFT: Notification bell (larger icon) */}
+                        {/* LEFT: Notification bell */}
                         <button
                           type="button"
-                          onClick={() => { setStockistActiveTab('orders'); handleAcknowledgeOrders(); }}
+                          data-testid="notification-bell"
+                          onClick={() => setShowNotificationPanel(true)}
                           style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '0.15rem', display: 'flex', alignItems: 'center' }}
                           aria-label={t('Notifications', 'सूचनाएं', 'বিজ্ঞপ্তি')}
                         >
-                          <Bell size={24} style={{ color: unacknowledgedOrders.length > 0 ? 'var(--accent)' : 'var(--text-muted)' }} />
-                          {unacknowledgedOrders.length > 0 && (
-                            <span style={{
+                          <Bell size={24} style={{ color: unreadNotificationsCount > 0 ? 'var(--accent)' : 'var(--text-muted)' }} />
+                          {unreadNotificationsCount > 0 && (
+                            <span data-testid="notification-badge" style={{
                               position: 'absolute', top: -3, right: -3,
                               background: 'var(--danger-bg)', color: 'var(--danger-text)',
                               borderRadius: '50%', minWidth: 17, height: 17,
                               fontSize: '0.62rem', fontWeight: 700,
                               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px'
                             }}>
-                              {unacknowledgedOrders.length > 9 ? '9+' : unacknowledgedOrders.length}
+                              {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
                             </span>
                           )}
                         </button>
@@ -13578,6 +13850,8 @@ export default function App() {
                           return (
                             <div 
                               key={o.id} 
+                              id={`order-${o.id}`}
+                              data-order-id={o.id}
                               className={`glass-card ${isNew ? 'new-order-card' : ''}`} 
                               style={{ 
                                 padding: '0.75rem', 
@@ -13778,7 +14052,7 @@ export default function App() {
                               .filter(o => o.status === 'DELIVERED' || (o.status === 'CANCELLED' && o.cancelled_from_status !== 'CONFIRMING'))
                               .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                               .map(o => (
-                                <div key={o.id} style={{ padding: '0.6rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                                <div key={o.id} id={`order-${o.id}`} data-order-id={o.id} style={{ padding: '0.6rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
                                     <span style={{ fontWeight: 'bold', fontSize: '0.75rem' }}>Order #{o.id.substring(2).toUpperCase()}</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -14942,6 +15216,17 @@ export default function App() {
               </>
 
             )}
+
+            {/* Stockist Notification Panel */}
+            <NotificationPanel
+              show={showNotificationPanel}
+              onClose={() => setShowNotificationPanel(false)}
+              notifications={notifications}
+              onMarkRead={handleMarkNotificationRead}
+              onMarkAllRead={handleMarkAllNotificationsRead}
+              onOpenLink={handleOpenNotificationLink}
+              t={t}
+            />
           </div>
 
                     {/* Unsaved changes bar */}

@@ -7549,6 +7549,181 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: App.jsx stops sending reporterId/reporterRole and never falls back to Amit Sen`);
 
+  // ==========================================
+  // TICKET 63: Stockist notifications behind the bell
+  // ==========================================
+
+  // 1. GET /api/notifications without auth returns 401
+  clearLogin();
+  const notifUnauth = await get('http://localhost:3001/api/notifications');
+  assert(notifUnauth.status === 401, `GET /api/notifications without auth returns 401: got ${notifUnauth.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/notifications without auth returns 401`);
+
+  // 2. GET /api/notifications with stockist auth returns 200 array
+  loginAs('u-stk1', 'STOCKIST');
+  const notifAuth = await get('http://localhost:3001/api/notifications');
+  assert(notifAuth.status === 200, `GET /api/notifications with auth returns 200: got ${notifAuth.status}`);
+  assert(Array.isArray(notifAuth.body), 'GET /api/notifications returns an array');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/notifications with auth returns 200 array`);
+
+  // 3. Event 1: Customer places order -> writes new_order notification for shop owner (u-stk1)
+  loginAs('u-cust1', 'CUSTOMER');
+  const s63OrderRes = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    fulfillmentType: 'PICKUP',
+    pickupSlot: '12:00-14:00',
+    items: [{ productId: 'p1', quantity: 1 }]
+  });
+  assert(s63OrderRes.status === 200, `Order placed returns 200: got ${s63OrderRes.status}`);
+  const s63OrderId = s63OrderRes.body.orderId || s63OrderRes.body.orders[0].id;
+
+  loginAs('u-stk1', 'STOCKIST');
+  const s63NotifsAfterOrder = await get('http://localhost:3001/api/notifications');
+  assert(s63NotifsAfterOrder.status === 200, 'Fetched notifications for stockist');
+  const newOrderNotif = s63NotifsAfterOrder.body.find(n => n.link === `order:${s63OrderId}` && n.type === 'new_order');
+  assert(newOrderNotif, `Found new_order notification for order ${s63OrderId}`);
+  assert(!newOrderNotif.read_at, 'new_order notification is initially unread');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: New order writes new_order notification for stockist`);
+
+  // 4. Event 2: Order cancelled by customer -> writes order_cancelled notification AND updates new_order notification body to "Cancelled by customer"
+  loginAs('u-cust1', 'CUSTOMER');
+  const s63CancelRes = await post(`http://localhost:3001/api/orders/${s63OrderId}/cancel`, {});
+  assert(s63CancelRes.status === 200, `Order cancel returns 200: got ${s63CancelRes.status}`);
+
+  loginAs('u-stk1', 'STOCKIST');
+  const s63NotifsAfterCancel = await get('http://localhost:3001/api/notifications');
+  assert(s63NotifsAfterCancel.status === 200, 'Fetched notifications after cancel');
+  const updatedNewOrderNotif = s63NotifsAfterCancel.body.find(n => n.id === newOrderNotif.id);
+  assert(updatedNewOrderNotif, 'Found original new_order notification');
+  assert(updatedNewOrderNotif.body === 'Cancelled by customer', `Original notification body updated to "Cancelled by customer": got "${updatedNewOrderNotif.body}"`);
+  const cancelNotif = s63NotifsAfterCancel.body.find(n => n.link === `order:${s63OrderId}` && n.type === 'order_cancelled');
+  assert(cancelNotif, 'Found order_cancelled notification');
+  assert(cancelNotif.body === 'Cancelled by customer', 'order_cancelled notification body is "Cancelled by customer"');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer cancellation updates new_order body and writes order_cancelled notification`);
+
+  // 5. PATCH /api/notifications/:id/read - auth & ownership
+  clearLogin();
+  const readUnauth = await patch(`http://localhost:3001/api/notifications/${cancelNotif.id}/read`, {});
+  assert(readUnauth.status === 401, 'PATCH /api/notifications/:id/read without auth returns 401');
+
+  loginAs('u-cust1', 'CUSTOMER');
+  const readForbidden = await patch(`http://localhost:3001/api/notifications/${cancelNotif.id}/read`, {});
+  assert(readForbidden.status === 403, 'PATCH /api/notifications/:id/read on another user notif returns 403');
+
+  loginAs('u-stk1', 'STOCKIST');
+  const readSuccess = await patch(`http://localhost:3001/api/notifications/${cancelNotif.id}/read`, {});
+  assert(readSuccess.status === 200, 'PATCH /api/notifications/:id/read returns 200');
+  assert(readSuccess.body.notification.read_at, 'Notification has read_at set');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: PATCH /api/notifications/:id/read marks notification as read with auth & ownership enforced`);
+
+  // 6. PATCH /api/notifications/read-all
+  clearLogin();
+  const readAllUnauth = await patch('http://localhost:3001/api/notifications/read-all', {});
+  assert(readAllUnauth.status === 401, 'PATCH /api/notifications/read-all without auth returns 401');
+
+  loginAs('u-stk1', 'STOCKIST');
+  const readAllSuccess = await patch('http://localhost:3001/api/notifications/read-all', {});
+  assert(readAllSuccess.status === 200, 'PATCH /api/notifications/read-all returns 200');
+  const s63AllAfterReadAll = await get('http://localhost:3001/api/notifications');
+  const unreadCount = s63AllAfterReadAll.body.filter(n => !n.read_at).length;
+  assert(unreadCount === 0, `All notifications marked read, unreadCount is 0: got ${unreadCount}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: PATCH /api/notifications/read-all marks all own notifications as read`);
+
+  // 7. Event 3: Bill approved and rejected notifications
+  loginAs('u-admin', 'ADMIN');
+  const billVerifyRes = await post('http://localhost:3001/api/admin/bill-photos/pbp-seed1/verify', {});
+  assert(billVerifyRes.status === 200, 'Bill verify returns 200');
+
+  const billRejectRes = await post('http://localhost:3001/api/admin/bill-photos/pbp-seed3/reject', {
+    reason: 'Image is too blurry to read invoice numbers'
+  });
+  assert(billRejectRes.status === 200, 'Bill reject returns 200');
+
+  loginAs('u-stk1', 'STOCKIST');
+  const notifsAfterBills = await get('http://localhost:3001/api/notifications');
+  const appBillNotif = notifsAfterBills.body.find(n => n.type === 'bill_approved' && n.link === 'product:p1');
+  assert(appBillNotif, 'Found bill_approved notification for product p1');
+  const rejBillNotif = notifsAfterBills.body.find(n => n.type === 'bill_rejected' && n.link === 'product:p3');
+  assert(rejBillNotif, 'Found bill_rejected notification for product p3');
+  assert(rejBillNotif.body.includes('Image is too blurry'), 'bill_rejected notification body includes reason');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Bill verify and reject write bill_approved and bill_rejected notifications`);
+
+  // 8. Event 4: Product out of stock
+  loginAs('u-stk1', 'STOCKIST');
+  const stockZeroRes = await patch('http://localhost:3001/api/products/p1', {
+    stockistId: 's1',
+    stock_qty: 0
+  }, { rawJson: true });
+  assert(stockZeroRes.status === 200, 'Product stock update to 0 returns 200');
+  const notifsAfterOos = await get('http://localhost:3001/api/notifications');
+  const oosNotif = notifsAfterOos.body.find(n => n.type === 'product_out_of_stock' && n.link === 'product:p1');
+  assert(oosNotif, 'Found product_out_of_stock notification for product p1');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Product out of stock writes product_out_of_stock notification`);
+
+  // 9. Event 5: Payout marked paid
+  loginAs('u-admin', 'ADMIN');
+  const s63SpId = 'sp-test-' + Math.random().toString(36).substring(2);
+  await dbModule.insertRow('split_payouts', {
+    id: s63SpId,
+    order_id: s63OrderId,
+    stockist_id: 's1',
+    stockist_amount: 25.0,
+    platform_amount: 5.0,
+    commission_rate_used: 10.0,
+    earn_rate_used: 45.0,
+    status: 'HELD',
+    created_at: new Date().toISOString()
+  });
+  const payoutMarkRes = await post('http://localhost:3001/api/admin/payouts/mark-paid', {
+    payment_reference: 'UPI-REF-998877',
+    payouts: [{ id: s63SpId, source: 'split_payouts' }]
+  });
+  assert(payoutMarkRes.status === 200, 'Mark payout paid returns 200');
+
+  loginAs('u-stk1', 'STOCKIST');
+  const notifsAfterPayout = await get('http://localhost:3001/api/notifications');
+  const payoutNotif = notifsAfterPayout.body.find(n => n.type === 'payout_paid');
+  assert(payoutNotif, 'Found payout_paid notification');
+  assert(payoutNotif.body.includes('UPI-REF-998877'), 'payout_paid notification includes payment reference');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Payout mark-paid writes payout_paid notification`);
+
+  // 10. Event 6: KYC approved
+  loginAs('u-admin', 'ADMIN');
+  const s63KycUser = {
+    id: 'u-kyc-test-' + Math.random().toString(36).substring(2),
+    tenant_id: 't1',
+    region_id: 'r1',
+    phone: '7111222333',
+    name: 'Kyc Test User',
+    role: 'STOCKIST',
+    kyc_status: 'PENDING',
+    created_at: new Date().toISOString()
+  };
+  await dbModule.insertRow('users', s63KycUser);
+  const s63KycApproveRes = await post(`http://localhost:3001/api/admin/kyc/${s63KycUser.id}/approve`, {
+    vendorId: 'v1',
+    deliveryRadius: 5.0,
+    minOrderValue: 0
+  });
+  assert(s63KycApproveRes.status === 200, 'KYC approve returns 200');
+
+  loginAs(s63KycUser.id, 'STOCKIST');
+  const notifsAfterKyc = await get('http://localhost:3001/api/notifications');
+  const kycNotif = notifsAfterKyc.body.find(n => n.type === 'kyc_approved');
+  assert(kycNotif, 'Found kyc_approved notification');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: KYC approve writes kyc_approved notification`);
+
   clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);

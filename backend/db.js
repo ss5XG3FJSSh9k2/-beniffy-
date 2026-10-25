@@ -570,7 +570,7 @@ async function resetForTest() {
     'fraud_reports', 'admin_audit_log', 'commission_config', 'product_bill_photos',
     'partners', 'partner_regions', 'partner_packages', 'partner_users',
     'customer_partner_bindings', 'redemption_approvals', 'partner_feedback',
-    'partner_notifications', 'feedback_reports', 'user_blacklist', 'support_tickets',
+    'partner_notifications', 'notifications', 'feedback_reports', 'user_blacklist', 'support_tickets',
     'stockist_cod_commissions', 'registration_flags'
   ];
 
@@ -830,7 +830,7 @@ async function getAll() {
     'fraud_reports', 'admin_audit_log', 'commission_config', 'product_bill_photos',
     'partners', 'partner_regions', 'partner_packages', 'partner_users',
     'customer_partner_bindings', 'redemption_approvals', 'partner_feedback',
-    'partner_notifications', 'feedback_reports', 'user_blacklist', 'support_tickets',
+    'partner_notifications', 'notifications', 'feedback_reports', 'user_blacklist', 'support_tickets',
     'stockist_cod_commissions'
   ];
 
