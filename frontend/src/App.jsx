@@ -2977,7 +2977,7 @@ export default function App() {
 
   const getShopUpiUri = (order, stockistsList) => {
     const stockist = (stockistsList || []).find(s => s.id === order.stockist_id);
-    const shopUpi = order.stockist_upi_id || stockist?.upi_id || stockist?.payout_upi_id;
+    const shopUpi = order.payout_upi_id || order.stockist_upi_id || stockist?.upi_id || stockist?.payout_upi_id;
     if (!shopUpi) return null;
 
     const shopName = order.stockist_name || stockist?.name || 'Shop';

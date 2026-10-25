@@ -7984,6 +7984,113 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Admin "Mark reviewed" clears unread alert status`);
 
+  // --- BF-STOCKIST-SECURITY: Stop exposing shop bank details and phone numbers publicly ---
+  console.log('\n--- BF-STOCKIST-SECURITY: Public stockist sanitization and shop data leak prevention ---');
+
+  // 1. No-login GET /api/stockists: none of payout_*, phone, contact_phone, released_phone, user_id, commission_rate
+  clearLogin();
+  const secStockistsRes = await get('http://localhost:3001/api/stockists?regionId=r1');
+  assert(secStockistsRes.status === 200, 'GET /api/stockists returns 200 without auth');
+  assert(Array.isArray(secStockistsRes.body) && secStockistsRes.body.length > 0, 'Returns non-empty stockists list');
+  const sensitiveKeys = ['payout_upi_id', 'payout_bank_account', 'payout_ifsc', 'payout_account_name', 'phone', 'contact_phone', 'released_phone', 'user_id', 'commission_rate'];
+  for (const s of secStockistsRes.body) {
+    for (const key of sensitiveKeys) {
+      assert(s[key] === undefined, `Stockist ${s.id} does not contain sensitive key: ${key}`);
+    }
+    assert(s.id && s.name && s.region_id, `Stockist ${s.id} retains public fields id, name, region_id`);
+  }
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/stockists returns 200 with no sensitive bank/phone/commission fields`);
+
+  // 2. No-login GET /api/stockists/:id: public fields only, no sensitive keys
+  clearLogin();
+  const secStockistSingleRes = await get('http://localhost:3001/api/stockists/s1');
+  assert(secStockistSingleRes.status === 200, 'GET /api/stockists/:id returns 200 without auth');
+  for (const key of sensitiveKeys) {
+    assert(secStockistSingleRes.body[key] === undefined, `Stockist s1 does not contain sensitive key: ${key}`);
+  }
+  assert(secStockistSingleRes.body.id === 's1' && secStockistSingleRes.body.name, 'Stockist s1 has public fields');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/stockists/:id returns 200 with publicStockist view and no sensitive fields`);
+
+  // 3. GET /api/stockists/by-user/:userId auth and access control
+  // 3a. Unauthenticated -> 401
+  clearLogin();
+  const secByUserUnauth = await get('http://localhost:3001/api/stockists/by-user/u-stk1');
+  assert(secByUserUnauth.status === 401, 'GET /api/stockists/by-user/:userId without auth returns 401');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/stockists/by-user/:userId requires auth (401)`);
+
+  // 3b. Customer accessing stockist -> 403
+  loginAs('u-cust1', 'CUSTOMER');
+  const secByUserCust = await get('http://localhost:3001/api/stockists/by-user/u-stk1');
+  assert(secByUserCust.status === 403, 'Customer accessing /api/stockists/by-user/:userId of another user returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer forbidden from /api/stockists/by-user/:userId (403)`);
+
+  // 3c. Different stockist accessing another stockist -> 403
+  loginAs('u-stk2', 'STOCKIST');
+  const secByUserOtherStk = await get('http://localhost:3001/api/stockists/by-user/u-stk1');
+  assert(secByUserOtherStk.status === 403, 'Stockist accessing /api/stockists/by-user/:userId of another stockist returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Stockist forbidden from another stockist by-user (403)`);
+
+  // 3d. Owner accessing their own stockist -> 200 with full data (including payout_* and phone)
+  loginAs('u-stk1', 'STOCKIST');
+  const secByUserOwner = await get('http://localhost:3001/api/stockists/by-user/u-stk1');
+  assert(secByUserOwner.status === 200, 'Owner accessing /api/stockists/by-user/:userId returns 200');
+  assert(secByUserOwner.body.user_id === 'u-stk1', 'Owner receives their full stockist record');
+  assert(secByUserOwner.body.payout_upi_id !== undefined || secByUserOwner.body.phone !== undefined, 'Owner receives their payout/contact information');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Owner can access /api/stockists/by-user/:userId with full private details`);
+
+  // 3e. Admin accessing stockist -> 200 with full data
+  loginAs('u-admin', 'ADMIN');
+  const secByUserAdmin = await get('http://localhost:3001/api/stockists/by-user/u-stk1');
+  assert(secByUserAdmin.status === 200, 'Admin accessing /api/stockists/by-user/:userId returns 200');
+  assert(secByUserAdmin.body.user_id === 'u-stk1', 'Admin receives full stockist record');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin can access /api/stockists/by-user/:userId with full details`);
+
+  // 4. Customer active order vs delivered order shop data exposure
+  loginAs('u-cust1', 'CUSTOMER');
+  const secNewOrderRes = await post('http://localhost:3001/api/orders', {
+    customerId: 'u-cust1',
+    stockistId: 's1',
+    pickupSlot: 'Morning (8AM–12PM)',
+    paymentMethod: 'PAY_AT_HANDOVER',
+    items: [{ productId: 'p1', quantity: 1 }]
+  });
+  assert(secNewOrderRes.status === 200, 'Customer order creation returns 200');
+  const secActiveOrder = secNewOrderRes.body.order;
+  assert(secActiveOrder && secActiveOrder.id, 'Active order returned');
+  assert(secActiveOrder.stockist_upi_id || secActiveOrder.payout_upi_id, 'Customer active order includes shop UPI ID');
+  assert(secActiveOrder.contact_phone !== undefined, 'Customer active order includes shop contact_phone');
+  assert(secActiveOrder.platform_commission === undefined, 'Customer active order hides platform_commission');
+  assert(secActiveOrder.stockist_payout === undefined, 'Customer active order hides stockist_payout');
+  assert(secActiveOrder.stockist_amount === undefined, 'Customer active order hides stockist_amount');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer active order includes shop UPI and contact phone, but hides commission data`);
+
+  // 5. Customer delivered order does not expose shop UPI or contact phone
+  loginAs('u-admin', 'ADMIN');
+  const secDelivPatchRes = await patch(`http://localhost:3001/api/orders/${secActiveOrder.id}/status`, {
+    status: 'DELIVERED',
+    manual_override: true,
+    reason: 'Security regression test delivery'
+  });
+  assert(secDelivPatchRes.status === 200, 'Admin delivers order successfully');
+
+  loginAs('u-cust1', 'CUSTOMER');
+  const secDelivCustOrders = await get('http://localhost:3001/api/orders');
+  const secDelivOrderFound = secDelivCustOrders.body.find(o => o.id === secActiveOrder.id);
+  assert(secDelivOrderFound && secDelivOrderFound.status === 'DELIVERED', 'Found delivered order');
+  assert(secDelivOrderFound.stockist_upi_id === undefined && secDelivOrderFound.payout_upi_id === undefined, 'Delivered order does NOT include shop UPI');
+  assert(secDelivOrderFound.contact_phone === undefined, 'Delivered order does NOT include shop contact_phone');
+  assert(secDelivOrderFound.platform_commission === undefined, 'Delivered order does NOT include platform_commission');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer delivered order does not expose shop UPI ID or contact phone`);
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 

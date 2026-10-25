@@ -2495,6 +2495,27 @@ app.patch('/api/stockist/profile', requireAuth, async (req, res) => {
   }
 });
 
+function publicStockist(s) {
+  if (!s) return null;
+  return {
+    id: s.id,
+    name: s.name,
+    region_id: s.region_id,
+    opening_time: s.opening_time !== undefined ? s.opening_time : '09:00',
+    closing_time: s.closing_time !== undefined ? s.closing_time : '21:00',
+    is_shop_open: s.is_shop_open !== undefined ? s.is_shop_open : calculateIsShopOpen(s),
+    manual_closed: Boolean(s.manual_closed),
+    closed_until: s.closed_until || null,
+    delivery_radius_km: s.delivery_radius_km !== undefined ? s.delivery_radius_km : 5,
+    min_order_value: s.min_order_value !== undefined ? s.min_order_value : 0,
+    prep_eta_minutes: s.prep_eta_minutes !== undefined ? s.prep_eta_minutes : 15,
+    product_count: s.product_count !== undefined ? s.product_count : 0,
+    rating: s.rating !== undefined ? s.rating : null,
+    ratings_count: s.ratings_count !== undefined ? s.ratings_count : 0,
+    reliabilityBadge: s.reliabilityBadge || 'Active Partner'
+  };
+}
+
 app.get('/api/stockists', async (req, res) => {
   const { regionId } = req.query;
   const stockists = await db.getTable('stockists');
@@ -2521,14 +2542,18 @@ app.get('/api/stockists', async (req, res) => {
       reliabilityBadge = 'New Stockist (Verified)';
     }
 
-    return { ...s, reliabilityBadge, product_count: shopProducts.length, is_shop_open: calculateIsShopOpen(s) };
+    return publicStockist({ ...s, reliabilityBadge, product_count: shopProducts.length, is_shop_open: calculateIsShopOpen(s) });
   });
 
   return res.json(enriched);
 });
 
-app.get('/api/stockists/by-user/:userId', async (req, res) => {
+app.get('/api/stockists/by-user/:userId', requireAuth, async (req, res) => {
   const { userId } = req.params;
+  if (req.user.role !== 'ADMIN' && req.user.userId !== userId) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
   const stockists = await db.getTable('stockists');
   const stockist = stockists.find(s => s.user_id === userId);
   if (!stockist) {
@@ -2563,15 +2588,34 @@ app.get('/api/stockists/by-user/:userId', async (req, res) => {
 
 app.get('/api/stockists/:id', async (req, res) => {
   const { id } = req.params;
-  if (!await assertOwnsStockist(req, res, id)) return;
   const stockists = await db.getTable('stockists');
   const users = await db.getTable('users');
   const stockist = stockists.find(s => s.id === id);
   if (!stockist || !isCustomerVisible(stockist, users)) return res.status(404).json({ error: 'Stockist not found' });
-  return res.json({
+
+  const orders = await db.getTable('orders');
+  const products = await db.getTable('products');
+  const shopOrders = orders.filter(o => o.stockist_id === stockist.id);
+  const finished = shopOrders.filter(o => ['DELIVERED', 'CANCELLED'].includes(o.status));
+  const delivered = finished.filter(o => o.status === 'DELIVERED').length;
+  const totalFinished = finished.length;
+  const shopProducts = getCustomerVisibleProducts(stockist, products);
+
+  let reliabilityBadge = 'Active Partner';
+  if (totalFinished > 0) {
+    const rate = (delivered / totalFinished) * 100;
+    if (rate >= 90) reliabilityBadge = 'Highly Reliable (90%+ Fulfilled)';
+    else if (rate >= 80) reliabilityBadge = 'Reliable Partner';
+  } else {
+    reliabilityBadge = 'New Stockist (Verified)';
+  }
+
+  return res.json(publicStockist({
     ...stockist,
+    reliabilityBadge,
+    product_count: shopProducts.length,
     is_shop_open: calculateIsShopOpen(stockist)
-  });
+  }));
 });
 
 app.get('/api/stockists/:id/stats', requireAuth, async (req, res) => {
@@ -2993,29 +3037,91 @@ async function enrichOrder(o, req = null) {
     strippedPin = undefined;
   }
 
-  return {
+  const caller = req && req.user ? req.user : null;
+  const role = caller ? caller.role : null;
+  const callerUserId = caller ? (caller.userId || caller.id) : null;
+  const isAdmin = role === 'ADMIN';
+
+  const isOrderActive = !['DELIVERED', 'CANCELLED', 'NO_SHOW'].includes(o.status);
+  const isOwnCustomer = Boolean(role === 'CUSTOMER' && callerUserId && callerUserId === o.customer_id);
+  const isOwnActiveCustomer = isOwnCustomer && isOrderActive;
+
+  let isOwnStockist = false;
+  if (role === 'STOCKIST') {
+    const callerStockist = await getCallerStockist(req);
+    if (callerStockist && callerStockist.id === o.stockist_id) {
+      isOwnStockist = true;
+    }
+  }
+
+  // 4. Expose only contact_phone on customer's own active order (or admin/own stockist)
+  const canSeeShopPhone = isAdmin || isOwnStockist || isOwnActiveCustomer;
+  const shopContactPhone = canSeeShopPhone && stockist ? (stockist.contact_phone || stockist.phone || null) : undefined;
+
+  // 5. Expose payout_upi_id / stockist_upi_id on customer's own active order (or admin/own stockist)
+  const canSeeShopUpi = isAdmin || isOwnStockist || isOwnActiveCustomer;
+  const shopUpi = canSeeShopUpi && stockist ? (stockist.payout_upi_id || stockist.upi_id || null) : undefined;
+
+  // Customer phone: only admin, own customer, or own stockist
+  const canSeeCustomerPhone = isAdmin || isOwnCustomer || isOwnStockist || !caller;
+  const customerPhone = canSeeCustomerPhone ? (customer ? customer.phone : '') : undefined;
+
+  const enriched = {
     ...o,
     pickup_pin: strippedPin,
-    commission_model: o.commission_model || 'gross_v1',
     items,
     pointsCredited: o.points_credited !== undefined ? o.points_credited : 0,
     points_credited: o.points_credited !== undefined ? o.points_credited : 0,
-    platform_commission: platformCommission,
-    stockist_payout: stockistPayout,
     earnRatePercent: o.earn_rate_used !== undefined ? o.earn_rate_used : 40,
     earn_rate_used: o.earn_rate_used !== undefined ? o.earn_rate_used : 40,
-    margin: o.margin !== undefined ? o.margin : (o.subtotal * 0.25),
     customer_name: customer ? customer.name : 'Unknown Subscriber',
-    customer_phone: customer ? customer.phone : '',
-    stockist_amount: stockistPayout,
-    platform_amount: platformPayout,
+    customer_phone: customerPhone,
     stockist_reviewed: !!stockistFeedback,
-    stockist_upi_id: stockist ? (stockist.upi_id || stockist.payout_upi_id || null) : null,
     payment_received_method: o.payment_received_method || null,
     paid_at: o.paid_at || null,
     amount_paid: o.amount_paid !== undefined && o.amount_paid !== null ? o.amount_paid : o.total_price,
     points_status: (await db.getTable('points_ledger')).some(l => l.order_id === o.id && l.type === 'EARN_HELD' && l.billing_sync_status === 'HELD') ? 'HELD' : 'CREDITED'
   };
+
+  if (shopUpi !== undefined) {
+    enriched.payout_upi_id = shopUpi;
+    enriched.stockist_upi_id = shopUpi;
+  } else {
+    delete enriched.payout_upi_id;
+    delete enriched.stockist_upi_id;
+  }
+
+  if (shopContactPhone !== undefined) {
+    enriched.contact_phone = shopContactPhone;
+  } else {
+    delete enriched.contact_phone;
+  }
+
+  // Remove any stray shop phone or user_id fields
+  delete enriched.phone;
+  delete enriched.released_phone;
+  delete enriched.user_id;
+
+  enriched.commission_model = o.commission_model || 'gross_v1';
+
+  // Commission data: only for admin, own stockist, or internal calls without caller
+  const canSeeCommission = isAdmin || isOwnStockist || !caller;
+  if (canSeeCommission) {
+    enriched.platform_commission = platformCommission;
+    enriched.stockist_payout = stockistPayout;
+    enriched.stockist_amount = stockistPayout;
+    enriched.platform_amount = platformPayout;
+    enriched.margin = o.margin !== undefined ? o.margin : (o.subtotal * 0.25);
+  } else {
+    delete enriched.platform_commission;
+    delete enriched.stockist_payout;
+    delete enriched.stockist_amount;
+    delete enriched.platform_amount;
+    delete enriched.margin;
+    delete enriched.commission_rate;
+  }
+
+  return enriched;
 }
 
 // Helper: Run fraud detection scoring after an order is created
