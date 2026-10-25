@@ -8132,6 +8132,18 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Tampered signature returns 401`);
 
+  // 6c-2. Accessing bill with expired signature returns 403
+  const crypto = require('crypto');
+  const sessionHelper = require('../lib/session');
+  const billPathPart = `/api/bills/${uploadedBill.r2_key}`;
+  const pastExpires = Date.now() - 60000;
+  const expiredSig = crypto.createHmac('sha256', sessionHelper.getSecret()).update(billPathPart + ':' + pastExpires).digest('hex');
+  const expiredUrl = `http://localhost:3001${billPathPart}?expires=${pastExpires}&sig=${expiredSig}`;
+  const expiredRes = await get(expiredUrl);
+  assert(expiredRes.status === 403, `Expired signature on bill photo URL returns 403, got ${expiredRes.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Expired signature returns 403`);
+
   // 6d. Accessing raw bill path without signature or auth returns 401
   const rawBillKey = uploadedBill.r2_key;
   const rawBillUrl = `http://localhost:3001/api/bills/${rawBillKey}`;
@@ -8401,6 +8413,110 @@ async function main() {
   assert(custAllowedRes.status === 200, `Customer self-update with allowed field returns 200, got ${custAllowedRes.status}`);
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Customer self-update with allowed field returns 200`);
+
+  clearLogin();
+
+  // Security checks: Stop exposing shop bank details and phone numbers publicly
+  console.log('\n--- BF-STOCKIST-SECURITY: Public stockist sanitization & role-based order enrichment ---');
+
+  // 1. GET /api/stockists (no auth)
+  clearLogin();
+  const pubStockistsRes = await get('http://localhost:3001/api/stockists?regionId=r1');
+  assert(pubStockistsRes.status === 200, `GET /api/stockists returns 200, got ${pubStockistsRes.status}`);
+  assert(Array.isArray(pubStockistsRes.body) && pubStockistsRes.body.length > 0, 'GET /api/stockists returns non-empty list');
+  const sensitiveShopFields = [
+    'payout_upi_id', 'payout_bank_account', 'payout_ifsc', 'payout_account_name',
+    'phone', 'contact_phone', 'released_phone', 'user_id', 'commission_rate',
+    'personal_name', 'shop_address', 'id_type', 'id_number'
+  ];
+  for (const s of pubStockistsRes.body) {
+    for (const field of sensitiveShopFields) {
+      assert(s[field] === undefined, `Public stockist ${s.id} must not expose ${field}`);
+    }
+  }
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/stockists does not expose sensitive bank or phone fields`);
+
+  // 2. GET /api/stockists/:id (no auth)
+  clearLogin();
+  const pubStockistByIdRes = await get('http://localhost:3001/api/stockists/s1');
+  assert(pubStockistByIdRes.status === 200, `GET /api/stockists/s1 returns 200, got ${pubStockistByIdRes.status}`);
+  for (const field of sensitiveShopFields) {
+    assert(pubStockistByIdRes.body[field] === undefined, `Public stockist s1 must not expose ${field}`);
+  }
+  assert(pubStockistByIdRes.body.id === 's1', 'Public stockist has id');
+  assert(pubStockistByIdRes.body.name, 'Public stockist has name');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/stockists/:id does not expose sensitive bank or phone fields`);
+
+  // 3. GET /api/stockists/by-user/:userId auth checks
+  clearLogin();
+  const noAuthByUserRes = await get('http://localhost:3001/api/stockists/by-user/u-stk1');
+  assert(noAuthByUserRes.status === 401, `GET /api/stockists/by-user/:userId without auth returns 401, got ${noAuthByUserRes.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/stockists/by-user/:userId without auth returns 401`);
+
+  loginAs('u-cust1', 'CUSTOMER');
+  const custForbiddenByUserRes = await get('http://localhost:3001/api/stockists/by-user/u-stk1');
+  assert(custForbiddenByUserRes.status === 403, `GET /api/stockists/by-user/:userId as customer returns 403, got ${custForbiddenByUserRes.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/stockists/by-user/:userId as customer returns 403`);
+
+  loginAs('u-stk2', 'STOCKIST');
+  const otherStkForbiddenByUserRes = await get('http://localhost:3001/api/stockists/by-user/u-stk1');
+  assert(otherStkForbiddenByUserRes.status === 403, `GET /api/stockists/by-user/:userId as other stockist returns 403, got ${otherStkForbiddenByUserRes.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/stockists/by-user/:userId as other stockist returns 403`);
+
+  loginAs('u-stk1', 'STOCKIST');
+  const ownerByUserRes = await get('http://localhost:3001/api/stockists/by-user/u-stk1');
+  assert(ownerByUserRes.status === 200, `GET /api/stockists/by-user/:userId as owner returns 200, got ${ownerByUserRes.status}`);
+  assert(ownerByUserRes.body.id === 's1', 'Owner gets full stockist record');
+  assert(ownerByUserRes.body.payout_upi_id !== undefined || ownerByUserRes.body.phone !== undefined, 'Owner gets payout/phone info');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/stockists/by-user/:userId as owner returns 200 with full data`);
+
+  loginAs('u-admin', 'ADMIN');
+  const adminByUserRes = await get('http://localhost:3001/api/stockists/by-user/u-stk1');
+  assert(adminByUserRes.status === 200, `GET /api/stockists/by-user/:userId as admin returns 200, got ${adminByUserRes.status}`);
+  assert(adminByUserRes.body.id === 's1', 'Admin gets full stockist record');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/stockists/by-user/:userId as admin returns 200 with full data`);
+
+  // 4. Order enrichment security
+  loginAs('u-cust1', 'CUSTOMER');
+  const custOrdersRes = await get('http://localhost:3001/api/orders');
+  assert(custOrdersRes.status === 200, `GET /api/orders as customer returns 200`);
+  const activeOrder = custOrdersRes.body.find(o => o.customer_id === 'u-cust1' && !['DELIVERED', 'CANCELLED', 'NO_SHOW'].includes(o.status));
+  if (activeOrder) {
+    assert(activeOrder.stockist_upi_id !== undefined, 'Active order for own customer includes stockist_upi_id');
+    assert(activeOrder.contact_phone !== undefined, 'Active order for own customer includes contact_phone');
+    assert(activeOrder.stockist_payout === undefined, 'Customer order does not expose stockist_payout');
+    assert(activeOrder.platform_commission === undefined, 'Customer order does not expose platform_commission');
+    assert(activeOrder.stockist_amount === undefined, 'Customer order does not expose stockist_amount');
+    testCount++; passedCount++;
+    console.log(`[PASS] Test #${testCount}: Customer active order includes UPI and contact phone, but hides commission data`);
+  }
+
+  const deliveredOrder = custOrdersRes.body.find(o => o.customer_id === 'u-cust1' && o.status === 'DELIVERED');
+  if (deliveredOrder) {
+    assert(deliveredOrder.stockist_upi_id === undefined, 'Delivered order does not expose stockist_upi_id');
+    assert(deliveredOrder.contact_phone === undefined, 'Delivered order does not expose contact_phone');
+    testCount++; passedCount++;
+    console.log(`[PASS] Test #${testCount}: Customer delivered order does not expose UPI or contact phone`);
+  }
+
+  // 5. Customer / Public Product query does not leak cost_price or margin
+  clearLogin();
+  const pubProdsRes = await get('http://localhost:3001/api/products?regionId=r1');
+  assert(pubProdsRes.status === 200, `GET /api/products returns 200`);
+  for (const p of pubProdsRes.body) {
+    assert(p.cost_price === undefined, 'Public product does not leak cost_price');
+    assert(p.costPrice === undefined, 'Public product does not leak costPrice');
+    assert(p.margin === undefined, 'Public product does not leak margin');
+  }
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Public products query does not leak cost_price or margin`);
 
   clearLogin();
 

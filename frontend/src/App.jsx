@@ -7912,9 +7912,13 @@ export default function App() {
   const handleViewSignedUrl = async (billTarget) => {
     const photoObj = typeof billTarget === 'object' ? billTarget : null;
     const billId = typeof billTarget === 'string' ? billTarget : photoObj?.id;
+    if (photoObj?.public_url) {
+      window.open(resolveImageUrl(photoObj.public_url), '_blank');
+      return;
+    }
     const key = photoObj?.r2_key;
     if (key) {
-      window.open(`${API_BASE}/bills/${key}`, '_blank');
+      window.open(resolveImageUrl(`/api/bills/${key}`), '_blank');
       return;
     }
     try {
@@ -7922,8 +7926,8 @@ export default function App() {
         method: 'POST'
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data.signed_url) {
-        window.open(`${API_BASE}/bills/${billId}`, '_blank');
+      if (res.ok && (data.signed_url || data.public_url)) {
+        window.open(resolveImageUrl(data.signed_url || data.public_url), '_blank');
       } else {
         showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
       }
@@ -11757,7 +11761,6 @@ export default function App() {
                           <h3 style={{ fontSize: '0.95rem', marginTop: '0.25rem' }}>{t('Popular Staples', 'लोकप्रिय स्टेपल्स', 'রোজকার বাজার')}</h3>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingBottom: currentCart.length > 0 ? '80px' : '0' }}>
                             {customerProducts.filter(p => p.name.toLowerCase().includes(customerSearch.toLowerCase())).map(p => {
-                              const hasCostPrice = p.cost_price !== undefined && p.cost_price !== null;
                               const isOutOfStock = p.stock_qty <= 0;
                               return (
                                 <div key={p.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.6rem', gap: '0.5rem' }}>
@@ -11777,13 +11780,13 @@ export default function App() {
                                       )}
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
                                         <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-main)' }}>₹{p.price}</span>
-                                        {hasCostPrice ? (
+                                        {typeof p.estimated_points === 'number' ? (
                                           <span className="badge badge-success" style={{ fontSize: '0.55rem', padding: '0.1rem 0.25rem' }}>
-                                            Earn {formatPoints(p.estimated_points || 0)}
+                                            {t(`Earn ${formatPoints(p.estimated_points)}`, `कमाएं ${formatPoints(p.estimated_points)}`, `অর্জন করুন ${formatPoints(p.estimated_points)}`)}
                                           </span>
                                         ) : (
                                           <span className="badge badge-success" style={{ fontSize: '0.55rem', padding: '0.1rem 0.25rem' }}>
-                                            Earn points
+                                            {t('Earn points', 'अंक अर्जित करें', 'পয়েন্ট অর্জন করুন')}
                                           </span>
                                         )}
                                       </div>
@@ -17580,7 +17583,7 @@ export default function App() {
                               ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                   <img 
-                                    src={b.r2_key ? `${API_BASE}/bills/${b.r2_key}` : b.public_url} 
+                                    src={resolveImageUrl(b.public_url || (b.r2_key ? `/api/bills/${b.r2_key}` : null))} 
                                     alt="Bill thumbnail" 
                                     style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--border-color)' }}
                                     onClick={() => setViewingBillModal(b)}
@@ -21156,9 +21159,9 @@ export default function App() {
                       </span>
                     </td>
                     <td>
-                      {(b.r2_key || b.public_url) && (
+                      {(b.public_url || b.r2_key) && (
                         <img 
-                          src={b.r2_key ? `${API_BASE}/bills/${b.r2_key}` : b.public_url} 
+                          src={resolveImageUrl(b.public_url || (b.r2_key ? `/api/bills/${b.r2_key}` : null))} 
                           alt="Bill" 
                           style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
                           onClick={() => setViewingBillModal(b)}
@@ -21188,8 +21191,8 @@ export default function App() {
               <h3 style={{ fontSize: '1rem', margin: 0 }}>Bill Photo Inspection</h3>
               <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setViewingBillModal(null)}><X size={14} /></button>
             </div>
-            {(viewingBillModal.r2_key || viewingBillModal.public_url) ? (
-              <img src={viewingBillModal.r2_key ? `${API_BASE}/bills/${viewingBillModal.r2_key}` : viewingBillModal.public_url} alt="Full Bill Photo" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px' }} />
+            {(viewingBillModal.public_url || viewingBillModal.r2_key) ? (
+              <img src={resolveImageUrl(viewingBillModal.public_url || (viewingBillModal.r2_key ? `/api/bills/${viewingBillModal.r2_key}` : null))} alt="Full Bill Photo" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px' }} />
             ) : (
               <p style={{ color: 'var(--text-muted)' }}>No public preview URL available.</p>
             )}
