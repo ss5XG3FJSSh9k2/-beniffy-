@@ -844,6 +844,7 @@ app.patch('/api/users/:id', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
   const allowedFields = ['name', 'email', 'address', 'phone', 'sms_marketing', 'email_marketing'];
+  const adminAllowedFields = ['name', 'email', 'address', 'region_id', 'is_active', 'sms_marketing', 'email_marketing'];
   const protectedFields = ['kyc_status', 'points', 'is_active', 'role', 'id'];
 
   if (!isAdmin) {
@@ -861,14 +862,10 @@ app.patch('/api/users/:id', requireAuth, async (req, res) => {
   const user = users.find(u => u.id === id);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
-  if (req.user && req.user.role !== 'ADMIN' && req.user.userId !== id && !isAdmin) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-
   const patch = {};
-  const updateKeys = isAdmin ? Object.keys(req.body) : allowedFields;
+  const updateKeys = isAdmin ? adminAllowedFields : allowedFields;
 
-  if (req.body.email && req.body.email !== user.email) {
+  if (updateKeys.includes('email') && req.body.email && req.body.email !== user.email) {
     const validEmail = await checkEmail(req.body.email, res);
     if (!validEmail) return;
     patch.email = validEmail;
@@ -880,13 +877,34 @@ app.patch('/api/users/:id', requireAuth, async (req, res) => {
       if (typeof val === 'string') {
         const maxLen = f === 'name' ? 50 : (f === 'address' ? 255 : 255);
         patch[f] = sanitizePlainText(val, maxLen);
+      } else if (f === 'is_active' || f === 'sms_marketing' || f === 'email_marketing') {
+        patch[f] = Boolean(val);
       } else {
         patch[f] = val;
       }
     }
   });
 
+  if (patch.region_id !== undefined) {
+    const regions = await db.getTable('regions');
+    if (!regions.some(r => r.id === patch.region_id)) {
+      return res.status(400).json({ error: 'Invalid region_id' });
+    }
+  }
+
+  const before = {};
+  const after = {};
+  for (const k of Object.keys(patch)) {
+    before[k] = user[k] !== undefined ? user[k] : null;
+    after[k] = patch[k];
+  }
+
   const updated = await db.updateRow('users', id, patch);
+
+  if (isAdmin && Object.keys(patch).length > 0) {
+    await appendAudit(req, 'ADMIN_EDIT_USER', 'user', id, before, after);
+  }
+
   res.json(sanitizeUser(updated));
 });
 

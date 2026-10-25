@@ -8321,6 +8321,89 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Startup repair unescapes legacy HTML entities into clean plain text`);
 
+  // --- Admin User Edits Allowlist & Audit Logging ---
+  console.log('\n--- Testing Admin User Edits Allowlist & Audit Logging ---');
+  loginAs('u-admin', 'ADMIN');
+
+  const usersBeforePatch = await dbModule.getTable('users');
+  const targetUserBefore = usersBeforePatch.find(u => u.id === 'u-cust1');
+  assert(targetUserBefore, 'Target customer u-cust1 exists');
+  const originalRole = targetUserBefore.role;
+  const originalKyc = targetUserBefore.kyc_status;
+  const originalPasswordHash = targetUserBefore.password_hash;
+  const originalName = targetUserBefore.name;
+
+  // 1. Admin sends forbidden fields: role, kyc_status, password_hash
+  const forbiddenPatchRes = await patch('http://localhost:3001/api/users/u-cust1', {
+    role: 'ADMIN',
+    kyc_status: 'APPROVED',
+    password_hash: 'hacked_password_hash'
+  });
+  assert(forbiddenPatchRes.status === 200, `Admin PATCH with forbidden fields returns 200, got ${forbiddenPatchRes.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin PATCH with forbidden fields returns 200`);
+
+  const usersAfterForbidden = await dbModule.getTable('users');
+  const targetUserAfterForbidden = usersAfterForbidden.find(u => u.id === 'u-cust1');
+  assert(targetUserAfterForbidden.role === originalRole, `role not modified (expected "${originalRole}", got "${targetUserAfterForbidden.role}")`);
+  assert(targetUserAfterForbidden.kyc_status === originalKyc, `kyc_status not modified (expected "${originalKyc}", got "${targetUserAfterForbidden.kyc_status}")`);
+  assert(targetUserAfterForbidden.password_hash === originalPasswordHash, `password_hash not modified (expected "${originalPasswordHash}", got "${targetUserAfterForbidden.password_hash}")`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: admin PATCH with {"role":"ADMIN","kyc_status":"APPROVED","password_hash":"x"} changes none of them`);
+
+  // 2. Admin sends allowed field (name, address) alongside forbidden field (role)
+  const auditLogsBefore = await dbModule.getTable('admin_audit_log');
+  const auditCountBefore = auditLogsBefore.length;
+
+  const allowedPatchRes = await patch('http://localhost:3001/api/users/u-cust1', {
+    name: 'Amit Kumar Sen',
+    address: '123 Garia Station Road',
+    role: 'ADMIN',
+    kyc_status: 'SUPER_ADMIN'
+  });
+  assert(allowedPatchRes.status === 200, `Admin PATCH with allowed fields returns 200, got ${allowedPatchRes.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin PATCH with allowed fields returns 200`);
+
+  const usersAfterAllowed = await dbModule.getTable('users');
+  const targetUserAfterAllowed = usersAfterAllowed.find(u => u.id === 'u-cust1');
+  assert(targetUserAfterAllowed.name === 'Amit Kumar Sen', `name updated to "Amit Kumar Sen", got "${targetUserAfterAllowed.name}"`);
+  assert(targetUserAfterAllowed.address === '123 Garia Station Road', `address updated to "123 Garia Station Road", got "${targetUserAfterAllowed.address}"`);
+  assert(targetUserAfterAllowed.role === originalRole, `role remains "${originalRole}", not modified by PATCH`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Allowed fields change while disallowed fields in same request are ignored`);
+
+  // 3. Verify audit log entry created with before and after
+  const auditLogsAfter = await dbModule.getTable('admin_audit_log');
+  assert(auditLogsAfter.length > auditCountBefore, 'Audit log count increased');
+  const latestAudit = auditLogsAfter[auditLogsAfter.length - 1];
+  assert(latestAudit.action === 'ADMIN_EDIT_USER', `Audit action is ADMIN_EDIT_USER, got "${latestAudit.action}"`);
+  assert(latestAudit.entity_id === 'u-cust1', `Audit entity_id is u-cust1, got "${latestAudit.entity_id}"`);
+  assert(latestAudit.before && latestAudit.before.name === originalName, `Audit before.name matches "${originalName}"`);
+  assert(latestAudit.after && latestAudit.after.name === 'Amit Kumar Sen', `Audit after.name matches "Amit Kumar Sen"`);
+  assert(latestAudit.after && latestAudit.after.address === '123 Garia Station Road', `Audit after.address matches "123 Garia Station Road"`);
+  assert(!latestAudit.after.role, 'Disallowed role field is not present in audit after');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin edit is audited with before and after values`);
+
+  // 4. Non-admin self update cannot modify protected fields
+  loginAs('u-cust1', 'CUSTOMER');
+  const custForbiddenRes = await patch('http://localhost:3001/api/users/u-cust1', {
+    role: 'ADMIN'
+  });
+  assert(custForbiddenRes.status === 400, `Customer trying to modify protected field role returns 400, got ${custForbiddenRes.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer cannot modify protected field role (returns 400)`);
+
+  const custAllowedRes = await patch('http://localhost:3001/api/users/u-cust1', {
+    name: 'Amit Sen'
+  });
+  assert(custAllowedRes.status === 200, `Customer self-update with allowed field returns 200, got ${custAllowedRes.status}`);
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer self-update with allowed field returns 200`);
+
+  clearLogin();
+
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
   process.exit(0);
 
