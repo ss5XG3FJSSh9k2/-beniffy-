@@ -2468,7 +2468,7 @@ export default function App() {
   const [commissionSubmitting, setCommissionSubmitting] = useState(false);
   const [commissionTypedConfirm, setCommissionTypedConfirm] = useState('');
   const [showStockistRegionModal, setShowStockistRegionModal] = useState(false);
-  const [newStockistRegion, setNewStockistRegion] = useState('r1');
+  const [newStockistRegion, setNewStockistRegion] = useState('');
   const [stockistBindingsCount, setStockistBindingsCount] = useState(0);
 
   // Admin Region Management State (BF5b)
@@ -2802,7 +2802,7 @@ export default function App() {
   };
 
   const [showAddRegionModal, setShowAddRegionModal] = useState(false);
-  const [newRegionId, setNewRegionId] = useState('r1');
+  const [newRegionId, setNewRegionId] = useState('');
   const [newRegionServiceTypes, setNewRegionServiceTypes] = useState([]);
   const [deactWarnModal, setDeactWarnModal] = useState(false);
   const [deactWarnRowId, setDeactWarnRowId] = useState(null);
@@ -2861,7 +2861,7 @@ export default function App() {
   const [configStockistRate, setConfigStockistRate] = useState(10);
   
   // Points earn config form
-  const [earnRateRegion, setEarnRateRegion] = useState('r1');
+  const [earnRateRegion, setEarnRateRegion] = useState('');
   const [earnRateStockist, setEarnRateStockist] = useState('');
   const [earnRatePercent, setEarnRatePercent] = useState(45);
 
@@ -3720,7 +3720,7 @@ export default function App() {
   // Rate config form
   const [configCategory, setConfigCategory] = useState('groceries');
   const [configRate, setConfigRate] = useState(10);
-  const [configRegion, setConfigRegion] = useState('r1');
+  const [configRegion, setConfigRegion] = useState('');
 
   // Simulator Shell State
   const [dbTab, setDbTab] = useState('points_ledger');
@@ -4398,6 +4398,10 @@ export default function App() {
     }
     if (!promoteServiceTypes || promoteServiceTypes.length === 0) {
       showToast('At least one service type is required', 'error');
+      return;
+    }
+    if (!promoteRegionId) {
+      showToast(t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন'), 'error');
       return;
     }
     try {
@@ -6186,6 +6190,10 @@ export default function App() {
       showToast('Name and phone are required', 'error');
       return;
     }
+    if (!createStkRegion) {
+      showToast(t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন'), 'error');
+      return;
+    }
     if (!createStkVendor) {
       showToast(t('Wholesaler is required', 'थोक विक्रेता आवश्यक है', 'হোলসেলার প্রয়োজন'), 'error');
       return;
@@ -6248,6 +6256,10 @@ export default function App() {
     const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
     if (!editStkName || editStkName.trim().length < 2) {
       showToast(t('Stockist name must be at least 2 characters', 'स्टॉकिस्ट का नाम कम से कम 2 अक्षरों का होना चाहिए', 'স্টকিস্টের নাম কমপক্ষে 2 অক্ষরের হতে হবে'), 'error');
+      return;
+    }
+    if (!editStkRegion) {
+      showToast(t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন'), 'error');
       return;
     }
     if (editStkOpen && (editStkOpen === '24:00' || !timeRegex.test(editStkOpen))) {
@@ -6369,6 +6381,10 @@ export default function App() {
 
   const handleChangeStockistRegion = async () => {
     if (!selectedStockistDetail) return;
+    if (!newStockistRegion) {
+      showToast(t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন'), 'error');
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/admin/stockists/${selectedStockistDetail.id}/region`, {
         method: 'POST',
@@ -7109,6 +7125,10 @@ export default function App() {
   };
 
   const handleSaveCommissionRate = async () => {
+    if (!configRegion) {
+      showToast(t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন'), 'error');
+      return;
+    }
     try {
       const payload = {
         category: configCategory,
@@ -7341,6 +7361,10 @@ export default function App() {
   const handleEditVendorSave = async () => {
     if (editingVendorName.trim().length < 2) {
       showToast('Wholesaler name must be at least 2 characters.', 'error');
+      return;
+    }
+    if (!editingVendorRegionId) {
+      showToast(t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন'), 'error');
       return;
     }
     const executeSave = async () => {
@@ -9283,6 +9307,10 @@ export default function App() {
   };
 
   const handleAddRegion = async () => {
+    if (!newRegionId) {
+      showToast(t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন'), 'error');
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/partner/regions`, {
         method: 'POST',
@@ -10811,6 +10839,7 @@ export default function App() {
                 <div className="input-group">
                   <label className="input-label">Region</label>
                   <select className="text-input" value={newRegionId} onChange={e => setNewRegionId(e.target.value)}>
+                    <option value="">{t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</option>
                     {allSystemRegions.map(r => (
                       <option key={r.id} value={r.id}>{r.name || r.id} ({r.code || r.id})</option>
                     ))}
@@ -13092,9 +13121,10 @@ export default function App() {
                         <div className="input-group">
                           <label className="input-label">{t('Region', 'क्षेत्र', 'অঞ্চল')}</label>
                           <select className="text-input"
-                            value={profileRegion || currentUser?.region_id || 'r1'}
+                            value={profileRegion || currentUser?.region_id || ''}
                             onChange={async (e) => {
                               const newReg = e.target.value;
+                              if (!newReg) return;
                               setProfileRegion(newReg);
                               try {
                                 const res = await fetch(`${API_BASE}/customer/region-change`, {
@@ -13118,6 +13148,9 @@ export default function App() {
                               }
                             }}
                           >
+                            {!(profileRegion || currentUser?.region_id) && (
+                              <option value="">{t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</option>
+                            )}
                             {regions.map(r => (
                               <option key={r.id} value={r.id}>{r.name}</option>
                             ))}
@@ -20318,7 +20351,7 @@ export default function App() {
                 <div className="input-group">
                   <label className="input-label">Region</label>
                   <select className="text-input" value={createStkRegion} onChange={e => setCreateStkRegion(e.target.value)}>
-                    <option value="">-- Select Region --</option>
+                    <option value="">{t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</option>
                     {regions.map(r => (
                       <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
@@ -20456,7 +20489,7 @@ export default function App() {
                 <div className="input-group">
                   <label className="input-label">{t('Region', 'क्षेत्र', 'অঞ্চল')} <span style={{ color: 'var(--danger-text)' }}>*</span></label>
                   <select className="text-input" value={editStkRegion} onChange={e => setEditStkRegion(e.target.value)}>
-                    <option value="">{t('Select Region...', 'क्षेत्र चुनें...', 'অঞ্চল নির্বাচন করুন...')}</option>
+                    <option value="">{t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</option>
                     {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
                 </div>
@@ -20667,6 +20700,7 @@ export default function App() {
             <div className="input-group" style={{ margin: '1rem 0' }}>
               <label className="input-label">Select Target Region</label>
               <select className="text-input" value={newStockistRegion} onChange={e => setNewStockistRegion(e.target.value)}>
+                <option value="">{t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</option>
                 {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
             </div>
@@ -20694,7 +20728,7 @@ export default function App() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '1rem' }}>
               <div>Phone: <strong>{selectedLeadDetail.phone}</strong></div>
               <div>Status: <strong>{selectedLeadDetail.status}</strong></div>
-              <div>Region: <strong>{selectedLeadDetail.region_id || 'r1'}</strong></div>
+              <div>Region: <strong>{selectedLeadDetail.region_id || 'Not set'}</strong></div>
               <div>Created: <strong>{new Date(selectedLeadDetail.created_at).toLocaleDateString()}</strong></div>
             </div>
 
@@ -20883,7 +20917,7 @@ export default function App() {
               <div className="input-group">
                 <label className="input-label">Region</label>
                 <select className="text-input" value={promoteRegionId} onChange={e => setPromoteRegionId(e.target.value)}>
-                  <option value="">Select Region</option>
+                  <option value="">{t('Choose a region', 'क्षेत्र चुनें', 'অঞ্চল নির্বাচন করুন')}</option>
                   {regions.map(r => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}

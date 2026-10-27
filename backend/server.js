@@ -508,7 +508,8 @@ const uploadBillMiddleware = (req, res, next) => {
       if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'file_too_large', message: 'File exceeds size limit.' });
       }
-      return res.status(400).json({ error: 'upload_error', message: err.message });
+      console.error('File upload error:', err);
+      return res.status(400).json({ error: 'upload_error', message: 'Failed to upload file.' });
     }
     if (req.files) {
       const bFile = (req.files['bill_photo'] && req.files['bill_photo'][0]) ||
@@ -617,7 +618,7 @@ async function capturePayoutEvent(req, entityType, entityId, before, finalEntity
 }
 
 async function appendAudit(req, action, entity_type, entity_id, before = null, after = null, reason = '') {
-  const admin_user_id = (req && req.user && req.user.userId) || 'u-admin';
+  const admin_user_id = (req && req.user && (req.user.userId || req.user.id)) || null;
   const log = await db.getTable('admin_audit_log');
   const entry = {
     id: 'audit-' + generateId(),
@@ -740,7 +741,14 @@ app.post('/api/auth/register-customer', async (req, res) => {
   const validationErr = validateUserInput({ email, name });
   if (validationErr) return res.status(400).json({ error: validationErr });
 
-  const targetRegionId = regionId || region_id || 'r1';
+  const targetRegionId = regionId || region_id;
+  if (!targetRegionId) {
+    return res.status(400).json({ error: 'Choose a region.', message: 'Choose a region.' });
+  }
+  const regionsList = await db.getTable('regions');
+  if (!regionsList.some(r => r.id === targetRegionId)) {
+    return res.status(400).json({ error: 'Invalid region', message: 'Region does not exist.' });
+  }
   const cleanName = sanitizePlainText(name, 50);
   const validEmail = await checkEmail(email, res);
   if (!validEmail) return;
@@ -1658,13 +1666,28 @@ const handleCreateProductRoute = async (req, res) => {
   const category = req.body.category || 'groceries';
   const initialStock = req.body.initialStock !== undefined ? req.body.initialStock : (req.body.stock_qty !== undefined ? req.body.stock_qty : req.body.initial_stock);
   const callerStockist = await getCallerStockist(req);
-  const stockistId = (callerStockist && callerStockist.id) || req.body.stockistId || req.body.stockist_id || (req.user && req.user.id) || 's1';
+  const stockistId = (callerStockist && callerStockist.id) || req.body.stockistId || req.body.stockist_id;
+  if (!stockistId) {
+    return res.status(400).json({ error: 'Choose a stockist.', message: 'Stockist is required.' });
+  }
+  const stockistsTable = await db.getTable('stockists');
+  const targetStockist = stockistsTable.find(s => s.id === stockistId);
+  if (!targetStockist) {
+    return res.status(400).json({ error: 'Stockist record not found', message: 'Stockist record does not exist.' });
+  }
   if (!await assertOwnsStockist(req, res, stockistId)) return;
-  const regionId = req.body.regionId || req.body.region_id || (req.user && req.user.region_id) || 'r1';
+  const regionId = req.body.regionId || req.body.region_id || (targetStockist && targetStockist.region_id) || (req.user && req.user.region_id);
+  if (!regionId) {
+    return res.status(400).json({ error: 'Choose a region.', message: 'Choose a region.' });
+  }
+  const regionsTable = await db.getTable('regions');
+  if (!regionsTable.some(r => r.id === regionId)) {
+    return res.status(400).json({ error: 'Invalid region', message: 'Region does not exist.' });
+  }
   const description = req.body.description;
   const imageUrl = req.body.image_url;
 
-  if (price === undefined || initialStock === undefined || !stockistId || !regionId) {
+  if (price === undefined || initialStock === undefined) {
     return res.status(400).json({ error: 'Missing product fields' });
   }
 
@@ -2312,7 +2335,8 @@ app.post('/api/admin/bill-photos/:id/signed-url', async (req, res) => {
     const signedUrl = signBillUrl(bill.r2_key, 3600);
     return res.json({ signed_url: signedUrl, expires_at: expiresAt });
   } catch (err) {
-    return res.status(500).json({ error: 'failed_signed_url', message: err.message });
+    console.error('Failed to generate signed URL:', err);
+    return res.status(500).json({ error: 'failed_signed_url', message: 'Could not generate signed bill URL.' });
   }
 });
 
@@ -2369,7 +2393,8 @@ app.get('/api/bills/*', async (req, res) => {
     const signedUrl = await r2.getSignedReadUrl(key, 3600);
     return res.redirect(signedUrl);
   } catch (err) {
-    return res.status(404).json({ error: 'Bill photo not found', message: err.message });
+    console.error('Failed to retrieve signed read URL for bill photo:', err);
+    return res.status(404).json({ error: 'bill_not_found', message: 'Bill photo not found.' });
   }
 });
 
@@ -3052,8 +3077,8 @@ async function reverseOrderPoints(orderId) {
     if (!alreadyCouponReversed) {
       await db.insertRow('points_ledger', {
         id: 'l-' + generateId(),
-        tenant_id: existingCoupon.tenant_id || 't1',
-        region_id: existingCoupon.region_id || 'r1',
+        tenant_id: existingCoupon.tenant_id,
+        region_id: existingCoupon.region_id,
         customer_id: existingCoupon.customer_id,
         amount: Math.abs(existingCoupon.amount),
         type: 'COUPON_REVERSAL',
@@ -4110,7 +4135,7 @@ async function _processReferralBonusOnDelivery(order) {
       await tx.insertRow('points_ledger', {
         id: 'l-' + generateId(),
         tenant_id: referrer.tenant_id || customer.tenant_id || 't1',
-        region_id: referrer.region_id || customer.region_id || 'r1',
+        region_id: referrer.region_id || customer.region_id || null,
         customer_id: referrer.id,
         amount: 50,
         type: 'REFERRAL_BONUS',
@@ -4125,7 +4150,7 @@ async function _processReferralBonusOnDelivery(order) {
       await tx.insertRow('points_ledger', {
         id: 'l-' + generateId(),
         tenant_id: customer.tenant_id || 't1',
-        region_id: customer.region_id || 'r1',
+        region_id: customer.region_id || null,
         customer_id: customer.id,
         amount: 50,
         type: 'REFERRAL_WELCOME',
@@ -5508,19 +5533,43 @@ app.post('/api/feedback', requireAuth, async (req, res) => {
       } else {
         reporter_id = req.body.reporterId || req.user.userId;
       }
-      target_id = order ? order.customer_id : (req.body.targetId || 'u-cust1');
+      target_id = order ? order.customer_id : req.body.targetId;
+      if (!target_id) {
+        return res.status(400).json({ error: 'Target customer ID is required' });
+      }
       target_role = 'CUSTOMER';
     } else if (req.body.reporterRole === 'CUSTOMER') {
       reporter_role = 'CUSTOMER';
-      reporter_id = req.body.reporterId || (order ? order.customer_id : 'u-cust1');
-      target_id = order ? order.stockist_id : (req.body.targetId || 's1');
+      reporter_id = req.body.reporterId || (order ? order.customer_id : null);
+      if (!reporter_id) {
+        return res.status(400).json({ error: 'Reporter customer ID is required' });
+      }
+      target_id = order ? order.stockist_id : req.body.targetId;
+      if (!target_id) {
+        return res.status(400).json({ error: 'Target stockist ID is required' });
+      }
       target_role = 'STOCKIST';
     } else {
-      target_id = order ? (order.customer_id || order.stockist_id) : (req.body.targetId || 'unknown');
+      target_id = order ? (order.customer_id || order.stockist_id) : req.body.targetId;
+      if (!target_id) {
+        return res.status(400).json({ error: 'Target ID is required' });
+      }
       target_role = req.body.targetRole || 'CUSTOMER';
     }
   } else {
     return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  if (target_role === 'CUSTOMER') {
+    const usersTable = await db.getTable('users');
+    if (!usersTable.some(u => u.id === target_id)) {
+      return res.status(400).json({ error: 'Customer not found' });
+    }
+  } else if (target_role === 'STOCKIST') {
+    const stockistsTable = await db.getTable('stockists');
+    if (!stockistsTable.some(s => s.id === target_id)) {
+      return res.status(400).json({ error: 'Stockist not found' });
+    }
   }
 
   const feedback = await db.getTable('feedback_reports');
@@ -7334,7 +7383,7 @@ app.post('/api/admin/customers/:id/points-credit', async (req, res) => {
   const entry = {
     id: 'l-' + generateId(),
     tenant_id: user.tenant_id || 't1',
-    region_id: user.region_id || 'r1',
+    region_id: user.region_id || null,
     customer_id: id,
     amount: numAmount,
     type: 'MANUAL_CREDIT',
@@ -7530,7 +7579,11 @@ app.get('/api/admin/stockists/:id', async (req, res) => {
 app.post('/api/admin/stockists', async (req, res) => {
   let { name, region_id, vendor_id, phone, delivery_radius_km, opening_time, closing_time, prep_eta_minutes, commission_rate } = req.body;
   if (!name || !region_id || !phone) {
-    return res.status(400).json({ error: 'Name, region_id, and phone are required' });
+    return res.status(400).json({ error: 'Name, region_id, and phone are required', message: 'Choose a region.' });
+  }
+  const regions = await db.getTable('regions');
+  if (!regions.some(r => r.id === region_id)) {
+    return res.status(400).json({ error: 'Choose a region.', message: 'Region does not exist.' });
   }
   const validPhone = checkPhone(phone, res);
   if (!validPhone) return;
@@ -8241,6 +8294,9 @@ app.get('/api/partner/auth/session', async (req, res) => {
 // 4.1 POST /api/admin/partners
 app.post('/api/admin/partners', async (req, res) => {
   let { legal_name, display_name, contact_phone, contact_email, address, service_types, gst_number } = req.body;
+  if (!req.user || !req.user.userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const admin_id = req.user.userId; // the signed-in admin, never a value from the request
   if (!legal_name || !display_name || !contact_phone || !service_types || !Array.isArray(service_types) || service_types.length === 0) {
     return res.status(400).json({ error: 'Missing required partner fields' });
@@ -8296,7 +8352,7 @@ app.post('/api/admin/partners', async (req, res) => {
     service_types,
     is_active: true,
     onboarded_at: now,
-    onboarded_by_admin_id: admin_id || 'u-admin',
+    onboarded_by_admin_id: admin_id,
     promoted_from_lead_id: null,
     created_at: now,
     updated_at: now
@@ -8323,6 +8379,9 @@ app.post('/api/admin/partners', async (req, res) => {
 app.post('/api/admin/partner-leads/:id/promote', async (req, res) => {
   const { id } = req.params;
   const { legal_name, display_name, service_types, region_id } = req.body;
+  if (!req.user || !req.user.userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const admin_id = req.user.userId; // the signed-in admin, never a value from the request
 
   const leads = await db.getTable('partner_leads');
@@ -8404,7 +8463,7 @@ app.post('/api/admin/partner-leads/:id/promote', async (req, res) => {
     service_types: effectiveServiceTypes,
     is_active: true,
     onboarded_at: now,
-    onboarded_by_admin_id: admin_id || 'u-admin',
+    onboarded_by_admin_id: admin_id,
     promoted_from_lead_id: lead.id,
     created_at: now,
     updated_at: now
@@ -8444,7 +8503,7 @@ app.post('/api/admin/partner-leads/:id/promote', async (req, res) => {
   const beforeLead = { status: lead.status, promoted_partner_id: lead.promoted_partner_id };
   lead.status = 'ONBOARDED';
   lead.promoted_partner_id = partnerId;
-  lead.promoted_by_admin_id = admin_id || 'u-admin';
+  lead.promoted_by_admin_id = admin_id;
   lead.promoted_at = now;
   await db.saveTable('partner_leads', leads);
 
@@ -9475,6 +9534,9 @@ app.get('/api/admin/redemption-approvals/:id', async (req, res) => {
 app.post('/api/admin/redemption-approvals/:id/approve', async (req, res) => {
   const { id } = req.params;
   const { notes } = req.body;
+  if (!req.user || !req.user.userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const admin_id = req.user.userId; // the signed-in admin, never a value from the request
 
   const approvals = await db.getTable('redemption_approvals');
@@ -9486,7 +9548,7 @@ app.post('/api/admin/redemption-approvals/:id/approve', async (req, res) => {
   }
 
   approval.status = approval.partner_id === 'GENERIC' ? 'FULFILLED' : 'APPROVED_AWAITING_PARTNER';
-  approval.admin_id = admin_id || 'u-admin';
+  approval.admin_id = admin_id;
   if (notes) approval.admin_notes = notes;
   approval.approved_at = new Date().toISOString();
   if (approval.partner_id === 'GENERIC') {
@@ -9543,6 +9605,9 @@ app.post('/api/admin/redemption-approvals/:id/approve', async (req, res) => {
 app.post('/api/admin/redemption-approvals/:id/reject', async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
+  if (!req.user || !req.user.userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const admin_id = req.user.userId; // the signed-in admin, never a value from the request
 
   if (!reason || reason.trim().length < 10) {
@@ -9559,7 +9624,7 @@ app.post('/api/admin/redemption-approvals/:id/reject', async (req, res) => {
 
   const oldStatus = approval.status;
   approval.status = 'REJECTED';
-  approval.admin_id = admin_id || 'u-admin';
+  approval.admin_id = admin_id;
   approval.rejected_reason = reason.trim();
   approval.rejected_at = new Date().toISOString();
   approval.updated_at = new Date().toISOString();
@@ -9572,7 +9637,7 @@ app.post('/api/admin/redemption-approvals/:id/reject', async (req, res) => {
   await db.insertRow('points_ledger', {
       id: refundLedgerId,
       tenant_id: cust ? cust.tenant_id : 't1',
-      region_id: cust ? cust.region_id : 'r1',
+      region_id: cust ? cust.region_id : null,
       customer_id: approval.customer_user_id,
       amount: Math.abs(parseFloat(approval.points_deducted)),
       type: 'REDEEM_REFUND',
@@ -9592,6 +9657,9 @@ app.post('/api/admin/redemption-approvals/:id/reject', async (req, res) => {
 app.post('/api/admin/redemption-approvals/:id/resolve-dispute', async (req, res) => {
   const { id } = req.params;
   const { outcome, notes } = req.body;
+  if (!req.user || !req.user.userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const admin_id = req.user.userId; // the signed-in admin, never a value from the request
 
   if (!outcome || !['fulfill', 'reject'].includes(outcome)) {
@@ -9606,7 +9674,7 @@ app.post('/api/admin/redemption-approvals/:id/resolve-dispute', async (req, res)
     return res.status(400).json({ error: 'invalid_transition' });
   }
 
-  approval.admin_id = admin_id || 'u-admin';
+  approval.admin_id = admin_id;
   if (notes) approval.admin_notes = notes;
   approval.updated_at = new Date().toISOString();
 

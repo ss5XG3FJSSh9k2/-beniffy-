@@ -2321,6 +2321,7 @@ async function main() {
   const p4a_custRes2 = await post('http://localhost:3001/api/auth/register-customer', {
     phone: '9876500401', email: 'test_9876500401@fastnet.test',
     name: 'P4A Cust 2',
+    regionId: 'r1',
     address: 'Garia Street 2',
     cable_partner_id: 'ptr-adhya'
   });
@@ -2364,6 +2365,7 @@ async function main() {
   const p4a_custRes3 = await post('http://localhost:3001/api/auth/register-customer', {
     phone: '9876500402', email: 'test_9876500402@fastnet.test',
     name: 'P4A Cust 3',
+    regionId: 'r1',
     address: 'Garia Street 3',
     cable_partner_id: 'ptr-adhya'
   });
@@ -8517,6 +8519,64 @@ async function main() {
   }
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Public products query does not leak cost_price or margin`);
+
+  // 6. Security & Integrity: No seed-data ID fallbacks in backend/server.js
+  const serverFileContentForFallbacks = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
+  const seedFallbackRegex = /\|\|\s*['"](?:r1|s1|u-cust1|u-admin)['"]/g;
+  const seedMatches = serverFileContentForFallbacks.match(seedFallbackRegex);
+  assert(!seedMatches || seedMatches.length === 0, `backend/server.js must not contain seed-data ID fallbacks (|| 'r1', || 's1', || 'u-cust1', || 'u-admin'). Found: ${seedMatches ? seedMatches.join(', ') : 'none'}`);
+
+  // 7. Register customer with no region returns 400
+  clearLogin();
+  const regNoRegionRes = await post('http://localhost:3001/api/auth/register-customer', {
+    phone: '9999900001',
+    name: 'Customer No Region'
+  });
+  assert(regNoRegionRes.status === 400, `Register customer with no region returns 400, got ${regNoRegionRes.status}`);
+  assert(regNoRegionRes.body.error === 'Choose a region.' || regNoRegionRes.body.message === 'Choose a region.', `Register customer with no region returns "Choose a region.", got ${JSON.stringify(regNoRegionRes.body)}`);
+
+  // 8. Register customer with invalid region returns 400
+  const regBadRegionRes = await post('http://localhost:3001/api/auth/register-customer', {
+    phone: '9999900002',
+    name: 'Customer Bad Region',
+    region_id: 'non-existent-region-id'
+  });
+  assert(regBadRegionRes.status === 400, `Register customer with non-existent region returns 400, got ${regBadRegionRes.status}`);
+  assert(regBadRegionRes.body.error === 'Invalid region' || regBadRegionRes.body.error === 'Choose a region.', `Register customer with invalid region returns error, got ${JSON.stringify(regBadRegionRes.body)}`);
+
+  // 9. Create product as shop with no stockist record returns 400
+  loginAs('u-nostk', 'STOCKIST');
+  const prodNoStkRes = await post('http://localhost:3001/api/products', {
+    name: 'Ghost Product',
+    category: 'groceries',
+    price: 100,
+    cost_price: 80,
+    stock: 10,
+    unit: 'kg'
+  });
+  assert(prodNoStkRes.status === 400, `Create product as shop with no stockist record returns 400, got ${prodNoStkRes.status}`);
+
+  // 10. Admin endpoints record the real admin id and reject unauthenticated calls
+  clearLogin();
+  const unauthPartnerCreate = await post('http://localhost:3001/api/admin/partners', {
+    legal_name: 'Test Partner Org',
+    display_name: 'Test Partner',
+    contact_phone: '9888877777',
+    contact_email: 'unauth.partner@example.com',
+    service_types: ['BROADBAND']
+  });
+  assert(unauthPartnerCreate.status === 401, `Create partner unauthenticated returns 401, got ${unauthPartnerCreate.status}`);
+
+  loginAs('u-admin', 'ADMIN');
+  const authPartnerCreate = await post('http://localhost:3001/api/admin/partners', {
+    legal_name: 'Real Admin Partner Inc',
+    display_name: 'Real Admin Partner',
+    contact_phone: '9888877776',
+    contact_email: 'real.admin.partner@example.com',
+    service_types: ['BROADBAND']
+  });
+  assert(authPartnerCreate.status === 200, `Create partner as real admin returns 200, got ${authPartnerCreate.status}`);
+  assert(authPartnerCreate.body.partner && authPartnerCreate.body.partner.onboarded_by_admin_id === 'u-admin', `Partner onboarded_by_admin_id records real admin id u-admin, got ${authPartnerCreate.body?.partner?.onboarded_by_admin_id}`);
 
   clearLogin();
 
