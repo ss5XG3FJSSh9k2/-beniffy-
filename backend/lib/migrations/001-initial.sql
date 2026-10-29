@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS stockists (
   opening_time TEXT,
   closing_time TEXT,
   prep_eta_minutes INT,
+  linked_account_id TEXT,
   created_at TIMESTAMPTZ
 );
 
@@ -106,11 +107,14 @@ CREATE TABLE IF NOT EXISTS orders (
   reschedule_used BOOLEAN DEFAULT false,
   razorpay_order_id TEXT,
   razorpay_payment_id TEXT,
+  razorpay_transfer_id TEXT,
+  transfer_released BOOLEAN DEFAULT false,
   split_released BOOLEAN DEFAULT false,
   items JSONB,
   pin TEXT,
   verified_at TIMESTAMPTZ,
   refund_amount NUMERIC(12,2),
+  refund_id TEXT,
   created_at TIMESTAMPTZ
 );
 

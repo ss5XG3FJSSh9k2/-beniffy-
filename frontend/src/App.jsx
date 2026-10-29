@@ -1973,11 +1973,36 @@ export default function App() {
     supportSettingsDirtyRef.current = supportSettingsDirty;
   }, [supportSettingsDirty]);
 
+  const [paymentsMode, setPaymentsMode] = useState('test');
+  const [integrationsList, setIntegrationsList] = useState([]);
+  const [loadingIntegrations, setLoadingIntegrations] = useState(false);
+  const [adminSettingsSubTab, setAdminSettingsSubTab] = useState('config');
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState('PAY_AT_HANDOVER');
+  const [editStkLinkedAccount, setEditStkLinkedAccount] = useState('');
+
+  const fetchAdminIntegrations = useCallback(async () => {
+    setLoadingIntegrations(true);
+    try {
+      const res = await adminFetch('/admin/integrations');
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setIntegrationsList(data.integrations || []);
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      setLoadingIntegrations(false);
+    }
+  }, [adminFetch]);
+
   const fetchSystemConfig = useCallback(() => {
     fetch(`${API_BASE}/config`)
       .then(res => res.ok ? res.json() : null)
       .then(cfg => {
         if (!cfg) return;
+        if (cfg.payments_mode) {
+          setPaymentsMode(cfg.payments_mode);
+        }
         const sPhone = cfg.support_phone || (cfg.support && cfg.support.phone) || '';
         const sWhatsapp = cfg.support_whatsapp || (cfg.support && cfg.support.whatsapp) || '';
         const sEmail = cfg.support_email || (cfg.support && cfg.support.email) || '';
@@ -3001,11 +3026,20 @@ export default function App() {
   };
 
   const renderCustomerPaymentBadge = (order) => {
-    const isPaid = order.payment_status === 'PAID' || order.payment_status === 'RELEASED';
+    const isPaid = order.payment_status === 'PAID' || order.payment_status === 'RELEASED' || order.payment_status === 'PAID_ONLINE';
     const isCancelled = order.status === 'CANCELLED';
 
     if (isCancelled) {
       return <span className="badge badge-secondary" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem' }}>{t('Cancelled', 'रद्द', 'বাতিল')}</span>;
+    }
+    if (order.payment_method === 'ONLINE') {
+      if (order.payment_status === 'PAID_ONLINE') {
+        return <span className="badge badge-success" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}><Check size={9} /> {t('Paid online', 'ऑनलाइन भुगतान किया गया', 'অনলাইনে পরিশোধিত')}</span>;
+      }
+      if (order.payment_status === 'PAYMENT_FAILED') {
+        return <span className="badge badge-danger" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem' }}>{t('Payment failed', 'भुगतान विफल', 'পেমেন্ট ব্যর্থ')}</span>;
+      }
+      return <span className="badge badge-warning" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem' }}>{t('Pending payment', 'भुगतान लंबित', 'পেমেন্ট মুলতুবি')}</span>;
     }
     if (isPaid) {
       return <span className="badge badge-success" style={{ fontSize: '0.55rem', padding: '0.1rem 0.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}><Check size={9} /> {t('Paid', 'भुगतान किया', 'পরিশোধিত')}</span>;
@@ -3034,6 +3068,12 @@ export default function App() {
 
   const formatFulfillmentPayment = (order) => {
     const fulfillment = order.fulfillment_type || 'PICKUP';
+    if (order.payment_method === 'ONLINE') {
+      if (order.payment_status === 'PAID_ONLINE') {
+        return `${fulfillment} - Paid online`;
+      }
+      return `${fulfillment} - Online (${order.payment_status})`;
+    }
     if (order.payment_method === 'PAY_AT_HANDOVER') {
       if (order.payment_status === 'PAID') {
         return `${fulfillment} - Pay at handover (Paid, ${order.payment_received_method || 'Cash'})`;
@@ -4740,6 +4780,15 @@ export default function App() {
   // Partner Session Hydration on Mount & Reset Query Token Parse
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+      showToast(t('Payment successful! Order placed.', 'भुगतान सफल! ऑर्डर दिया गया।', 'পেমেন্ট সফল! অর্ডার দেওয়া হয়েছে।'), 'success');
+      loadCustomerData();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('payment') === 'failed') {
+      showToast(t('Payment was not completed.', 'भुगतान पूरा नहीं हुआ।', 'পেমেন্ট সম্পন্ন হয়নি।'), 'error');
+      loadCustomerData();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     const resetToken = urlParams.get('partner_reset');
     if (resetToken) {
       setPartnerResetToken(resetToken);
@@ -5416,7 +5465,7 @@ export default function App() {
         stores,
         fulfillmentType: cartFulfillment,
         deliveryAddress: (deliveryAddress !== undefined && deliveryAddress !== '' ? deliveryAddress : (profileAddress || currentUser?.address || '')).trim(),
-        paymentMethod: 'PAY_AT_HANDOVER',
+        paymentMethod: checkoutPaymentMethod === 'ONLINE' ? 'ONLINE' : 'PAY_AT_HANDOVER',
         coupon_reward_id: appliedCouponId || undefined
       };
 
@@ -5429,6 +5478,17 @@ export default function App() {
       logApi('POST', '/orders', payload, res.status, data);
 
       if (res.ok) {
+        if (data.checkout_url) {
+          setCustomerCarts(prev => {
+            const next = { ...prev };
+            if (selectedStockist?.id) delete next[selectedStockist.id];
+            return next;
+          });
+          setCartPickupSlots({});
+          setAppliedCouponId(null);
+          window.location.href = data.checkout_url;
+          return;
+        }
         const ordersPlaced = data.orders || [data.order];
         const totalPoints = data.totalPointsCredited || 0;
         setCheckoutResult({
@@ -6287,7 +6347,8 @@ export default function App() {
           kyc_id_type: editStkIdType,
           kyc_id_number: editStkIdNumber,
           user_name: editStkOwnerName,
-          user_phone: editStkPhone
+          user_phone: editStkPhone,
+          linked_account_id: editStkLinkedAccount
         };
         const res = await fetch(`${API_BASE}/admin/stockists/${selectedStockistDetail.id}`, {
           method: 'POST',
@@ -12224,6 +12285,72 @@ export default function App() {
                             );
                           })()}
 
+                          {/* Payment Method Selector */}
+                          <div className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '0.5rem' }}>
+                            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
+                              <CreditCard size={16} color="var(--primary)" />
+                              {t('Payment Method', 'भुगतान विधि', 'পেমেন্ট পদ্ধতি')}
+                            </label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                              <button
+                                type="button"
+                                className="btn"
+                                style={{
+                                  padding: '0.65rem 0.5rem',
+                                  fontSize: '0.8rem',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  gap: '0.2rem',
+                                  background: checkoutPaymentMethod === 'PAY_AT_HANDOVER' ? 'var(--primary)' : 'var(--surface-overlay)',
+                                  color: checkoutPaymentMethod === 'PAY_AT_HANDOVER' ? 'var(--on-primary)' : 'var(--text-main)',
+                                  border: checkoutPaymentMethod === 'PAY_AT_HANDOVER' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                                  borderRadius: '8px'
+                                }}
+                                onClick={() => setCheckoutPaymentMethod('PAY_AT_HANDOVER')}
+                              >
+                                <div style={{ fontWeight: 600 }}>{t('Pay at handover', 'हैंडओवर पर भुगतान करें', 'হস্তান্তরে পেমেন্ট করুন')}</div>
+                                <div style={{ fontSize: '0.65rem', opacity: 0.85 }}>{t('Cash or UPI', 'नकद या UPI', 'নগদ বা UPI')}</div>
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn"
+                                disabled={paymentsMode === 'off'}
+                                style={{
+                                  padding: '0.65rem 0.5rem',
+                                  fontSize: '0.8rem',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  gap: '0.2rem',
+                                  background: checkoutPaymentMethod === 'ONLINE' ? 'var(--primary)' : 'var(--surface-overlay)',
+                                  color: checkoutPaymentMethod === 'ONLINE' ? 'var(--on-primary)' : (paymentsMode === 'off' ? 'var(--text-muted)' : 'var(--text-main)'),
+                                  border: checkoutPaymentMethod === 'ONLINE' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                                  borderRadius: '8px',
+                                  opacity: paymentsMode === 'off' ? 0.6 : 1,
+                                  cursor: paymentsMode === 'off' ? 'not-allowed' : 'pointer'
+                                }}
+                                onClick={() => {
+                                  if (paymentsMode !== 'off') setCheckoutPaymentMethod('ONLINE');
+                                }}
+                              >
+                                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                  {t('Pay online', 'ऑनलाइन भुगतान करें', 'অনলাইনে পেমেন্ট করুন')}
+                                </div>
+                                {paymentsMode === 'off' ? (
+                                  <span className="badge badge-secondary" style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem' }}>
+                                    {t('Coming soon', 'जल्द आ रहा है', 'শীঘ্রই আসছে')}
+                                  </span>
+                                ) : (
+                                  <div style={{ fontSize: '0.65rem', opacity: 0.85 }}>
+                                    {paymentsMode === 'test' ? t('Razorpay (Test)', 'रेज़रपे (परीक्षण)', 'রেজারপে (টেস্ট)') : t('Razorpay Instant', 'रेज़रपे तत्काल', 'রেজারপে তাত্ক্ষণিক')}
+                                  </div>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
                           {/* Bill Summary */}
                           <div className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             {isDevMode && (<div style={{color:'cyan',fontSize:'0.6rem'}}>dev: fulfilment={cartFulfillment} · shops={Object.keys(cartPickupSlots).length}</div>)}
@@ -12272,9 +12399,12 @@ export default function App() {
                                 onClick={handleCheckout}
                                 disabled={isDeliveryDisabled}
                               >
-                                {cartFulfillment === 'PICKUP'
-                                  ? <><Key size={16} style={{ marginRight: '0.4rem' }} />{t('Place Pickup Order', 'पिकअप ऑर्डर दें', 'পিকআপ অর্ডার দিন')}</>
-                                  : <><Truck size={16} style={{ marginRight: '0.4rem' }} />{t('Place Delivery Order (COD)', 'डिलीवरी ऑर्डर (COD)', 'ডেলিভারি অর্ডার (COD)')}</>
+                                {checkoutPaymentMethod === 'ONLINE'
+                                  ? <><CreditCard size={16} style={{ marginRight: '0.4rem' }} />{t('Proceed to Pay Online', 'ऑनलाइन भुगतान के लिए आगे बढ़ें', 'অনলাইন পেমেন্টে এগিয়ে যান')}</>
+                                  : (cartFulfillment === 'PICKUP'
+                                      ? <><Key size={16} style={{ marginRight: '0.4rem' }} />{t('Place Pickup Order', 'पिकअप ऑर्डर दें', 'পিকআপ অর্ডার দিন')}</>
+                                      : <><Truck size={16} style={{ marginRight: '0.4rem' }} />{t('Place Delivery Order (COD)', 'डिलीवरी ऑर्डर (COD)', 'ডেলিভারি অর্ডার (COD)')}</>
+                                    )
                                 }
                               </button>
                             );
@@ -15663,8 +15793,11 @@ export default function App() {
               <button className={`admin-nav-item ${adminTab === 'analytics' ? 'active' : ''}`} onClick={() => goToAdminTab('analytics', () => { fetchAnalytics(); localStorage.setItem('fastnet_admin_analytics_visited', 'true'); })}>
                 <TrendingUp size={16} /> Analytics
               </button>
-              <button className={`admin-nav-item ${adminTab === 'config' || adminTab === 'rates' || adminTab === 'settings' ? 'active' : ''}`} onClick={() => goToAdminTab('config')}>
+              <button className={`admin-nav-item ${(adminTab === 'config' || adminTab === 'rates' || adminTab === 'settings') && adminSettingsSubTab !== 'integrations' ? 'active' : ''}`} onClick={() => { setAdminSettingsSubTab('config'); goToAdminTab('config'); }}>
                 <Settings size={16} /> Settings
+              </button>
+              <button className={`admin-nav-item ${adminTab === 'integrations' || adminSettingsSubTab === 'integrations' ? 'active' : ''}`} onClick={() => { setAdminSettingsSubTab('integrations'); goToAdminTab('integrations', fetchAdminIntegrations); }} data-testid="admin-nav-integrations">
+                <CreditCard size={16} /> Integrations
               </button>
               
               <button className={`admin-nav-item ${adminTab === 'feedback' ? 'active' : ''}`} onClick={() => goToAdminTab('feedback')}>
@@ -16501,6 +16634,7 @@ export default function App() {
                                         setEditStkOwnerName(detail.user?.name || detail.name || '');
                                         setEditStkPhone(detail.user?.phone || detail.phone || '');
                                         setEditStkKeepOldVendor(false);
+                                        setEditStkLinkedAccount(detail.linked_account_id || detail.stockist?.linked_account_id || '');
                                         
                                         setShowEditStockistModal(true);
                                       }
@@ -17784,9 +17918,97 @@ export default function App() {
               )}
 
 
-              {(adminTab === 'config' || adminTab === 'rates') && (
+              {(adminTab === 'config' || adminTab === 'rates' || adminTab === 'integrations') && (
                 <div>
-                  <h2 style={{ fontSize: '1.4rem', marginBottom: '1rem' }}>Commission & Points Config</h2>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                    <div>
+                      <h2 style={{ fontSize: '1.4rem', margin: '0 0 0.25rem 0' }}>
+                        {adminSettingsSubTab === 'integrations' || adminTab === 'integrations' ? 'Integrations' : 'Settings'}
+                      </h2>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Settings &gt; {adminSettingsSubTab === 'integrations' || adminTab === 'integrations' ? 'Integrations' : 'Commission & Defaults'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        className={`btn ${adminSettingsSubTab === 'config' && adminTab !== 'integrations' ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+                        onClick={() => { setAdminSettingsSubTab('config'); if (adminTab === 'integrations') setAdminTab('config'); }}
+                      >
+                        {t('Commission & Defaults', 'कमीशन और डिफॉल्ट', 'কমিশন এবং ডিফল্ট')}
+                      </button>
+                      <button
+                        className={`btn ${adminSettingsSubTab === 'integrations' || adminTab === 'integrations' ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+                        onClick={() => { setAdminSettingsSubTab('integrations'); fetchAdminIntegrations(); }}
+                      >
+                        {t('Integrations', 'इंटीग्रेशन', 'ইন্টিগ্রেশন')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {(adminSettingsSubTab === 'integrations' || adminTab === 'integrations') ? (
+                    <div data-testid="integrations-screen">
+                      <div style={{ marginBottom: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.15rem', margin: '0 0 0.25rem 0' }}>
+                          {t('Service Integrations', 'सर्विस इंटीग्रेशन', 'সার্ভিস ইন্টিগ্রেশন')}
+                        </h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+                          {t('External services status and production readiness. Secret keys are never displayed in the portal.', 'बाहरी सेवाओं की स्थिति और उत्पादन तत्परता। पोर्टल में कभी भी गुप्त कुंजियाँ प्रदर्शित नहीं की जाती हैं।', 'বাহ্যিক পরিষেবাগুলির স্থিতি এবং প্রস্তুতির বিবরণ। পোর্টালে গোপন কীগুলি কখনও প্রদর্শিত হয় না।')}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+                        {(integrationsList.length > 0 ? integrationsList : [
+                          { id: 'payments', name: 'Payments', provider: 'Razorpay', mode: paymentsMode || 'test', missing: paymentsMode === 'live' ? ['RAZORPAY_KEY_ID not set'] : [] },
+                          { id: 'sms', name: 'SMS', provider: 'MSG91', mode: 'test', missing: ['MSG91_AUTH_KEY not set'] },
+                          { id: 'email', name: 'Email', provider: 'SendGrid', mode: 'test', missing: ['SENDGRID_API_KEY not set'] },
+                          { id: 'whatsapp', name: 'WhatsApp', provider: 'Meta Cloud API', mode: 'off', missing: ['WHATSAPP_API_KEY not set'] }
+                        ]).map(item => {
+                          const isLive = item.mode === 'live';
+                          const isTest = item.mode === 'test';
+                          const badgeClass = isLive ? 'badge-success' : (isTest ? 'badge-warning' : 'badge-secondary');
+
+                          return (
+                            <div key={item.id} className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }} data-testid={`integration-${item.id}`}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                  <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-main)' }}>
+                                    {item.name}: <span style={{ textTransform: 'lowercase' }}>{item.mode}</span>
+                                  </h4>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                    {t('Provider', 'प्रदाता', 'প্রদানকারী')}: {item.provider}
+                                  </div>
+                                </div>
+                                <span className={`badge ${badgeClass}`} style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', textTransform: 'uppercase' }}>
+                                  {item.mode}
+                                </span>
+                              </div>
+
+                              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-main)' }}>
+                                  {t('Requirements to go live', 'लाइव जाने की आवश्यकताएं', 'লাইভ যাওয়ার প্রয়োজনীয়তা')}:
+                                </div>
+                                {item.missing && item.missing.length > 0 ? (
+                                  <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.8rem', color: 'var(--danger-text)' }}>
+                                    {item.missing.map((m, idx) => (
+                                      <li key={idx} style={{ marginBottom: '0.2rem' }}>{m}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--success-text)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                    <Check size={14} /> {t('Ready for live', 'लाइव के लिए तैयार', 'লাইভের জন্য প্রস্তুত')}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <h2 style={{ fontSize: '1.4rem', marginBottom: '1rem' }}>Commission & Points Config</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
                     Configure profit-sharing reinvestment ratios, customer points percentages, and partner redemption cuts across global defaults and store overrides.
                   </p>
@@ -18582,6 +18804,8 @@ export default function App() {
                       </tbody>
                     </table>
                   </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -20591,6 +20815,32 @@ export default function App() {
                   </div>
                 </div>
               </div>
+              <div className="input-group" style={{ padding: '0.75rem', background: 'var(--surface-overlay)', borderRadius: '6px', border: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
+                <label className="input-label" htmlFor="edit-stk-linked-account" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: 0 }}>
+                  <span>
+                    {t('Linked Account ID (Razorpay Route)', 'लिंक्ड अकाउंट आईडी (रेज़रपे रूट)', 'লিঙ্কড অ্যাকাউন্ট আইডি (রেজারপে রুট)')}
+                    {paymentsMode === 'live' && <span style={{ color: 'var(--danger-text)' }}> *</span>}
+                  </span>
+                  {paymentsMode !== 'live' && (
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                      {t('Optional (Required in live mode)', 'वैकल्पिक (लाइव मोड में आवश्यक)', 'ঐচ্ছিক (লাইভ মোডে আবশ্যক)')}
+                    </span>
+                  )}
+                </label>
+                <input
+                  id="edit-stk-linked-account"
+                  type="text"
+                  className="text-input"
+                  placeholder="acc_..."
+                  value={editStkLinkedAccount}
+                  onChange={e => setEditStkLinkedAccount(e.target.value)}
+                  style={{ marginTop: '0.35rem' }}
+                />
+                <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0' }}>
+                  {t('Razorpay Route linked account ID for direct shop payouts on delivery.', 'डिलीवरी पर सीधे दुकान भुगतान के लिए रेज़रपे रूट लिंक्ड अकाउंट आईडी।', 'ডেলিভারিতে সরাসরি দোকানের অর্থপ্রদানের জন্য রেজারপে রুট লিঙ্কযুক্ত অ্যাকাউন্ট আইডি।')}
+                </p>
+              </div>
+
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                 <button className="btn btn-secondary" onClick={() => setShowEditStockistModal(false)}>
                   {t('Cancel', 'रद्द करें', 'বাতিল করুন')}

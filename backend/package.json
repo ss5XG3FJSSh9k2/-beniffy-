@@ -13,6 +13,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.2.0",
     "pg": "^8.22.0",
+    "razorpay": "^2.9.8",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

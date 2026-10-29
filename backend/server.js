@@ -63,6 +63,10 @@ async function assertOrderAccess(req, res, order) {
   if (req.user.role === 'ADMIN') return true;
   if (req.user.role === 'CUSTOMER' && req.user.userId === order.customer_id) return true;
   if (req.user.role === 'STOCKIST') {
+    if (order.payment_method === 'ONLINE' && order.payment_status !== 'PAID_ONLINE') {
+      res.status(403).json({ error: 'Order not sent to shop' });
+      return false;
+    }
     const callerStockist = await getCallerStockist(req);
     if (callerStockist && callerStockist.id === order.stockist_id) return true;
   }
@@ -80,6 +84,8 @@ const multer = require('multer');
 const r2 = require('./lib/r2');
 const { evaluateRegistrationFlags } = require('./lib/kyc-flags');
 const { issueOtp, verifyOtp } = require('./lib/otp');
+const integrations = require('./lib/integrations');
+const payments = require('./lib/payments');
 
 const app = express();
 if (process.env.NODE_ENV === 'production') {
@@ -91,7 +97,11 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   app.use(cors());
 }
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.set('trust proxy', parseInt(process.env.TRUST_PROXY_HOPS || '0', 10));
 
 // Security Headers & HTTPS Redirect Middleware (Item 20)
@@ -457,6 +467,11 @@ app.get('/api/config', async (req, res) => {
     status: 'ok',
     version: process.env.APP_VERSION || 'unknown',
     dev_tools_enabled: isDevAllowed,
+    payments_mode: integrations.getPaymentsMode(),
+    payments: {
+      mode: integrations.getPaymentsMode(),
+      provider: 'Razorpay'
+    },
     support_phone: supportPhone,
     support_whatsapp: supportWhatsapp,
     support_email: supportEmail,
@@ -468,6 +483,14 @@ app.get('/api/config', async (req, res) => {
       hours: supportHours
     }
   });
+});
+
+app.get('/api/admin/integrations', requireAuth, async (req, res) => {
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const status = integrations.getIntegrationsStatus();
+  return res.json({ success: true, integrations: status });
 });
 
 // Boot-Time Missing-Config Warnings (Part 3.1)
@@ -3169,8 +3192,9 @@ async function processOrderCancellation(order, cancelledBy = 'system', { retainC
 
   // Refund only when money was received:
   // UNPAID -> payment_status 'CANCELLED_UNPAID', no refund.
-  // Only PAID or HELD orders become REFUND_DUE, with refund_amount = amount received minus any commission the policy keeps.
-  if (order.payment_status === 'HELD' || order.payment_status === 'PAID') {
+  // Only PAID, PAID_ONLINE, or HELD orders become REFUND_DUE, with refund_amount = amount received minus any commission the policy keeps.
+  // The actual gateway refund happens when the admin triggers it via POST /api/admin/orders/:id/refund (Rule 6).
+  if (order.payment_status === 'HELD' || order.payment_status === 'PAID' || order.payment_status === 'PAID_ONLINE') {
     const payout = splitPayouts.find(sp => sp.order_id === order.id);
     const platformCommission = retainCommission && payout ? parseFloat(payout.platform_amount) : 0;
 
@@ -3749,15 +3773,40 @@ const handleCreateOrderRoute = async (req, res) => {
     }
 
     // Determine payment status
-    // Default PAY_AT_HANDOVER → UNPAID. COD → COD. Online gateway → HELD.
+    // Default PAY_AT_HANDOVER → UNPAID. COD → COD. Online gateway → PENDING_PAYMENT.
     const effectivePaymentMethod = reqPaymentMethod;
-    const paymentStatus = effectivePaymentMethod === 'PAY_AT_HANDOVER'
-      ? 'UNPAID'
-      : (effectivePaymentMethod?.includes('COD') ? 'COD' : 'HELD');
+    let paymentStatus = 'UNPAID';
+    if (effectivePaymentMethod === 'PAY_AT_HANDOVER') {
+      paymentStatus = 'UNPAID';
+    } else if (effectivePaymentMethod?.includes('COD')) {
+      paymentStatus = 'COD';
+    } else if (effectivePaymentMethod === 'ONLINE') {
+      paymentStatus = 'PENDING_PAYMENT';
+    } else {
+      paymentStatus = 'HELD';
+    }
 
     // Stock deduction removed here. It now happens when the order is marked READY.
 
     const orderId = 'o-' + generateId();
+
+    let razorpayOrderId = null;
+    let razorpayPaymentId = null;
+    let checkoutUrl = null;
+
+    if (effectivePaymentMethod === 'ONLINE' || effectivePaymentMethod === 'UPI') {
+      const paymentOrder = await payments.createPaymentOrder({
+        orderId,
+        amount: totalPrice,
+        currency: 'INR',
+        notes: { orderId, customerId: customer.id, stockistId },
+        linkedAccountId: stockist.linked_account_id || stockist.linked_account || null,
+        transferAmount: stockistPayout
+      });
+      razorpayOrderId = paymentOrder.id;
+      checkoutUrl = paymentOrder.checkout_url || payments.getCheckoutUrl(orderId);
+    }
+
     const order = {
       id: orderId,
       cart_id: cartId,
@@ -3789,8 +3838,8 @@ const handleCreateOrderRoute = async (req, res) => {
       cancel_deadline: cancelDeadline,
       no_show_count: 0,
       reschedule_used: false,
-      razorpay_order_id: (effectivePaymentMethod === 'PAY_AT_HANDOVER' || effectivePaymentMethod?.includes('COD')) ? null : ('rzp_order_' + generateId()),
-      razorpay_payment_id: (effectivePaymentMethod === 'PAY_AT_HANDOVER' || effectivePaymentMethod?.includes('COD')) ? null : ('rzp_pay_' + generateId()),
+      razorpay_order_id: razorpayOrderId,
+      razorpay_payment_id: razorpayPaymentId,
       split_released: false,
       coupon_reward_id: couponRewardId || null,
       coupon_name: reward ? reward.name : null,
@@ -3800,7 +3849,7 @@ const handleCreateOrderRoute = async (req, res) => {
       created_at: now.toISOString()
     };
 
-    preparedOrders.push({ order, orderItems, stockistPayout, platformPayout, settlement, effectivePaymentMethod, paymentStatus, couponDiscount, couponPointsSpent });
+    preparedOrders.push({ order, orderItems, stockistPayout, platformPayout, settlement, effectivePaymentMethod, paymentStatus, couponDiscount, couponPointsSpent, checkoutUrl });
   }
 
   for (const { order, orderItems, stockistPayout, platformPayout, settlement, effectivePaymentMethod, paymentStatus, couponDiscount, couponPointsSpent } of preparedOrders) {
@@ -3821,15 +3870,16 @@ const handleCreateOrderRoute = async (req, res) => {
         commission_rate_used: settlement.commissionRateUsed,
         earn_rate_used: settlement.earnRateUsed,
         is_cod: effectivePaymentMethod?.includes('COD'),
-        status: paymentStatus === 'HELD' ? 'HELD' : 'PENDING_COD',
+        status: effectivePaymentMethod === 'ONLINE' ? 'PENDING_PAYMENT' : (paymentStatus === 'HELD' ? 'HELD' : 'PENDING_COD'),
         coupon_cost: couponDiscount,
         created_at: now.toISOString()
       });
     }
 
     // Payment ledger event
-    appendPaymentEvent(orderId, effectivePaymentMethod === 'PAY_AT_HANDOVER' ? 'PAY_AT_HANDOVER_ORDER_CREATED' : (paymentStatus === 'COD' ? 'COD_ORDER_CREATED' : 'HELD'), order.amount_paid, {
+    appendPaymentEvent(orderId, effectivePaymentMethod === 'PAY_AT_HANDOVER' ? 'PAY_AT_HANDOVER_ORDER_CREATED' : (paymentStatus === 'COD' ? 'COD_ORDER_CREATED' : (effectivePaymentMethod === 'ONLINE' ? 'PENDING_PAYMENT' : 'HELD')), order.amount_paid, {
       method: effectivePaymentMethod,
+      gateway_order_id: order.razorpay_order_id,
       stockist_share: stockistPayout,
       platform_share: platformPayout - couponDiscount,
       coupon_discount: couponDiscount
@@ -3853,28 +3903,34 @@ const handleCreateOrderRoute = async (req, res) => {
     await runFraudDetection(order, customer);
 
     createdOrders.push(await enrichOrder(order, req));
+
     await _sendOrderConfirmedSms(order);
 
-    try {
-      const stockistRow = stockistsTable.find(s => s.id === stockistId);
-      if (stockistRow && stockistRow.user_id) {
-        await createNotification({
-          userId: stockistRow.user_id,
-          type: 'new_order',
-          title: 'New order',
-          body: `Order #${orderId} received`,
-          link: `order:${orderId}`
-        });
+    // Stockist only sees and receives notification for confirmed orders
+    if (effectivePaymentMethod !== 'ONLINE' || paymentStatus === 'PAID_ONLINE') {
+      try {
+        const stockistRow = stockistsTable.find(s => s.id === stockistId);
+        if (stockistRow && stockistRow.user_id) {
+          await createNotification({
+            userId: stockistRow.user_id,
+            type: 'new_order',
+            title: 'New order',
+            body: `Order #${orderId} received`,
+            link: `order:${orderId}`
+          });
+        }
+      } catch (notifErr) {
+        console.error('[notification] Failed to create new_order notification:', notifErr);
       }
-    } catch (notifErr) {
-      console.error('[notification] Failed to create new_order notification:', notifErr);
     }
   }
 
+  // Push notification for non-online orders
   try {
     const allSubs = await db.getTable('stockist_push_subscriptions');
     let subsUpdated = false;
     for (const order of createdOrders) {
+      if (order.payment_method === 'ONLINE') continue;
       const subs = allSubs.filter(s => s.stockist_id === order.stockist_id);
       for (const sub of subs) {
         try {
@@ -3902,21 +3958,531 @@ const handleCreateOrderRoute = async (req, res) => {
     console.error('[push] Error processing push notifications:', err);
   }
 
+  const primaryCheckoutUrl = preparedOrders.find(p => p.checkoutUrl)?.checkoutUrl || null;
+  const returnedOrders = createdOrders.map((o, idx) => ({
+    ...o,
+    ...(preparedOrders[idx]?.checkoutUrl ? { checkout_url: preparedOrders[idx].checkoutUrl } : {})
+  }));
+
   return res.json({
     success: true,
     cart_id: cartId,
-    orders: createdOrders,
+    orders: returnedOrders,
+    checkout_url: primaryCheckoutUrl,
     // Backwards compat: expose first order's id/points for single-store clients
-    orderId: createdOrders[0].id,
-    pointsCredited: createdOrders.reduce((sum, o) => sum + (o.points_credited || 0), 0),
-    totalPointsCredited: createdOrders.reduce((sum, o) => sum + (o.points_credited || 0), 0),
-    margin: createdOrders[0].margin,
-    earnRatePercent: createdOrders[0].earn_rate_used,
-    order: createdOrders[0]
+    orderId: returnedOrders[0].id,
+    pointsCredited: returnedOrders.reduce((sum, o) => sum + (o.points_credited || 0), 0),
+    totalPointsCredited: returnedOrders.reduce((sum, o) => sum + (o.points_credited || 0), 0),
+    margin: returnedOrders[0].margin,
+    earnRatePercent: returnedOrders[0].earn_rate_used,
+    order: returnedOrders[0]
   });
 };
 app.post('/api/orders', requireAuth, handleCreateOrderRoute);
 app.post('/api/orders/create', requireAuth, handleCreateOrderRoute);
+
+// ----------------------------------------------------
+// PAYMENT CONNECTOR ROUTES
+// ----------------------------------------------------
+
+// Local test checkout page: /pay/test/:orderId
+app.get('/pay/test/:orderId', async (req, res) => {
+  const { orderId } = req.params;
+  const orders = await db.getTable('orders');
+  const order = orders.find(o => o.id === orderId);
+
+  if (!order) {
+    return res.status(404).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Order Not Found</title><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+      <body style="font-family:sans-serif;background:#0f172a;color:#f8fafc;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+        <div style="background:#1e293b;padding:2rem;border-radius:12px;border:1px solid #334155;text-align:center;">
+          <h2>Order Not Found</h2>
+          <p>Order ${escapeHtml(orderId)} could not be located.</p>
+          <a href="/" style="display:inline-block;margin-top:1rem;color:#38bdf8;text-decoration:none;">&larr; Return to store</a>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  const isAlreadyPaid = order.payment_status === 'PAID_ONLINE';
+  const amountToPay = (order.amount_paid !== undefined && order.amount_paid !== null ? order.amount_paid : order.total_price).toFixed(2);
+  const gatewayOrderId = order.razorpay_order_id || ('order_test_' + order.id);
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Test Payment Gateway — Razorpay Simulator</title>
+      <style>
+        * { box-sizing: border-box; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          background: #090d16;
+          color: #f1f5f9;
+          margin: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          padding: 1rem;
+        }
+        .card {
+          background: #111827;
+          border: 1px solid #1f2937;
+          border-radius: 16px;
+          max-width: 440px;
+          width: 100%;
+          padding: 2rem;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+        .badge {
+          display: inline-block;
+          font-size: 0.7rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          padding: 0.25rem 0.6rem;
+          border-radius: 9999px;
+          background: #312e81;
+          color: #a5b4fc;
+          margin-bottom: 1rem;
+        }
+        h1 { font-size: 1.25rem; margin: 0 0 0.5rem 0; font-weight: 600; }
+        .amount-box {
+          background: #1e293b;
+          border: 1px solid #334155;
+          border-radius: 12px;
+          padding: 1.25rem;
+          margin: 1.25rem 0;
+          text-align: center;
+        }
+        .amount {
+          font-size: 2rem;
+          font-weight: 700;
+          color: #38bdf8;
+        }
+        .details {
+          font-size: 0.85rem;
+          color: #94a3b8;
+          margin-bottom: 1.5rem;
+          line-height: 1.6;
+        }
+        .details strong { color: #f8fafc; }
+        .btn {
+          width: 100%;
+          padding: 0.85rem;
+          border-radius: 8px;
+          font-size: 0.95rem;
+          font-weight: 600;
+          cursor: pointer;
+          border: none;
+          transition: all 0.2s;
+          margin-bottom: 0.75rem;
+        }
+        .btn-success {
+          background: #10b981;
+          color: #ffffff;
+        }
+        .btn-success:hover { background: #059669; }
+        .btn-fail {
+          background: #374151;
+          color: #fca5a5;
+          border: 1px solid #ef4444;
+        }
+        .btn-fail:hover { background: #4b5563; }
+        .note {
+          font-size: 0.75rem;
+          color: #64748b;
+          text-align: center;
+          margin-top: 1rem;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <span class="badge">Razorpay Test Simulator</span>
+        <h1>Payment Gateway Checkout</h1>
+        <div class="details">
+          <div>Order: <strong>#${escapeHtml(order.id)}</strong></div>
+          <div>Store: <strong>${escapeHtml(order.stockist_name || 'Stockist Store')}</strong></div>
+        </div>
+
+        <div class="amount-box">
+          <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.25rem;">Amount Due</div>
+          <div class="amount">₹${amountToPay}</div>
+        </div>
+
+        ${isAlreadyPaid ? `
+          <div style="background:#064e3b;color:#a7f3d0;padding:1rem;border-radius:8px;text-align:center;margin-bottom:1rem;">
+            Order is already paid online.
+          </div>
+          <button class="btn btn-success" onclick="window.location.href='/'">Return to Application</button>
+        ` : `
+          <button id="pay-success-btn" class="btn btn-success" onclick="simulateSuccess()">Pay successfully</button>
+          <button id="pay-fail-btn" class="btn btn-fail" onclick="simulateFailure()">Fail payment</button>
+        `}
+
+        <div class="note">
+          Simulated Razorpay transaction for dev/test environment. Real payments require PAYMENTS_MODE=live.
+        </div>
+      </div>
+
+      <script>
+        const ORDER_ID = ${JSON.stringify(order.id)};
+        const GATEWAY_ORDER_ID = ${JSON.stringify(gatewayOrderId)};
+
+        async function simulateSuccess() {
+          const btn = document.getElementById('pay-success-btn');
+          if (btn) { btn.disabled = true; btn.innerText = 'Processing payment...'; }
+          try {
+            const callbackRes = await fetch('/api/payments/test-callback', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                order_id: ORDER_ID,
+                gateway_order_id: GATEWAY_ORDER_ID
+              })
+            });
+            const data = await callbackRes.json();
+            if (data.success) {
+              window.location.href = '/?payment=success&orderId=' + encodeURIComponent(ORDER_ID);
+            } else {
+              alert('Payment verification failed: ' + (data.error || 'Unknown error'));
+              if (btn) { btn.disabled = false; btn.innerText = 'Pay successfully'; }
+            }
+          } catch (err) {
+            alert('Network error during payment verification');
+            if (btn) { btn.disabled = false; btn.innerText = 'Pay successfully'; }
+          }
+        }
+
+        async function simulateFailure() {
+          const btn = document.getElementById('pay-fail-btn');
+          if (btn) { btn.disabled = true; btn.innerText = 'Cancelling payment...'; }
+          try {
+            await fetch('/api/payments/fail', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                order_id: ORDER_ID,
+                reason: 'Customer chose to fail payment in test gateway'
+              })
+            });
+            window.location.href = '/?payment=failed&orderId=' + encodeURIComponent(ORDER_ID);
+          } catch (err) {
+            window.location.href = '/?payment=failed&orderId=' + encodeURIComponent(ORDER_ID);
+          }
+        }
+      </script>
+    </body>
+    </html>
+  `);
+});
+
+// Test callback helper that generates legitimate test signature and verifies (or handles test failure)
+app.post('/api/payments/test-callback', async (req, res) => {
+  const { order_id, orderId, gateway_order_id, action, reason } = req.body;
+  const targetOrderId = order_id || orderId;
+  if (!targetOrderId) {
+    return res.status(400).json({ error: 'Missing order_id' });
+  }
+
+  const orders = await db.getTable('orders');
+  const order = orders.find(o => o.id === targetOrderId);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+
+  if (action === 'fail' || action === 'failed') {
+    if (order.payment_status === 'PAID_ONLINE') {
+      return res.status(400).json({ error: 'Cannot fail an order that is already paid' });
+    }
+    order.payment_status = 'PAYMENT_FAILED';
+    await db.saveTable('orders', orders);
+
+    const splitPayouts = await db.getTable('split_payouts');
+    let spChanged = false;
+    for (const sp of splitPayouts) {
+      if (sp.order_id === order.id && sp.status !== 'CANCELLED') {
+        sp.status = 'CANCELLED';
+        spChanged = true;
+      }
+    }
+    if (spChanged) await db.saveTable('split_payouts', splitPayouts);
+
+    appendPaymentEvent(order.id, 'PAYMENT_FAILED', 0, {
+      method: 'ONLINE',
+      reason: reason || 'Test callback simulated failure'
+    });
+
+    const enriched = await enrichOrder(order, req);
+    return res.json({
+      success: true,
+      payment_status: 'PAYMENT_FAILED',
+      order: enriched,
+      ...enriched
+    });
+  }
+
+  const effectiveGatewayOrderId = gateway_order_id || order.razorpay_order_id || ('order_test_' + order.id);
+  const paymentId = 'pay_test_' + Math.random().toString(36).substring(2, 12);
+  const signature = payments.generateTestSignature(effectiveGatewayOrderId, paymentId);
+
+  const isValid = payments.verifyPaymentSignature({
+    order_id: effectiveGatewayOrderId,
+    payment_id: paymentId,
+    signature
+  });
+  if (!isValid) return res.status(400).json({ error: 'Signature verification failed' });
+
+  order.payment_status = 'PAID_ONLINE';
+  order.razorpay_payment_id = paymentId;
+  order.razorpay_order_id = effectiveGatewayOrderId;
+  order.paid_at = new Date().toISOString();
+  await db.saveTable('orders', orders);
+
+  const splitPayouts = await db.getTable('split_payouts');
+  let spChanged = false;
+  for (const sp of splitPayouts) {
+    if (sp.order_id === order.id) {
+      sp.status = 'HELD';
+      spChanged = true;
+    }
+  }
+  if (spChanged) await db.saveTable('split_payouts', splitPayouts);
+
+  appendPaymentEvent(order.id, 'PAID_ONLINE', order.amount_paid, {
+    method: 'ONLINE',
+    gateway_order_id: effectiveGatewayOrderId,
+    gateway_payment_id: paymentId
+  });
+
+  try {
+    const stockists = await db.getTable('stockists');
+    const stockistRow = stockists.find(s => s.id === order.stockist_id);
+    if (stockistRow && stockistRow.user_id) {
+      await createNotification({
+        userId: stockistRow.user_id,
+        type: 'new_order',
+        title: 'New order',
+        body: `Order #${order.id} received`,
+        link: `order:${order.id}`
+      });
+    }
+  } catch (err) {
+    console.error('[payment:test-callback] Notification error:', err);
+  }
+  await _sendOrderConfirmedSms(order);
+
+  const enriched = await enrichOrder(order, req);
+  return res.json({
+    success: true,
+    payment_status: 'PAID_ONLINE',
+    razorpay_payment_id: paymentId,
+    order: enriched,
+    ...enriched
+  });
+});
+
+// Verify payment signature (works for both test driver and Razorpay gateway)
+app.post('/api/payments/verify', async (req, res) => {
+  const targetOrderId = req.body.order_id || req.body.orderId;
+  const gwOrderId = req.body.gateway_order_id || req.body.razorpay_order_id;
+  const gwPaymentId = req.body.gateway_payment_id || req.body.razorpay_payment_id;
+  const signature = req.body.signature || req.body.razorpay_signature;
+
+  if (!targetOrderId || !gwOrderId || !gwPaymentId || !signature) {
+    return res.status(400).json({ error: 'Missing required payment verification fields' });
+  }
+
+  const orders = await db.getTable('orders');
+  const order = orders.find(o => o.id === targetOrderId);
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  const isValid = payments.verifyPaymentSignature({
+    order_id: gwOrderId,
+    payment_id: gwPaymentId,
+    signature
+  });
+
+  if (!isValid) {
+    return res.status(400).json({ error: 'Invalid payment signature' });
+  }
+
+  if (order.payment_status === 'PAID_ONLINE') {
+    return res.json({ success: true, order: await enrichOrder(order, req), already_paid: true });
+  }
+
+  order.payment_status = 'PAID_ONLINE';
+  order.razorpay_payment_id = gwPaymentId;
+  order.razorpay_order_id = gwOrderId;
+  order.paid_at = new Date().toISOString();
+  await db.saveTable('orders', orders);
+
+  const splitPayouts = await db.getTable('split_payouts');
+  let spChanged = false;
+  for (const sp of splitPayouts) {
+    if (sp.order_id === order.id) {
+      sp.status = 'HELD';
+      spChanged = true;
+    }
+  }
+  if (spChanged) await db.saveTable('split_payouts', splitPayouts);
+
+  appendPaymentEvent(order.id, 'PAID_ONLINE', order.amount_paid, {
+    method: 'ONLINE',
+    gateway_order_id: gwOrderId,
+    gateway_payment_id: gwPaymentId
+  });
+
+  try {
+    const stockists = await db.getTable('stockists');
+    const stockistRow = stockists.find(s => s.id === order.stockist_id);
+    if (stockistRow && stockistRow.user_id) {
+      await createNotification({
+        userId: stockistRow.user_id,
+        type: 'new_order',
+        title: 'New order',
+        body: `Order #${order.id} received`,
+        link: `order:${order.id}`
+      });
+    }
+  } catch (err) {
+    console.error('[payment:verify] Notification error:', err);
+  }
+  await _sendOrderConfirmedSms(order);
+
+  return res.json({ success: true, order: await enrichOrder(order, req) });
+});
+
+// Fail payment
+app.post('/api/payments/fail', async (req, res) => {
+  const { order_id, reason } = req.body;
+  if (!order_id) return res.status(400).json({ error: 'order_id is required' });
+
+  const orders = await db.getTable('orders');
+  const order = orders.find(o => o.id === order_id);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+
+  if (order.payment_status === 'PAID_ONLINE') {
+    return res.status(400).json({ error: 'Cannot fail an order that is already paid' });
+  }
+
+  order.payment_status = 'PAYMENT_FAILED';
+  await db.saveTable('orders', orders);
+
+  const splitPayouts = await db.getTable('split_payouts');
+  let spChanged = false;
+  for (const sp of splitPayouts) {
+    if (sp.order_id === order.id && sp.status !== 'CANCELLED') {
+      sp.status = 'CANCELLED';
+      spChanged = true;
+    }
+  }
+  if (spChanged) {
+    await db.saveTable('split_payouts', splitPayouts);
+  }
+
+  appendPaymentEvent(order.id, 'PAYMENT_FAILED', order.amount_paid, {
+    reason: reason || 'Payment failed'
+  });
+
+  return res.json({ success: true, order: await enrichOrder(order, req) });
+});
+
+// Razorpay webhook
+app.post('/api/payments/webhook', async (req, res) => {
+  const signature = req.headers['x-razorpay-signature'];
+  const rawBody = req.rawBody || JSON.stringify(req.body);
+
+  if (!payments.verifyWebhookSignature(rawBody, signature)) {
+    return res.status(400).json({ error: 'Invalid webhook signature' });
+  }
+
+  const event = req.body;
+  const eventName = event.event;
+  const payload = event.payload || {};
+
+  if (eventName === 'order.paid' || eventName === 'payment.captured') {
+    const payment = payload.payment?.entity || {};
+    const gatewayOrderId = payment.order_id;
+    const gatewayPaymentId = payment.id;
+    const orders = await db.getTable('orders');
+    const order = orders.find(o => o.razorpay_order_id === gatewayOrderId || o.id === payment.notes?.orderId);
+    if (order && order.payment_status !== 'PAID_ONLINE') {
+      order.payment_status = 'PAID_ONLINE';
+      order.razorpay_payment_id = gatewayPaymentId;
+      order.paid_at = new Date().toISOString();
+      await db.saveTable('orders', orders);
+
+      const splitPayouts = await db.getTable('split_payouts');
+      let spChanged = false;
+      for (const sp of splitPayouts) {
+        if (sp.order_id === order.id) {
+          sp.status = 'HELD';
+          spChanged = true;
+        }
+      }
+      if (spChanged) await db.saveTable('split_payouts', splitPayouts);
+
+      appendPaymentEvent(order.id, 'PAID_ONLINE', order.amount_paid, {
+        method: 'ONLINE',
+        source: 'webhook',
+        gateway_order_id: gatewayOrderId,
+        gateway_payment_id: gatewayPaymentId
+      });
+
+      try {
+        const stockists = await db.getTable('stockists');
+        const stockistRow = stockists.find(s => s.id === order.stockist_id);
+        if (stockistRow && stockistRow.user_id) {
+          await createNotification({
+            userId: stockistRow.user_id,
+            type: 'new_order',
+            title: 'New order',
+            body: `Order #${order.id} received`,
+            link: `order:${order.id}`
+          });
+        }
+      } catch (err) {
+        console.error('[payment:webhook] Notification error:', err);
+      }
+      await _sendOrderConfirmedSms(order);
+    }
+  } else if (eventName === 'payment.failed') {
+    const payment = payload.payment?.entity || {};
+    const gatewayOrderId = payment.order_id;
+    const orders = await db.getTable('orders');
+    const order = orders.find(o => o.razorpay_order_id === gatewayOrderId || o.id === payment.notes?.orderId);
+    if (order && order.payment_status !== 'PAID_ONLINE') {
+      order.payment_status = 'PAYMENT_FAILED';
+      await db.saveTable('orders', orders);
+
+      const splitPayouts = await db.getTable('split_payouts');
+      let spChanged = false;
+      for (const sp of splitPayouts) {
+        if (sp.order_id === order.id && sp.status !== 'CANCELLED') {
+          sp.status = 'CANCELLED';
+          spChanged = true;
+        }
+      }
+      if (spChanged) await db.saveTable('split_payouts', splitPayouts);
+
+      appendPaymentEvent(order.id, 'PAYMENT_FAILED', order.amount_paid, {
+        source: 'webhook',
+        reason: payment.error_description || 'Payment failed'
+      });
+    }
+  }
+
+  return res.json({ status: 'ok' });
+});
 
 // Cancel an order — enforces cancel window
 app.post('/api/orders/:id/cancel', requireAuth, async (req, res) => {
@@ -4103,6 +4669,29 @@ app.post('/api/orders/:id/verify-pickup', requireAuth, async (req, res) => {
   if (payout) {
     payout.status = 'PROCESSED_IMMEDIATELY';
     await db.updateRow('split_payouts', payout.id, payout);
+  }
+
+  if (order.payment_method === 'ONLINE' || order.payment_status === 'PAID_ONLINE') {
+    const stockists = await db.getTable('stockists');
+    const stockist = stockists.find(s => s.id === order.stockist_id);
+    try {
+      const releaseRes = await payments.releaseTransfer({ order, splitPayout: payout, stockist });
+      order.split_released = true;
+      order.transfer_released = true;
+      if (releaseRes.transfer_id) order.razorpay_transfer_id = releaseRes.transfer_id;
+      await db.updateRow('orders', order.id, order);
+
+      if (payout) {
+        payout.status = 'SPLIT_RELEASED';
+        await db.updateRow('split_payouts', payout.id, payout);
+      }
+      appendPaymentEvent(order.id, 'TRANSFER_RELEASED', payout ? payout.stockist_amount : 0, {
+        stockist_id: order.stockist_id,
+        transfer_id: releaseRes.transfer_id
+      });
+    } catch (transferErr) {
+      console.error('[payment:verify-pickup] Failed to release transfer:', transferErr);
+    }
   }
 
   return res.json({ success: true, order: await enrichOrder(order, req) });
@@ -4351,6 +4940,11 @@ app.get('/api/orders', requireAuth, async (req, res) => {
   if (customerId) filtered = filtered.filter(o => o.customer_id === customerId);
   if (stockistId) filtered = filtered.filter(o => o.stockist_id === stockistId);
 
+  // Shop isolation: stockist never sees online orders that are not PAID_ONLINE
+  if (stockistId && !customerId) {
+    filtered = filtered.filter(o => !(o.payment_method === 'ONLINE' && o.payment_status !== 'PAID_ONLINE'));
+  }
+
   // For stockist view: transition CONFIRMING→PENDING in DB if window has closed
   if (stockistId && !customerId) {
     const now = new Date();
@@ -4359,8 +4953,10 @@ app.get('/api/orders', requireAuth, async (req, res) => {
     let changed = false;
     allOrders.forEach(o => {
       if (o.status === 'CONFIRMING' && o.stockist_id === stockistId && new Date(o.cancel_deadline) <= now) {
-        o.status = 'PENDING';
-        changed = true;
+        if (!(o.payment_method === 'ONLINE' && o.payment_status !== 'PAID_ONLINE')) {
+          o.status = 'PENDING';
+          changed = true;
+        }
       }
     });
     if (changed) await db.saveTable('orders', allOrders);
@@ -4560,9 +5156,30 @@ const handleOrderStatusUpdate = async (req, res) => {
       }
     }
 
-    // Release split if HELD
-    if (order.payment_status === 'HELD' && !order.split_released) {
-      // Auto-release on delivery (can also be done manually by admin)
+    // Release split if HELD or ONLINE
+    if (order.payment_method === 'ONLINE' || order.payment_status === 'PAID_ONLINE') {
+      const stockists = await db.getTable('stockists');
+      const stockist = stockists.find(s => s.id === order.stockist_id);
+      const splitPayouts = await db.getTable('split_payouts');
+      const payout = splitPayouts.find(sp => sp.order_id === order.id);
+      try {
+        const releaseRes = await payments.releaseTransfer({ order, splitPayout: payout, stockist });
+        order.split_released = true;
+        order.transfer_released = true;
+        if (releaseRes.transfer_id) order.razorpay_transfer_id = releaseRes.transfer_id;
+        await db.updateRow('orders', order.id, order);
+
+        if (payout) {
+          payout.status = 'SPLIT_RELEASED';
+          await db.updateRow('split_payouts', payout.id, payout);
+        }
+        appendPaymentEvent(order.id, 'TRANSFER_RELEASED', payout ? payout.stockist_amount : 0, {
+          stockist_id: order.stockist_id,
+          transfer_id: releaseRes.transfer_id
+        });
+      } catch (transferErr) {
+        console.error('[payment:delivery] Failed to release transfer:', transferErr);
+      }
     }
   }
 
@@ -4705,8 +5322,20 @@ app.post('/api/admin/release-split/:orderId', async (req, res) => {
     return res.json({ success: true, no_op: true, message: 'Split already released. No action taken.' });
   }
 
-  if (order.payment_status !== 'HELD') {
+  if (order.payment_status !== 'HELD' && order.payment_status !== 'PAID_ONLINE') {
     return res.status(400).json({ error: 'Order is not in HELD state. Cannot release.' });
+  }
+
+  if (order.payment_method === 'ONLINE' || order.razorpay_payment_id) {
+    try {
+      await payments.releaseTransfer({
+        orderId: order.id,
+        transferId: order.transfer_id,
+        stockistId: order.stockist_id
+      });
+    } catch (relErr) {
+      console.warn('[release-split] Transfer release notice:', relErr.message);
+    }
   }
 
   order.payment_status = 'SPLIT_RELEASED';
@@ -4757,10 +5386,26 @@ app.post('/api/admin/orders/:id/refund', async (req, res) => {
     refundAmount = Math.max(0, orderAmountPaid - platformCommission);
   }
 
+  if (order.payment_method === 'ONLINE' || order.razorpay_payment_id) {
+    try {
+      const refundRes = await payments.refundPayment({
+        orderId: order.id,
+        paymentId: order.razorpay_payment_id,
+        amount: refundAmount,
+        reason: 'Admin refund'
+      });
+      order.refund_id = refundRes?.id || refundRes?.refund_id;
+    } catch (refErr) {
+      console.error('[admin:refund] Failed to process online refund:', refErr);
+      return res.status(500).json({ error: 'Gateway refund failed: ' + refErr.message });
+    }
+  }
+
   order.payment_status = 'REFUNDED';
+  order.refund_amount = refundAmount;
   await db.saveTable('orders', orders);
 
-  appendPaymentEvent(id, 'REFUNDED', refundAmount, { net_refund: refundAmount });
+  appendPaymentEvent(id, 'REFUNDED', refundAmount, { net_refund: refundAmount, refund_id: order.refund_id });
 
   return res.json({ success: true, order: await enrichOrder(order, req) });
 });
@@ -6402,6 +7047,14 @@ app.patch('/api/admin/stockists/:id', async (req, res) => {
     await appendAudit(req, 'BLACKLIST_STOCKIST', 'stockist', id, null, { action, reason });
   }
 
+  if (req.body.linked_account_id !== undefined) {
+    if (integrations.getPaymentsMode() === 'live' && (!req.body.linked_account_id || !req.body.linked_account_id.trim())) {
+      return res.status(400).json({ error: 'Linked account ID (Razorpay Route) is required in live payments mode' });
+    }
+    stockist.linked_account_id = req.body.linked_account_id ? req.body.linked_account_id.trim() : null;
+    await db.saveTable('stockists', stockists);
+  }
+
   return res.json({ success: true, stockist, user, is_active: stockist.is_active });
 });
 
@@ -7577,7 +8230,7 @@ app.get('/api/admin/stockists/:id', async (req, res) => {
 });
 
 app.post('/api/admin/stockists', async (req, res) => {
-  let { name, region_id, vendor_id, phone, delivery_radius_km, opening_time, closing_time, prep_eta_minutes, commission_rate } = req.body;
+  let { name, region_id, vendor_id, phone, delivery_radius_km, opening_time, closing_time, prep_eta_minutes, commission_rate, linked_account_id } = req.body;
   if (!name || !region_id || !phone) {
     return res.status(400).json({ error: 'Name, region_id, and phone are required', message: 'Choose a region.' });
   }
@@ -7588,6 +8241,10 @@ app.post('/api/admin/stockists', async (req, res) => {
   const validPhone = checkPhone(phone, res);
   if (!validPhone) return;
   phone = validPhone;
+
+  if (integrations.getPaymentsMode() === 'live' && (!linked_account_id || !linked_account_id.trim())) {
+    return res.status(400).json({ error: 'Linked account ID (Razorpay Route) is required in live payments mode' });
+  }
 
   const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
   if (opening_time && (opening_time === '24:00' || !timeRegex.test(opening_time))) {
@@ -7649,6 +8306,7 @@ app.post('/api/admin/stockists', async (req, res) => {
     opening_time: opening_time || '08:00',
     closing_time: closing_time || '20:00',
     prep_eta_minutes: parseInt(prep_eta_minutes) || 15,
+    linked_account_id: linked_account_id ? linked_account_id.trim() : null,
     created_at: new Date().toISOString()
   };
   stockists.push(newStockist);
@@ -7667,10 +8325,14 @@ app.post('/api/admin/stockists', async (req, res) => {
 
 app.post('/api/admin/stockists/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, address, opening_time, closing_time, prep_eta_minutes, delivery_radius_km, region_id, vendor_id, min_order_value, kyc_id_type, kyc_id_number, user_name, user_phone } = req.body;
+  const { name, address, opening_time, closing_time, prep_eta_minutes, delivery_radius_km, region_id, vendor_id, min_order_value, kyc_id_type, kyc_id_number, user_name, user_phone, linked_account_id } = req.body;
   const stockists = await db.getTable('stockists');
   const stockist = stockists.find(s => s.id === id);
   if (!stockist) return res.status(404).json({ error: 'Stockist not found' });
+
+  if (integrations.getPaymentsMode() === 'live' && linked_account_id !== undefined && (!linked_account_id || !linked_account_id.trim())) {
+    return res.status(400).json({ error: 'Linked account ID (Razorpay Route) is required in live payments mode' });
+  }
 
   const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
   if (opening_time && (opening_time === '24:00' || !timeRegex.test(opening_time))) {
@@ -7691,7 +8353,7 @@ app.post('/api/admin/stockists/:id', async (req, res) => {
     if (region_id && vendor.region_id !== region_id) return res.status(400).json({ error: 'Vendor does not belong to the selected region' });
   }
 
-  const beforeStockist = { name: stockist.name, opening_time: stockist.opening_time, closing_time: stockist.closing_time, prep_eta_minutes: stockist.prep_eta_minutes, delivery_radius_km: stockist.delivery_radius_km, region_id: stockist.region_id, vendor_id: stockist.vendor_id, min_order_value: stockist.min_order_value };
+  const beforeStockist = { name: stockist.name, opening_time: stockist.opening_time, closing_time: stockist.closing_time, prep_eta_minutes: stockist.prep_eta_minutes, delivery_radius_km: stockist.delivery_radius_km, region_id: stockist.region_id, vendor_id: stockist.vendor_id, min_order_value: stockist.min_order_value, linked_account_id: stockist.linked_account_id };
   
   let updatedProductsCount = 0;
   const regionChanged = region_id !== undefined && region_id !== beforeStockist.region_id;
@@ -7706,6 +8368,7 @@ app.post('/api/admin/stockists/:id', async (req, res) => {
   if (region_id !== undefined) stockist.region_id = region_id;
   if (vendor_id !== undefined) stockist.vendor_id = vendor_id;
   if (min_order_value !== undefined) stockist.min_order_value = parseFloat(min_order_value);
+  if (linked_account_id !== undefined) stockist.linked_account_id = linked_account_id ? linked_account_id.trim() : null;
   await db.saveTable('stockists', stockists);
 
   if (vendorChanged) {
@@ -11573,6 +12236,15 @@ const readyPromise = db.init().then(async () => {
       process.exit(1);
     }
   }
+
+  if (process.env.NODE_ENV === 'production' && integrations.getPaymentsMode() === 'live') {
+    const missingKeys = integrations.getMissingPaymentsKeys();
+    if (missingKeys.length > 0) {
+      console.error(`\n[FATAL ERROR] Production cannot start with PAYMENTS_MODE=live. Missing keys: ${missingKeys.join(', ')}\n`);
+      process.exit(1);
+    }
+  }
+
   if (!serverInstance) {
     serverInstance = app.listen(PORT, '0.0.0.0', () => {
       console.log(`[Backend Server] ISP-Commerce Loyalty API listening on port ${PORT} (0.0.0.0)`);
