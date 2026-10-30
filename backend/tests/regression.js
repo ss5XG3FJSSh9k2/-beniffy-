@@ -9030,6 +9030,39 @@ async function main() {
     whatsappModRef.sendWhatsAppUpdate = origSendWhatsApp;
   }
 
+  // 8. Meta WhatsApp Cloud API driver creates parameterized components for templates
+  const origFetch = global.fetch;
+  let interceptedPayload = null;
+  try {
+    global.fetch = async (url, opts) => {
+      if (url.includes('graph.facebook.com')) {
+        interceptedPayload = JSON.parse(opts.body);
+        return { ok: true, status: 200, json: async () => ({ messages: [{ id: 'wamid.test123' }] }) };
+      }
+      return origFetch(url, opts);
+    };
+    process.env.WHATSAPP_MODE = 'live';
+    process.env.WHATSAPP_TOKEN = 'test_meta_token';
+    process.env.WHATSAPP_PHONE_NUMBER_ID = '1234567890';
+    
+    const liveRes = await whatsappModRef.sendWhatsAppUpdate({
+      phone: '9876543210',
+      templateKey: 'ORDER_PLACED',
+      params: { orderId: 'o-test1', shopName: 'Test Shop', amount: 500 },
+      user: { whatsapp_opt_in: true }
+    });
+    assert(liveRes.success === true && liveRes.live === true, 'WhatsApp live driver sends template successfully');
+    assert(interceptedPayload && interceptedPayload.template && interceptedPayload.template.components, 'Payload includes template components');
+    assert(interceptedPayload.template.components[0].parameters.some(p => p.text === 'o-test1'), 'Components include orderId parameter');
+    testCount++; passedCount++;
+    console.log(`[PASS] Test #${testCount}: Meta WhatsApp Cloud API driver generates template parameters in components`);
+  } finally {
+    global.fetch = origFetch;
+    delete process.env.WHATSAPP_MODE;
+    delete process.env.WHATSAPP_TOKEN;
+    delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  }
+
     clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);

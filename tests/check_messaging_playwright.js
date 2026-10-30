@@ -137,7 +137,14 @@ async function run() {
     if (!emailCardText.toLowerCase().includes('email: test') && !emailCardText.toLowerCase().includes('test')) {
       throw new Error(`Expected Email card to show mode "test", got: ${emailCardText}`);
     }
-    console.log('✓ [PASS] Integrations screen shows SMS: test, Email: test');
+    const waCard = adminPage.locator('[data-testid="integration-whatsapp"]');
+    await waCard.waitFor({ state: 'visible', timeout: 5000 });
+    const waCardText = await waCard.textContent();
+    console.log(`WhatsApp card text: "${waCardText.replace(/\s+/g, ' ').trim()}"`);
+    if (!waCardText.toLowerCase().includes('whatsapp: test') && !waCardText.toLowerCase().includes('test')) {
+      throw new Error(`Expected WhatsApp card to show mode "test", got: ${waCardText}`);
+    }
+    console.log('✓ [PASS] Integrations screen shows SMS: test, Email: test, WhatsApp: test');
 
     // Check Admin Message Outbox
     const outboxNav = adminPage.locator('[data-testid="admin-nav-outbox"]');
@@ -212,11 +219,47 @@ async function run() {
 
     // Verify user is logged in
     const userJson = await custPage.evaluate(() => localStorage.getItem('currentUser'));
+    const userToken = await custPage.evaluate(() => localStorage.getItem('token'));
     const loggedInUser = JSON.parse(userJson || '{}');
     console.log(`Signed up customer user: ${loggedInUser.id}, whatsapp_opt_in=${loggedInUser.whatsapp_opt_in}`);
     if (loggedInUser.whatsapp_opt_in !== true) {
       throw new Error('Expected new customer to have whatsapp_opt_in === true');
     }
+
+    // Place an order as the newly signed-up customer
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const pickupSlot = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}T17:00`;
+    const orderRes = await fetch('http://localhost:3001/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
+      },
+      body: JSON.stringify({
+        customerId: loggedInUser.id,
+        stockistId: 's1',
+        items: [{ productId: 'p1', quantity: 1, price: 100 }],
+        fulfillmentType: 'PICKUP',
+        pickupSlot: pickupSlot,
+        paymentMethod: 'PAY_AT_HANDOVER'
+      })
+    });
+    const orderData = await orderRes.json();
+    console.log(`Placed test order: ${orderData.orderId || orderData.order?.id}, success=${orderRes.ok}`);
+    if (!orderRes.ok) {
+      throw new Error(`Failed to place test order: ${JSON.stringify(orderData)}`);
+    }
+
+    // Verify "order placed" WhatsApp message is in the outbox
+    const waOutboxRes = await fetch('http://localhost:3001/api/admin/outbox?channel=whatsapp', {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    });
+    const waOutboxData = await waOutboxRes.json();
+    const orderPlacedMsg = (waOutboxData.messages || []).find(m => m.to === newPhone && m.templateId === 'ORDER_PLACED');
+    if (!orderPlacedMsg) {
+      throw new Error(`Expected ORDER_PLACED WhatsApp message in outbox for ${newPhone}`);
+    }
+    console.log(`✓ [PASS] Found ORDER_PLACED in outbox: "${orderPlacedMsg.text.slice(0, 50)}..."`);
 
     // Go to My Profile
     const profileTab = custPage.locator('.phone-nav-btn:has-text("Profile"), button:has-text("My Profile")').first();
@@ -246,6 +289,28 @@ async function run() {
     if (updatedUser.whatsapp_opt_in !== false) {
       throw new Error('Expected customer whatsapp_opt_in to be false after toggle');
     }
+
+    // Cancel order; verify next WhatsApp update is NOT sent
+    const testOrderId = orderData.orderId || orderData.order?.id;
+    const cancelRes = await fetch(`http://localhost:3001/api/orders/${testOrderId}/cancel`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
+      },
+      body: JSON.stringify({ reason: 'Changed mind' })
+    });
+    console.log(`Cancelled order: success=${cancelRes.ok}`);
+
+    const waOutboxAfterCancel = await fetch('http://localhost:3001/api/admin/outbox?channel=whatsapp', {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    });
+    const waDataAfterCancel = await waOutboxAfterCancel.json();
+    const cancelMsg = (waDataAfterCancel.messages || []).find(m => m.to === newPhone && m.templateId === 'ORDER_CANCELLED');
+    if (cancelMsg) {
+      throw new Error(`Found unexpected ORDER_CANCELLED message for opted-out customer ${newPhone}`);
+    }
+    console.log(`✓ [PASS] Opted-out customer received no subsequent WhatsApp update`);
     console.log('✓ [PASS] Customer WhatsApp opt-in and toggle off verified end-to-end');
 
     await custPage.close();

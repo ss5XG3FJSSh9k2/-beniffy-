@@ -40,7 +40,19 @@ async function sendWhatsAppUpdate({ phone, templateKey, params = {}, lang = 'en'
       const cleanPhone = phone.replace(/\D/g, '');
       const recipientPhone = cleanPhone.startsWith('91') ? cleanPhone : ('91' + cleanPhone);
 
-      const res = await fetch(`https://graph.facebook.com/v18.0/${phoneId}/messages`, {
+      const components = [];
+      const paramEntries = Object.entries(params);
+      if (paramEntries.length > 0) {
+        components.push({
+          type: 'body',
+          parameters: paramEntries.map(([k, v]) => ({
+            type: 'text',
+            parameter_name: k,
+            text: String(v)
+          }))
+        });
+      }
+      const res = await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -53,7 +65,8 @@ async function sendWhatsAppUpdate({ phone, templateKey, params = {}, lang = 'en'
           type: 'template',
           template: {
             name: metaTemplateName,
-            language: { code: lang === 'hi' ? 'hi' : (lang === 'bn' ? 'bn' : 'en_US') }
+            language: { code: lang === 'hi' ? 'hi' : (lang === 'bn' ? 'bn' : 'en_US') },
+            ...(components.length > 0 ? { components } : {})
           }
         })
       });
