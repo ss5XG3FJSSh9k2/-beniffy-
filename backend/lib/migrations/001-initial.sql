@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS users (
   kyc_details JSONB,
   is_active BOOLEAN DEFAULT true,
   flags JSONB,
+  whatsapp_opt_in BOOLEAN DEFAULT false,
+  whatsapp_opt_in_at TIMESTAMPTZ,
   rating NUMERIC(3,2),
   ratings_count INT,
   created_at TIMESTAMPTZ

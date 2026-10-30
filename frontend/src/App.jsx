@@ -64,7 +64,8 @@ import {
   Edit,
   Trash2,
   Star,
-  Bell
+  Bell,
+  Mail
 } from 'lucide-react';
 import {
   BarChart,
@@ -1877,6 +1878,8 @@ export default function App() {
     setShowStockistSignup(false);
     setShowPartnerApply(false);
     setOtpSent(false);
+    setOtpDeliveryInfo(null);
+    setCustomerWhatsappOptIn(false);
     setLoginPhone('');
     setLoginErrorMessage('');
     setLoginOtp('');
@@ -1974,11 +1977,44 @@ export default function App() {
   }, [supportSettingsDirty]);
 
   const [paymentsMode, setPaymentsMode] = useState('test');
+  const [smsMode, setSmsMode] = useState('test');
+  const [emailMode, setEmailMode] = useState('test');
+  const [whatsappMode, setWhatsappMode] = useState('test');
   const [integrationsList, setIntegrationsList] = useState([]);
   const [loadingIntegrations, setLoadingIntegrations] = useState(false);
   const [adminSettingsSubTab, setAdminSettingsSubTab] = useState('config');
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState('PAY_AT_HANDOVER');
   const [editStkLinkedAccount, setEditStkLinkedAccount] = useState('');
+
+  const [adminOutboxList, setAdminOutboxList] = useState([]);
+  const [loadingOutbox, setLoadingOutbox] = useState(false);
+  const [outboxChannelFilter, setOutboxChannelFilter] = useState('');
+
+  const fetchAdminOutbox = useCallback(async (channel) => {
+    setLoadingOutbox(true);
+    try {
+      const activeFilter = channel !== undefined ? channel : outboxChannelFilter;
+      const q = activeFilter ? `?channel=${encodeURIComponent(activeFilter)}` : '';
+      const res = await adminFetch(`/admin/outbox${q}`);
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setAdminOutboxList(data.messages || []);
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      setLoadingOutbox(false);
+    }
+  }, [adminFetch, outboxChannelFilter]);
+
+  const clearAdminOutbox = useCallback(async () => {
+    try {
+      await adminFetch('/admin/outbox/clear', { method: 'POST' });
+      fetchAdminOutbox();
+    } catch (e) {
+      // ignore
+    }
+  }, [adminFetch, fetchAdminOutbox]);
 
   const fetchAdminIntegrations = useCallback(async () => {
     setLoadingIntegrations(true);
@@ -2002,6 +2038,15 @@ export default function App() {
         if (!cfg) return;
         if (cfg.payments_mode) {
           setPaymentsMode(cfg.payments_mode);
+        }
+        if (cfg.sms_mode) {
+          setSmsMode(cfg.sms_mode);
+        }
+        if (cfg.email_mode) {
+          setEmailMode(cfg.email_mode);
+        }
+        if (cfg.whatsapp_mode) {
+          setWhatsappMode(cfg.whatsapp_mode);
         }
         const sPhone = cfg.support_phone || (cfg.support && cfg.support.phone) || '';
         const sWhatsapp = cfg.support_whatsapp || (cfg.support && cfg.support.whatsapp) || '';
@@ -2695,6 +2740,7 @@ export default function App() {
 
   const [profileName, setProfileName] = useState('');
   const [profileAddress, setProfileAddress] = useState('');
+  const [profileWhatsappOptIn, setProfileWhatsappOptIn] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [appliedCouponId, setAppliedCouponId] = useState(null);
   const [couponsExpanded, setCouponsExpanded] = useState(false);
@@ -2726,8 +2772,9 @@ export default function App() {
     if (Boolean(profileHasBroadband) !== Boolean(customerProfileSaved.hasBroadband)) return true;
     if (Boolean(profileNoBroadband) !== Boolean(customerProfileSaved.noBroadband)) return true;
     if (profileHasBroadband && !profileNoBroadband && (profileBroadbandPartnerId || '') !== (customerProfileSaved.broadbandPartnerId || '')) return true;
+    if (Boolean(profileWhatsappOptIn) !== Boolean(customerProfileSaved.whatsappOptIn)) return true;
     return false;
-  }, [customerProfileSaved, profileName, profileAddress, profileNoCable, profileCablePartnerId, profileHasBroadband, profileNoBroadband, profileBroadbandPartnerId]);
+  }, [customerProfileSaved, profileName, profileAddress, profileNoCable, profileCablePartnerId, profileHasBroadband, profileNoBroadband, profileBroadbandPartnerId, profileWhatsappOptIn]);
   
   // --- Round P4b Partner App State ---
   const [partnerAppTab, setPartnerAppTab] = useState('dashboard');
@@ -3777,6 +3824,8 @@ export default function App() {
   const [addEmailInput, setAddEmailInput] = useState('');
   const [loginOtp, setLoginOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [otpDeliveryInfo, setOtpDeliveryInfo] = useState(null);
+  const [customerWhatsappOptIn, setCustomerWhatsappOptIn] = useState(false);
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
@@ -4958,7 +5007,7 @@ export default function App() {
   const handleOpenCustomerSignup = () => openSignupFromLogin('customer');
   const handleOpenStockistSignup = () => openSignupFromLogin('stockist');
 
-  const handleSendOtp = async () => {
+  const handleSendOtp = async (preferredChannel) => {
     if (!loginPhone) {
       const err = t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন');
       setLoginErrorMessage(err);
@@ -4966,41 +5015,55 @@ export default function App() {
       return;
     }
     const isAllDigits = /^\d+$/.test(loginPhone);
-    if (isAllDigits) {
-      if (loginPhone.length !== 10 || !/^[6-9]/.test(loginPhone)) {
-        const err = t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন');
-        setLoginErrorMessage(err);
-        showToast(err, 'error');
-        return;
-      }
-    } else {
-      const looksLikeEmail = /[a-z@]/i.test(loginPhone);
-      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginPhone);
-      if (looksLikeEmail && !isEmail) {
-        const err = t('Enter a valid email address', 'मान्य ईमेल पता दर्ज करें', 'সঠিক ইমেল ঠিকানা লিখুন');
-        setLoginErrorMessage(err);
-        showToast(err, 'error');
-        return;
-      }
-      if (!isEmail) {
-        const err = t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন');
-        setLoginErrorMessage(err);
-        showToast(err, 'error');
-        return;
+    if (preferredChannel !== 'email') {
+      if (isAllDigits) {
+        if (loginPhone.length !== 10 || !/^[6-9]/.test(loginPhone)) {
+          const err = t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন');
+          setLoginErrorMessage(err);
+          showToast(err, 'error');
+          return;
+        }
+      } else {
+        const looksLikeEmail = /[a-z@]/i.test(loginPhone);
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginPhone);
+        if (looksLikeEmail && !isEmail) {
+          const err = t('Enter a valid email address', 'मान्य ईमेल पता दर्ज करें', 'সঠিক ইমেল ঠিকানা লিখুন');
+          setLoginErrorMessage(err);
+          showToast(err, 'error');
+          return;
+        }
+        if (!isEmail) {
+          const err = t('Enter a valid 10-digit mobile number', 'मान्य 10-अंकीय मोबाइल नंबर दर्ज करें', 'সঠিক ১০ অঙ্কের মোবাইল নম্বর লিখুন');
+          setLoginErrorMessage(err);
+          showToast(err, 'error');
+          return;
+        }
       }
     }
     try {
+      const channel = preferredChannel || (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginPhone) ? 'email' : 'sms');
       const res = await fetch(`${API_BASE}/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: loginPhone })
+        body: JSON.stringify({ phone: loginPhone, channel, lang })
       });
       const data = await res.json().catch(() => ({}));
-      logApi('POST', '/auth/send-otp', { phone: loginPhone }, res.status, data);
+      logApi('POST', '/auth/send-otp', { phone: loginPhone, channel }, res.status, data);
       if (res.ok) {
         setOtpSent(true);
+        setOtpDeliveryInfo({
+          channel: data.channel || channel,
+          destination: data.destination || loginPhone,
+          has_email: Boolean(data.has_email)
+        });
         setLoginErrorMessage('');
-        showToast(demoOtpMode ? t('OTP sent successfully! Enter 123456', 'OTP सफलतापूर्वक भेजा गया! 123456 दर्ज करें', 'OTP সফলভাবে পাঠানো হয়েছে! 123456 লিখুন') : t('OTP sent to ' + loginPhone, `${loginPhone} पर OTP भेजा गया`, `${loginPhone} নম্বরে OTP পাঠানো হয়েছে`));
+        const dest = data.destination || loginPhone;
+        const msg = demoOtpMode
+          ? t('OTP sent successfully! Enter 123456', 'OTP सफलतापूर्वक भेजा गया! 123456 दर्ज करें', 'OTP সফলভাবে পাঠানো হয়েছে! 123456 লিখুন')
+          : (data.channel === 'email'
+              ? t('OTP sent by email to ' + dest, `ईमेल ${dest} पर OTP भेजा गया`, `ইমেল ${dest} এ OTP পাঠানো হয়েছে`)
+              : t('OTP sent via SMS to ' + dest, `${dest} पर OTP भेजा गया`, `${dest} নম্বরে OTP পাঠানো হয়েছে`));
+        showToast(msg);
       } else {
         setOtpSent(false);
         const errText = data.message || data.error || 'Failed to send OTP';
@@ -5631,11 +5694,14 @@ export default function App() {
   const fetchCustomerProfileData = async () => {
     if (!currentUser || currentUser.role !== 'CUSTOMER') return;
     try {
-      const res = await fetch(`${API_BASE}/customer/${currentUser.id}/profile`);
+      const res = await fetch(`${API_BASE}/customer/${currentUser.id}/profile`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+      });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setProfileName(data.user?.name || '');
         setProfileAddress(data.user?.address || '');
+        setProfileWhatsappOptIn(Boolean(data.user?.whatsapp_opt_in));
         setCustomerBindings(data.bindings || null);
         setProfileAvailablePartners(data.available_partners || { cable: [], broadband: [] });
 
@@ -5660,6 +5726,7 @@ export default function App() {
         setCustomerProfileSaved({
           name: data.user?.name || '',
           address: data.user?.address || '',
+          whatsappOptIn: Boolean(data.user?.whatsapp_opt_in),
           cablePartnerId: data.bindings?.cable_partner_id || '',
           noCable: !data.bindings?.cable_partner_id,
           hasBroadband: Boolean(data.bindings?.broadband_partner_id),
@@ -5730,8 +5797,8 @@ export default function App() {
     try {
       const pRes = await fetch(`${API_BASE}/customer/${currentUser.id}/profile`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: profileName, address: profileAddress })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ` },
+        body: JSON.stringify({ name: profileName, address: profileAddress, whatsapp_opt_in: profileWhatsappOptIn })
       });
       const pData = await pRes.json().catch(() => ({}));
 
@@ -5751,10 +5818,13 @@ export default function App() {
 
       if (pRes.ok && bRes.ok) {
         showToast(t('Profile updated successfully', 'प्रोफाइल सफलतापूर्वक अपडेट किया गया', 'প্রোফাইল সফলভাবে আপডেট করা হয়েছে'));
-        setCurrentUser(prev => ({ ...prev, name: profileName, address: profileAddress }));
+        const updatedUser = { ...currentUser, name: profileName, address: profileAddress, whatsapp_opt_in: profileWhatsappOptIn };
+        setCurrentUser(updatedUser);
+        try { localStorage.setItem('currentUser', JSON.stringify(updatedUser)); } catch (e) {}
         setCustomerProfileSaved({
           name: profileName,
           address: profileAddress,
+          whatsappOptIn: Boolean(profileWhatsappOptIn),
           cablePartnerId: cableIdToSave || '',
           noCable: Boolean(profileNoCable),
           hasBroadband: Boolean(profileHasBroadband),
@@ -5780,6 +5850,7 @@ export default function App() {
     if (!customerProfileSaved) return;
     setProfileName(customerProfileSaved.name || '');
     setProfileAddress(customerProfileSaved.address || '');
+    setProfileWhatsappOptIn(Boolean(customerProfileSaved.whatsappOptIn));
     setProfileCablePartnerId(customerProfileSaved.cablePartnerId || '');
     setProfileNoCable(Boolean(customerProfileSaved.noCable));
     setProfileHasBroadband(Boolean(customerProfileSaved.hasBroadband));
@@ -5841,7 +5912,7 @@ export default function App() {
 
     setSignupSubmitting(true);
     try {
-      const payload = { phone: regPhone, email: regEmail, name: regName, regionId: regRegion, address: regAddress, termsAgreed: customerTermsAgreed };
+      const payload = { phone: regPhone, email: regEmail, name: regName, regionId: regRegion, address: regAddress, termsAgreed: customerTermsAgreed, whatsapp_opt_in: customerWhatsappOptIn };
       if (signupCablePartnerId && !noCableProvider) {
         payload.cable_partner_id = signupCablePartnerId;
       }
@@ -8258,7 +8329,33 @@ export default function App() {
                 {loginErrorMessage}
               </div>
             )}
-            <button className="btn" style={{ marginBottom: (isCustomerApp || isStockistApp) ? '1rem' : 0 }} onClick={handleSendOtp}>Send One-Time Password</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: (isCustomerApp || isStockistApp) ? '1rem' : 0 }}>
+              <button className="btn" onClick={() => handleSendOtp('sms')} data-testid="send-otp-btn">
+                {t('Send One-Time Password', 'वन-टाइम पासवर्ड भेजें', 'এককালীন পাসওয়ার্ড পাঠান')}
+              </button>
+              {smsMode !== 'live' ? (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+                  onClick={() => handleSendOtp('email')}
+                  data-testid="send-code-by-email-btn"
+                >
+                  <Mail size={15} />
+                  {t('Send code by email', 'ईमेल द्वारा कोड भेजें', 'ইমেলের মাধ্যমে কোড পাঠান')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'center', padding: '0.2rem' }}
+                  onClick={() => handleSendOtp('email')}
+                  data-testid="send-code-by-email-btn"
+                >
+                  {t('Send code by email instead', 'इसके बजाय ईमेल द्वारा कोड भेजें', 'এর পরিবর্তে ইমেলের মাধ্যমে কোড পাঠান')}
+                </button>
+              )}
+            </div>
             
             {isDevMode && (
               <div style={{ background: 'var(--surface-overlay)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.7rem', border: '1px dashed var(--border-color)', color: 'var(--text-muted)', marginBottom: (isCustomerApp || isStockistApp) ? '1rem' : 0 }}>
@@ -8537,6 +8634,20 @@ export default function App() {
             </div>
             {renderMissing('terms')}
 
+            <div className="input-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <input 
+                type="checkbox" 
+                id="customer-whatsapp-optin-checkbox"
+                data-testid="customer-whatsapp-optin-checkbox"
+                checked={customerWhatsappOptIn} 
+                onChange={(e) => setCustomerWhatsappOptIn(e.target.checked)} 
+                style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
+              />
+              <label htmlFor="customer-whatsapp-optin-checkbox" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                {t('Send order updates on WhatsApp', 'व्हाट्सएप पर ऑर्डर अपडेट प्राप्त करें', 'হোয়াটসঅ্যাপে অর্ডার আপডেট পান')}
+              </label>
+            </div>
+
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={resetAuthForm}>← {t('Back', 'वापस', 'ফিরে')}</button>
               <div style={{ flex: 2, position: 'relative' }}>
@@ -8678,8 +8789,18 @@ export default function App() {
           </>
         ) : (
           <>
-            <div style={{ background: 'var(--primary-glow)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-main)', marginBottom: '1rem' }}>
-              {t('OTP sent to', 'OTP भेजा गया', 'OTP পাঠানো হয়েছে')} <strong>{loginPhone}</strong>
+            <div style={{ background: 'var(--primary-glow)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-main)', marginBottom: '1rem' }} data-testid="otp-sent-banner">
+              {otpDeliveryInfo?.channel === 'email' ? (
+                <>
+                  {t('OTP sent by email to', 'ईमेल द्वारा OTP भेजा गया', 'ইমেলের মাধ্যমে OTP পাঠানো হয়েছে')}{' '}
+                  <strong>{otpDeliveryInfo?.destination || loginPhone}</strong>
+                </>
+              ) : (
+                <>
+                  {t('OTP sent via SMS to', 'एसएमएस द्वारा OTP भेजा गया', 'এসএমএসের মাধ্যমে OTP পাঠানো হয়েছে')}{' '}
+                  <strong>{otpDeliveryInfo?.destination || loginPhone}</strong>
+                </>
+              )}
               {demoOtpMode && <span> · {t('Demo code', 'डेमो कोड', 'ডেমো কোড')}: <strong>123456</strong></span>}
             </div>
             <div className="input-group">
@@ -8694,8 +8815,29 @@ export default function App() {
               />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setOtpSent(false)}>Back</button>
-              <button className="btn" style={{ flex: 2 }} onClick={handleVerifyOtp}>Verify &amp; Login</button>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setOtpSent(false)}>{t('Back', 'वापस', 'ফিরে')}</button>
+              <button className="btn" style={{ flex: 2 }} onClick={handleVerifyOtp}>{t('Verify & Login', 'सत्यापित करें और लॉगिन करें', 'যাচাই করুন এবং লগইন করুন')}</button>
+            </div>
+            <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+              {otpDeliveryInfo?.channel === 'email' ? (
+                <button
+                  type="button"
+                  style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', cursor: 'pointer', padding: '0.2rem' }}
+                  onClick={() => handleSendOtp('sms')}
+                  data-testid="resend-otp-by-sms-btn"
+                >
+                  {t('Send code via SMS instead', 'इसके बजाय एसएमएस द्वारा कोड भेजें', 'এর পরিবর্তে এসএমএসের মাধ্যমে কোড পাঠান')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', cursor: 'pointer', padding: '0.2rem' }}
+                  onClick={() => handleSendOtp('email')}
+                  data-testid="resend-otp-by-email-btn"
+                >
+                  {t('Send code by email instead', 'इसके बजाय ईमेल द्वारा कोड भेजें', 'এর পরিবর্তে ইমেলের মাধ্যমে কোড পাঠান')}
+                </button>
+              )}
             </div>
 
             {/* Don't have an account? */}
@@ -13512,6 +13654,24 @@ export default function App() {
                           </div>
                         </div>
 
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0', borderTop: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
+                          <div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-main)' }}>
+                              {t('WhatsApp order updates', 'व्हाट्सएप ऑर्डर अपडेट', 'হোয়াটসঅ্যাপ অর্ডার আপডেট')}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {t('Receive notifications for order status and pickup PIN', 'ऑर्डर स्थिति और पिकअप पिन के लिए सूचनाएं प्राप्त करें', 'অর্ডারের অবস্থা এবং পিকআপ পিনের জন্য বিজ্ঞপ্তি পান')}
+                            </div>
+                          </div>
+                          <input
+                            type="checkbox"
+                            data-testid="profile-whatsapp-optin-checkbox"
+                            checked={Boolean(profileWhatsappOptIn)}
+                            onChange={e => setProfileWhatsappOptIn(e.target.checked)}
+                            style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
+                          />
+                        </div>
+
                         <button
                           className="btn btn-accent"
                           disabled={profileSaving}
@@ -15799,6 +15959,9 @@ export default function App() {
               <button className={`admin-nav-item ${adminTab === 'integrations' || adminSettingsSubTab === 'integrations' ? 'active' : ''}`} onClick={() => { setAdminSettingsSubTab('integrations'); goToAdminTab('integrations', fetchAdminIntegrations); }} data-testid="admin-nav-integrations">
                 <CreditCard size={16} /> Integrations
               </button>
+              <button className={`admin-nav-item ${adminTab === 'outbox' ? 'active' : ''}`} onClick={() => goToAdminTab('outbox', fetchAdminOutbox)} data-testid="admin-nav-outbox">
+                <Mail size={16} /> {t('Message outbox', 'संदेश आउटबॉक्स', 'বার্তা আউটবক্স')}
+              </button>
               
               <button className={`admin-nav-item ${adminTab === 'feedback' ? 'active' : ''}`} onClick={() => goToAdminTab('feedback')}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -16833,6 +16996,102 @@ export default function App() {
                     </table>
 </div>
                   </div>
+                </div>
+              )}
+
+              {adminTab === 'outbox' && (
+                <div data-testid="admin-outbox">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                    <div>
+                      <h2 style={{ fontSize: '1.4rem', margin: '0 0 0.25rem 0' }}>
+                        {t('Message outbox', 'संदेश आउटबॉक्स', 'বার্তা আউটবক্স')}
+                      </h2>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {t('Recent test messages (SMS, Email, WhatsApp)', 'हाल के परीक्षण संदेश (एसएमएस, ईमेल, व्हाट्सएप)', 'সাম্প্রতিক পরীক্ষার বার্তা (এসএমএস, ইমেল, হোয়াটসঅ্যাপ)')}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+                        onClick={() => fetchAdminOutbox(outboxChannelFilter)}
+                        data-testid="admin-outbox-refresh-btn"
+                      >
+                        <RefreshCw size={14} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} />
+                        {t('Refresh', 'ताज़ा करें', 'রিফ্রেশ করুন')}
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+                        onClick={clearAdminOutbox}
+                        data-testid="admin-outbox-clear-btn"
+                      >
+                        <Trash2 size={14} style={{ marginRight: '0.3rem', verticalAlign: 'middle' }} />
+                        {t('Clear outbox', 'आउटबॉक्स साफ़ करें', 'আউটবক্স খালি করুন')}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                    {['', 'sms', 'email', 'whatsapp'].map(ch => (
+                      <button
+                        key={ch}
+                        className={`btn ${outboxChannelFilter === ch ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', textTransform: 'capitalize' }}
+                        onClick={() => {
+                          setOutboxChannelFilter(ch);
+                          fetchAdminOutbox(ch);
+                        }}
+                        data-testid={`admin-outbox-filter-${ch || 'all'}`}
+                      >
+                        {ch ? ch.toUpperCase() : t('All Channels', 'सभी चैनल', 'সমস্ত চ্যানেল')}
+                      </button>
+                    ))}
+                  </div>
+
+                  {loadingOutbox ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      {t('Loading messages...', 'संदेश लोड हो रहे हैं...', 'বার্তা লোড হচ্ছে...')}
+                    </div>
+                  ) : adminOutboxList.length === 0 ? (
+                    <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <Mail size={32} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
+                      <div>{t('No messages in outbox', 'आउटबॉक्स में कोई संदेश नहीं है', 'আউটবক্সে কোনো বার্তা নেই')}</div>
+                    </div>
+                  ) : (
+                    <div className="glass-card" style={{ padding: '1rem' }}>
+                      <div className="table-scroll">
+                        <table className="admin-table" style={{ fontSize: '0.8rem' }} data-testid="outbox-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '100px' }}>{t('Channel', 'चैनल', 'চ্যানেল')}</th>
+                              <th style={{ width: '140px' }}>{t('Recipient', 'प्राप्तकर्ता', 'প্রাপক')}</th>
+                              <th style={{ width: '160px' }}>{t('Subject / Template', 'विषय / टेम्पलेट', 'বিষয় / টেমপ্লেট')}</th>
+                              <th>{t('Message Content', 'संदेश सामग्री', 'বার্তার বিষয়বস্তু')}</th>
+                              <th style={{ width: '140px' }}>{t('Sent At', 'भेजा गया', 'পাঠানো হয়েছে')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {adminOutboxList.map(msg => (
+                              <tr key={msg.id} data-testid={`outbox-row-${msg.id}`}>
+                                <td>
+                                  <span className={`badge ${msg.channel === 'sms' ? 'badge-primary' : (msg.channel === 'email' ? 'badge-info' : 'badge-success')}`} style={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>
+                                    {msg.channel}
+                                  </span>
+                                </td>
+                                <td style={{ fontWeight: 600 }}>{msg.to}</td>
+                                <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{msg.subject || msg.templateId || '-'}</td>
+                                <td style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{msg.text}</td>
+                                <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  {msg.sent_at ? new Date(msg.sent_at).toLocaleTimeString() : '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

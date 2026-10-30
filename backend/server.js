@@ -86,6 +86,9 @@ const { evaluateRegistrationFlags } = require('./lib/kyc-flags');
 const { issueOtp, verifyOtp } = require('./lib/otp');
 const integrations = require('./lib/integrations');
 const payments = require('./lib/payments');
+const messageTemplates = require('./lib/message-templates');
+const outbox = require('./lib/outbox');
+const whatsapp = require('./lib/whatsapp');
 
 const app = express();
 if (process.env.NODE_ENV === 'production') {
@@ -472,6 +475,21 @@ app.get('/api/config', async (req, res) => {
       mode: integrations.getPaymentsMode(),
       provider: 'Razorpay'
     },
+    sms_mode: integrations.getSmsMode(),
+    sms: {
+      mode: integrations.getSmsMode(),
+      provider: 'MSG91'
+    },
+    email_mode: integrations.getEmailMode(),
+    email: {
+      mode: integrations.getEmailMode(),
+      provider: 'Brevo'
+    },
+    whatsapp_mode: integrations.getWhatsappMode(),
+    whatsapp: {
+      mode: integrations.getWhatsappMode(),
+      provider: 'Meta Cloud API'
+    },
     support_phone: supportPhone,
     support_whatsapp: supportWhatsapp,
     support_email: supportEmail,
@@ -483,6 +501,23 @@ app.get('/api/config', async (req, res) => {
       hours: supportHours
     }
   });
+});
+
+app.get('/api/admin/outbox', requireAuth, async (req, res) => {
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const channel = req.query.channel;
+  const messages = outbox.getOutbox({ channel });
+  return res.json({ success: true, messages });
+});
+
+app.post('/api/admin/outbox/clear', requireAuth, async (req, res) => {
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  outbox.clearOutbox();
+  return res.json({ success: true, message: 'Outbox cleared' });
 });
 
 app.get('/api/admin/integrations', requireAuth, async (req, res) => {
@@ -735,12 +770,46 @@ const handleSendOtpRoute = async (req, res) => {
   }
 
   const code = issueOtp('login:' + identifier);
+  const lang = req.body && req.body.lang ? req.body.lang : 'en';
+  const sendViaEmail = isEmail || (req.body && req.body.channel === 'email');
+
+  if (sendViaEmail) {
+    const targetEmail = isEmail ? identifier.trim().toLowerCase() : (user ? user.email : null);
+    if (!targetEmail) {
+      return res.status(400).json({ error: 'No email address registered for this account', message: 'This account does not have a registered email address.' });
+    }
+    try {
+      const text = messageTemplates.renderTemplate('LOGIN_OTP', lang, { otp: code });
+      await emailHelper.sendEmail(targetEmail, 'Beniffy Verification Code', `<p>${text}</p>`, text);
+      return res.json({
+        success: true,
+        message: 'OTP sent by email',
+        channel: 'email',
+        destination: targetEmail,
+        has_email: true
+      });
+    } catch (err) {
+      return res.status(500).json({ error: 'email_error', message: 'Failed to send verification email' });
+    }
+  }
+
   try {
-    await smsHelper.sendSms(user ? user.phone : identifier, `Your Beniffy OTP is ${code}`);
-    res.json({ success: true, message: 'OTP sent' });
+    const cleanPhone = user ? user.phone : checkPhone(identifier, res);
+    if (!cleanPhone) return;
+    await smsHelper.sendTemplateSms(cleanPhone, 'LOGIN_OTP', { otp: code }, { lang });
+    return res.json({
+      success: true,
+      message: 'OTP sent via SMS',
+      channel: 'sms',
+      destination: cleanPhone,
+      has_email: !!(user && user.email)
+    });
   } catch (err) {
     if (err.code === 'SMS_NOT_CONFIGURED') {
       return res.status(503).json({ error: 'sms_unavailable' });
+    }
+    if (err.code === 'DLT_TEMPLATE_MISSING') {
+      return res.status(503).json({ error: 'dlt_template_missing', message: 'SMS template not approved on DLT' });
     }
     return res.status(500).json({ error: 'sms_error' });
   }
@@ -751,7 +820,7 @@ app.post('/api/stockist/auth/send-otp', handleSendOtpRoute);
 
 // POST /api/auth/register-customer (Item 16, Item 12, Item 15)
 app.post('/api/auth/register-customer', async (req, res) => {
-  let { phone, email, name, regionId, region_id, address, cable_partner_id, broadband_partner_id, captchaToken, termsAgreed } = req.body || {};
+  let { phone, email, name, regionId, region_id, address, cable_partner_id, broadband_partner_id, captchaToken, termsAgreed, whatsapp_opt_in, whatsappOptIn } = req.body || {};
 
   const isTest = require('./lib/env').isTestEnv();
 
@@ -821,6 +890,8 @@ app.post('/api/auth/register-customer', async (req, res) => {
     kyc_status: 'PENDING',
     sms_marketing: false,
     email_marketing: false,
+    whatsapp_opt_in: (whatsapp_opt_in === true || whatsappOptIn === true),
+    whatsapp_opt_in_at: (whatsapp_opt_in === true || whatsappOptIn === true) ? new Date().toISOString() : null,
     terms_accepted_at: req.body.termsAgreed ? new Date().toISOString() : null,
     terms_version: req.body.termsAgreed ? '2026-10-draft' : null,
     created_at: new Date().toISOString()
@@ -1147,7 +1218,7 @@ app.get('/api/auth/me', async (req, res) => {
 
 // Register new Customer with Referral Code
 app.post('/api/customer/register-with-referral', async (req, res) => {
-  let { phone, email, name, address, cable_partner_id, broadband_partner_id, referral_code } = req.body;
+  let { phone, email, name, address, cable_partner_id, broadband_partner_id, referral_code, whatsapp_opt_in, whatsappOptIn } = req.body;
   const regionId = req.body.region_id || req.body.regionId;
 
   if (!phone || !name || !regionId) {
@@ -1210,6 +1281,8 @@ app.post('/api/customer/register-with-referral', async (req, res) => {
     address: address ? sanitizePlainText(address, 255) : '',
     referred_by_user_id: referrerId,
     referral_bonus_paid: false,
+    whatsapp_opt_in: (whatsapp_opt_in === true || whatsappOptIn === true),
+    whatsapp_opt_in_at: (whatsapp_opt_in === true || whatsappOptIn === true) ? new Date().toISOString() : null,
     terms_accepted_at: req.body.termsAgreed ? new Date().toISOString() : null,
     terms_version: req.body.termsAgreed ? '2026-10-draft' : null,
     created_at: new Date().toISOString()
@@ -3207,6 +3280,26 @@ async function processOrderCancellation(order, cancelledBy = 'system', { retainC
       reason: 'Order cancellation',
       commission_retained: platformCommission
     });
+    try {
+      const users = await db.getTable('users');
+      const customer = users.find(u => u.id === order.customer_id);
+      const phone = customer ? customer.phone : order.customer_phone;
+      if (phone) {
+        try {
+          await smsHelper.sendTemplateSms(phone, 'ORDER_CANCELLED', { orderId: order.id });
+        } catch (sErr) {}
+        try {
+          await whatsapp.sendWhatsAppUpdate({
+            phone,
+            templateKey: 'ORDER_CANCELLED',
+            params: { orderId: order.id },
+            user: customer
+          });
+        } catch (waErr) {
+          console.warn('[whatsapp:order_cancelled] Warning:', waErr.message);
+        }
+      }
+    } catch (notifErr) {}
   } else if (order.payment_status !== 'REFUNDED') {
     order.payment_status = 'CANCELLED_UNPAID';
     order.refund_amount = 0;
@@ -4777,8 +4870,21 @@ async function _sendOrderConfirmedSms(order) {
     const total = order.total_amount || order.subtotal || 0;
     const etaTime = order.pickup_slot || 'scheduled time';
 
-    const body = `Beniffy: Order ${order.id} confirmed at ${stockistName}, ${itemCount} items, ₹${total}. Ready by ${etaTime}. Track in app.`;
-    await smsHelper.sendSms(phone, body);
+    await smsHelper.sendTemplateSms(phone, 'ORDER_PLACED', {
+      orderId: order.id,
+      shopName: stockistName,
+      amount: total
+    });
+    try {
+      await whatsapp.sendWhatsAppUpdate({
+        phone,
+        templateKey: 'ORDER_PLACED',
+        params: { orderId: order.id, shopName: stockistName, amount: total },
+        user: customer
+      });
+    } catch (waErr) {
+      console.warn('[whatsapp:order_placed] Warning:', waErr.message);
+    }
 
     await db.updateRow('orders', order.id, { sms_confirmed_sent: true });
     order.sms_confirmed_sent = true;
@@ -4802,8 +4908,21 @@ async function _sendOrderReadySms(order) {
     const stockistName = stockist ? stockist.name : 'Stockist';
     const pickupPin = order.pickup_pin || '----';
 
-    const body = `Beniffy: Your order ${order.id} is ready for pickup at ${stockistName}. PIN: ${pickupPin}. Please collect within 24h.`;
-    await smsHelper.sendSms(phone, body);
+    await smsHelper.sendTemplateSms(phone, 'READY_FOR_PICKUP', {
+      orderId: order.id,
+      shopName: stockistName,
+      pin: pickupPin
+    });
+    try {
+      await whatsapp.sendWhatsAppUpdate({
+        phone,
+        templateKey: 'READY_FOR_PICKUP',
+        params: { orderId: order.id, shopName: stockistName, pin: pickupPin },
+        user: customer
+      });
+    } catch (waErr) {
+      console.warn('[whatsapp:ready_for_pickup] Warning:', waErr.message);
+    }
 
     await db.updateRow('orders', order.id, { sms_ready_sent: true });
     order.sms_ready_sent = true;
@@ -5116,6 +5235,60 @@ const handleOrderStatusUpdate = async (req, res) => {
 
   if (['READY_FOR_PICKUP', 'READY'].includes(status)) {
     await _sendOrderReadySms(order);
+  }
+
+  if (status === 'OUT_FOR_DELIVERY') {
+    try {
+      const users = await db.getTable('users');
+      const customer = users.find(u => u.id === order.customer_id);
+      const phone = customer ? customer.phone : order.customer_phone;
+      if (phone) {
+        const stockists = await db.getTable('stockists');
+        const stockist = stockists.find(s => s.id === order.stockist_id);
+        const stockistName = stockist ? stockist.name : 'Stockist';
+        try {
+          await smsHelper.sendTemplateSms(phone, 'OUT_FOR_DELIVERY', { orderId: order.id, shopName: stockistName });
+        } catch (sErr) {}
+        try {
+          await whatsapp.sendWhatsAppUpdate({
+            phone,
+            templateKey: 'OUT_FOR_DELIVERY',
+            params: { orderId: order.id, shopName: stockistName },
+            user: customer
+          });
+        } catch (waErr) {
+          console.warn('[whatsapp:out_for_delivery] Warning:', waErr.message);
+        }
+      }
+    } catch (notifErr) {
+      console.warn('[notification:out_for_delivery] Error:', notifErr.message);
+    }
+  }
+
+  if (status === 'DELIVERED') {
+    try {
+      const users = await db.getTable('users');
+      const customer = users.find(u => u.id === order.customer_id);
+      const phone = customer ? customer.phone : order.customer_phone;
+      if (phone) {
+        const pts = order.points_credited || 0;
+        try {
+          await smsHelper.sendTemplateSms(phone, 'ORDER_DELIVERED', { orderId: order.id, points: pts });
+        } catch (sErr) {}
+        try {
+          await whatsapp.sendWhatsAppUpdate({
+            phone,
+            templateKey: 'ORDER_DELIVERED',
+            params: { orderId: order.id, points: pts },
+            user: customer
+          });
+        } catch (waErr) {
+          console.warn('[whatsapp:order_delivered] Warning:', waErr.message);
+        }
+      }
+    } catch (notifErr) {
+      console.warn('[notification:order_delivered] Error:', notifErr.message);
+    }
   }
 
   if (status === 'DELIVERED') {
@@ -9949,6 +10122,15 @@ app.post('/api/customer/:id/profile', requireAuth, async (req, res) => {
   const before = { name: user.name, address: user.address || '' };
   if (name && typeof name === 'string' && name.trim()) user.name = sanitizePlainText(name, 50);
   if (address !== undefined) user.address = typeof address === 'string' ? sanitizePlainText(address, 255) : '';
+  if (req.body.whatsapp_opt_in !== undefined) {
+    const optIn = !!req.body.whatsapp_opt_in;
+    if (optIn && !user.whatsapp_opt_in) {
+      user.whatsapp_opt_in_at = new Date().toISOString();
+    } else if (!optIn) {
+      user.whatsapp_opt_in_at = null;
+    }
+    user.whatsapp_opt_in = optIn;
+  }
 
   await db.saveTable('users', users);
   await appendAudit(req, 'EDIT_CUSTOMER_PROFILE', 'customer', id, before, { name: user.name, address: user.address });

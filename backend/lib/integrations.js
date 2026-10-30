@@ -34,20 +34,25 @@ function getSmsMode() {
     return 'test';
   }
   const hasMsg91 = !!process.env.MSG91_AUTH_KEY && !process.env.MSG91_AUTH_KEY.includes('when_ready') && !process.env.MSG91_AUTH_KEY.includes('placeholder');
-  const hasSmsApi = !!process.env.SMS_API_KEY && !process.env.SMS_API_KEY.includes('placeholder');
-  if (hasMsg91 || hasSmsApi) {
+  if (hasMsg91 && process.env.SMS_MODE === 'live') {
     return 'live';
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return 'off';
   }
   return 'test';
 }
 
 function getMissingSmsKeys() {
   const missing = [];
-  if (!process.env.MSG91_AUTH_KEY && !process.env.SMS_API_KEY) {
+  if (!process.env.MSG91_AUTH_KEY || process.env.MSG91_AUTH_KEY.includes('placeholder') || process.env.MSG91_AUTH_KEY.includes('when_ready')) {
     missing.push('MSG91_AUTH_KEY not set');
   }
-  if (!process.env.SMS_SENDER_ID) {
-    missing.push('SMS_SENDER_ID not set');
+  if (!process.env.MSG91_SENDER_ID && !process.env.SMS_SENDER_ID) {
+    missing.push('MSG91_SENDER_ID not set');
+  }
+  if (!process.env.DLT_ENTITY_ID) {
+    missing.push('DLT_ENTITY_ID not set');
   }
   return missing;
 }
@@ -60,20 +65,24 @@ function getEmailMode() {
   if (process.env.EMAIL_MOCK === 'true' || envMod.isTestEnv()) {
     return 'test';
   }
+  const hasBrevo = !!process.env.BREVO_API_KEY && !process.env.BREVO_API_KEY.includes('placeholder');
   const hasSendGrid = !!process.env.SENDGRID_API_KEY && !process.env.SENDGRID_API_KEY.includes('when_ready') && !process.env.SENDGRID_API_KEY.includes('placeholder');
-  if (hasSendGrid && process.env.EMAIL_MOCK === 'false') {
+  if ((hasBrevo || hasSendGrid) && process.env.EMAIL_MODE === 'live') {
     return 'live';
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return 'off';
   }
   return 'test';
 }
 
 function getMissingEmailKeys() {
   const missing = [];
-  if (!process.env.SENDGRID_API_KEY || process.env.SENDGRID_API_KEY.includes('when_ready')) {
-    missing.push('SENDGRID_API_KEY not set');
+  if (!process.env.BREVO_API_KEY && !process.env.SENDGRID_API_KEY) {
+    missing.push('BREVO_API_KEY not set');
   }
-  if (!process.env.EMAIL_FROM_ADDRESS) {
-    missing.push('EMAIL_FROM_ADDRESS not set');
+  if (!process.env.EMAIL_FROM && !process.env.EMAIL_FROM_ADDRESS) {
+    missing.push('EMAIL_FROM not set');
   }
   return missing;
 }
@@ -83,20 +92,24 @@ function getWhatsappMode() {
   if (['off', 'test', 'live'].includes(envMode)) {
     return envMode;
   }
-  if (process.env.WHATSAPP_MOCK === 'true') {
+  if (process.env.WHATSAPP_MOCK === 'true' || envMod.isTestEnv()) {
     return 'test';
   }
-  const hasKey = !!process.env.WHATSAPP_API_KEY && !process.env.WHATSAPP_API_KEY.includes('placeholder');
-  if (hasKey) {
+  const hasToken = (!!process.env.WHATSAPP_TOKEN && !process.env.WHATSAPP_TOKEN.includes('placeholder')) || (!!process.env.WHATSAPP_API_KEY && !process.env.WHATSAPP_API_KEY.includes('placeholder'));
+  const hasPhoneId = !!process.env.WHATSAPP_PHONE_NUMBER_ID && !process.env.WHATSAPP_PHONE_NUMBER_ID.includes('placeholder');
+  if (hasToken && hasPhoneId && process.env.WHATSAPP_MODE === 'live') {
     return 'live';
   }
-  return 'off';
+  if (process.env.NODE_ENV === 'production') {
+    return 'off';
+  }
+  return 'test';
 }
 
 function getMissingWhatsappKeys() {
   const missing = [];
-  if (!process.env.WHATSAPP_API_KEY) {
-    missing.push('WHATSAPP_API_KEY not set');
+  if (!process.env.WHATSAPP_TOKEN && !process.env.WHATSAPP_API_KEY) {
+    missing.push('WHATSAPP_TOKEN not set');
   }
   if (!process.env.WHATSAPP_PHONE_NUMBER_ID) {
     missing.push('WHATSAPP_PHONE_NUMBER_ID not set');
@@ -128,7 +141,7 @@ function getIntegrationsStatus() {
     {
       id: 'email',
       name: 'Email',
-      provider: 'SendGrid',
+      provider: 'Brevo',
       mode: emailMode,
       missing: getMissingEmailKeys()
     },
