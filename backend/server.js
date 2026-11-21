@@ -525,7 +525,14 @@ app.get('/api/admin/integrations', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
   const status = integrations.getIntegrationsStatus();
-  return res.json({ success: true, integrations: status });
+  return res.json({
+    success: true,
+    integrations: status,
+    database_reset: {
+      enabled: integrations.isDbResetAllowed(),
+      status_text: integrations.getDbResetStatusText()
+    }
+  });
 });
 
 // Boot-Time Missing-Config Warnings (Part 3.1)
@@ -1133,37 +1140,19 @@ const handleAdminSetupComplete = async (req, res) => {
     const users = (await db.getTable('users')) || [];
     const customers = users.filter(u => u.role === 'CUSTOMER');
 
-    const summaryParts = [];
-    if (regions.length > 0) {
-      summaryParts.push(regions.length === 1 ? 'Region created' : `${regions.length} regions created`);
-    }
-    if (stockists.length > 0) {
-      summaryParts.push(stockists.length === 1 ? 'stockist added' : `${stockists.length} stockists added`);
-    }
-    if (vendors.length > 0) {
-      summaryParts.push(vendors.length === 1 ? 'wholesaler registered' : `${vendors.length} wholesalers registered`);
-    }
-    if (customers.length > 0) {
-      summaryParts.push(customers.length === 1 ? 'customer invited' : `${customers.length} customers invited`);
-    }
-    if (summaryParts.length === 0) {
-      summaryParts.push('Administrator account created, platform initialized');
-    }
-
-    const summaryText = summaryParts.join(', ');
     const setupCompletedAt = new Date().toISOString();
-    await appendAudit(req, 'SETUP_COMPLETE', 'users', user.id, null, { setup_completed_at: setupCompletedAt, summary: summaryText }, 'Admin setup complete confirmed');
+    const summary = {
+      regions: regions.length,
+      stockists: stockists.length,
+      wholesalers: vendors.length,
+      customers: customers.length
+    };
+    await appendAudit(req, 'SETUP_COMPLETE', 'users', user.id, null, { setup_completed_at: setupCompletedAt, summary }, 'Admin setup complete confirmed');
 
     res.status(200).json({
       success: true,
       setup_completed_at: setupCompletedAt,
-      summary: {
-        text: summaryText,
-        regions_count: regions.length,
-        stockists_count: stockists.length,
-        vendors_count: vendors.length,
-        customers_count: customers.length
-      }
+      summary
     });
   } catch (err) {
     console.error('Error completing setup:', err);
@@ -2203,8 +2192,13 @@ app.use('/api/admin', (req, res, next) => {
   const p = req.path;
   const isDevAllowed = process.env.SEED_MODE === 'test' || process.env.NODE_ENV !== 'production';
 
-  // reset-db and override-table exist only in explicit test mode.
-  if (p === '/reset-db' || p === '/override-table') {
+  // reset-db is handled by its dedicated controller with strict auth and dev-mode checks.
+  if (p === '/reset-db') {
+    return next();
+  }
+
+  // override-table exists only in explicit test mode.
+  if (p === '/override-table') {
     if (!require('./lib/env').isTestEnv()) return res.status(404).json({ error: 'Not found' });
     return next();
   }
@@ -11848,6 +11842,40 @@ app.patch('/api/notifications/:id/read', requireAuth, async (req, res) => {
 
 // Reset DB
 app.post('/api/admin/reset-db', async (req, res) => {
+  const actingUserId = req.user?.userId || req.user?.id || null;
+  const actingRole = req.user?.role || null;
+  const isDevMode = process.env.NODE_ENV !== 'production' && req.headers['x-node-env'] !== 'production';
+  const isAllowReset = process.env.ALLOW_DB_RESET === 'true';
+  const isAdmin = actingRole === 'ADMIN';
+
+  if (!isAdmin || !isDevMode || !isAllowReset) {
+    let reason = '';
+    if (!actingUserId) {
+      reason = 'Unauthenticated caller';
+    } else if (!isAdmin) {
+      reason = `Caller role is ${actingRole}, required ADMIN`;
+    } else if (!isDevMode) {
+      reason = 'Server is in production mode';
+    } else if (!isAllowReset) {
+      reason = 'ALLOW_DB_RESET is not enabled';
+    }
+
+    await appendAudit(
+      req,
+      'RESET_DB_REFUSED',
+      'system',
+      'database',
+      null,
+      { result: 'REFUSED', reason, user_id: actingUserId, role: actingRole },
+      reason
+    );
+
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'Database reset is disabled or caller is not authorized.'
+    });
+  }
+
   await db.resetForTest();
   emailHelper.clearMockOutbox();
   smsHelper.clearMockOutbox();
@@ -11858,6 +11886,17 @@ app.post('/api/admin/reset-db', async (req, res) => {
   loginRateLimitMap.clear();
   otpRateLimitMap.clear();
   otpHourlyLimitMap.clear();
+
+  await appendAudit(
+    req,
+    'RESET_DB_ALLOWED',
+    'system',
+    'database',
+    null,
+    { result: 'ALLOWED', user_id: actingUserId, role: actingRole },
+    'Database reset executed successfully'
+  );
+
   return res.json({ success: true, message: 'Database reset successfully.' });
 });
 

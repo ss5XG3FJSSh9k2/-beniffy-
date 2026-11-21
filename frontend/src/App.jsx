@@ -65,7 +65,8 @@ import {
   Trash2,
   Star,
   Bell,
-  Mail
+  Mail,
+  Wrench
 } from 'lucide-react';
 import {
   BarChart,
@@ -1981,6 +1982,7 @@ export default function App() {
   const [emailMode, setEmailMode] = useState('test');
   const [whatsappMode, setWhatsappMode] = useState('test');
   const [integrationsList, setIntegrationsList] = useState([]);
+  const [dbResetStatus, setDbResetStatus] = useState(null);
   const [loadingIntegrations, setLoadingIntegrations] = useState(false);
   const [adminSettingsSubTab, setAdminSettingsSubTab] = useState('config');
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState('PAY_AT_HANDOVER');
@@ -2023,6 +2025,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         setIntegrationsList(data.integrations || []);
+        if (data.database_reset) setDbResetStatus(data.database_reset);
       }
     } catch (e) {
       // ignore
@@ -3146,6 +3149,7 @@ export default function App() {
   const [changingSlotOrderId, setChangingSlotOrderId] = useState(null);
 
   const [confirmModal, setConfirmModal] = useState(null);
+  const [confirmTypedText, setConfirmTypedText] = useState('');
   const [deliveredModalOrder, setDeliveredModalOrder] = useState(null);
   const [shownDeliveredIds, setShownDeliveredIds] = useState(new Set());
   const [deliveredRating, setDeliveredRating] = useState(5);
@@ -3300,6 +3304,7 @@ export default function App() {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setConfirmModal(null);
+        setConfirmTypedText('');
         setShowPrivacyPolicyModal(false);
         setShowTermsModal(false);
         setShowRefundPolicyModal(false);
@@ -4047,7 +4052,14 @@ export default function App() {
 
   const performReset = async (askConfirm = false) => {
     try {
-      const res = await fetch(`${API_BASE}/admin/reset-db`, { method: 'POST' });
+      const token = (() => { try { return localStorage.getItem('token'); } catch { return null; } })();
+      const res = await fetch(`${API_BASE}/admin/reset-db`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       if (res.ok) {
         clearSession();
         setCustomerCarts({});
@@ -4061,12 +4073,13 @@ export default function App() {
         localStorage.removeItem('fastnet_offline_mode');
         setActiveRole('marketing');
         fetchDbState();
-        showToast('Demo data and database reset to clean defaults!', 'success');
+        showToast(t('Demo data and database reset to clean defaults!', 'डेमो डेटा और डेटाबेस डिफ़ॉल्ट पर रीसेट हो गया!', 'ডেমো ডাটা এবং ডাটাবেস ডিফল্টে রিসেট হয়েছে!'), 'success');
       } else {
-        showToast('Reset failed', 'error');
+        const data = await res.json().catch(() => ({}));
+        showToast(data.message || t('Reset failed', 'रीसेट विफल रहा', 'রিসেট ব্যর্থ হয়েছে'), 'error');
       }
     } catch (err) {
-      showToast('Reset failed. Check server status.', 'error');
+      showToast(t('Reset failed. Check server status.', 'रीसेट विफल रहा। सर्वर स्थिति जांचें।', 'রিসেট ব্যর্থ হয়েছে। সার্ভার স্থিতি পরীক্ষা করুন।'), 'error');
     }
   };
 
@@ -4388,6 +4401,59 @@ export default function App() {
       t('Yes, delete', 'हाँ, हटाएं', 'হ্যাঁ, মুছে ফেলুন'),
       t('Cancel', 'रद्द करें', 'বাতিল করুন')
     );
+  };
+
+  const renderSetupSummaryText = (summary) => {
+    if (!summary) {
+      return t(
+        'Administrator account created, platform initialized',
+        'प्रशासक खाता बनाया गया, प्लेटफ़ॉर्म आरंभ किया गया',
+        'অ্যাডমিনিস্ট্রেটর অ্যাকাউন্ট তৈরি করা হয়েছে, প্ল্যাটফর্ম শুরু করা হয়েছে'
+      );
+    }
+    const parts = [];
+    const regionsCount = Number(summary.regions) || 0;
+    const stockistsCount = Number(summary.stockists) || 0;
+    const wholesalersCount = Number(summary.wholesalers) || 0;
+    const customersCount = Number(summary.customers) || 0;
+
+    if (regionsCount > 0) {
+      parts.push(t(
+        regionsCount === 1 ? '1 region created' : `${regionsCount} regions created`,
+        regionsCount === 1 ? '1 क्षेत्र बनाया गया' : `${regionsCount} क्षेत्र बनाए गए`,
+        regionsCount === 1 ? '১টি অঞ্চল তৈরি করা হয়েছে' : `${regionsCount}টি অঞ্চল তৈরি করা হয়েছে`
+      ));
+    }
+    if (stockistsCount > 0) {
+      parts.push(t(
+        stockistsCount === 1 ? '1 stockist added' : `${stockistsCount} stockists added`,
+        stockistsCount === 1 ? '1 स्टॉकिस्ट जोड़ा गया' : `${stockistsCount} स्टॉकिस्ट जोड़े गए`,
+        stockistsCount === 1 ? '১টি স্টকিস্ট যুক্ত করা হয়েছে' : `${stockistsCount}টি স্টকিস্ট যুক্ত করা হয়েছে`
+      ));
+    }
+    if (wholesalersCount > 0) {
+      parts.push(t(
+        wholesalersCount === 1 ? '1 wholesaler registered' : `${wholesalersCount} wholesalers registered`,
+        wholesalersCount === 1 ? '1 थोक विक्रेता पंजीकृत' : `${wholesalersCount} थोक विक्रेता पंजीकृत`,
+        wholesalersCount === 1 ? '১ জন পাইকারি বিক্রেতা নিবন্ধিত' : `${wholesalersCount} জন পাইকারি বিক্রেতা নিবন্ধিত`
+      ));
+    }
+    if (customersCount > 0) {
+      parts.push(t(
+        customersCount === 1 ? '1 customer invited' : `${customersCount} customers invited`,
+        customersCount === 1 ? '1 ग्राहक आमंत्रित' : `${customersCount} ग्राहक आमंत्रित`,
+        customersCount === 1 ? '১ জন গ্রাহক আমন্ত্রিত' : `${customersCount} জন গ্রাহক আমন্ত্রিত`
+      ));
+    }
+
+    if (parts.length === 0) {
+      return t(
+        'Administrator account created, platform initialized',
+        'प्रशासक खाता बनाया गया, प्लेटफ़ॉर्म आरंभ किया गया',
+        'অ্যাডমিনিস্ট্রেটর অ্যাকাউন্ট তৈরি করা হয়েছে, প্ল্যাটফর্ম শুরু করা হয়েছে'
+      );
+    }
+    return parts.join(', ');
   };
 
   const handleCompleteAdminSetup = async () => {
@@ -4931,6 +4997,10 @@ export default function App() {
   useEffect(() => {
     if ((!devToolsEnabled || !showDevSettings) && activeRole === 'db') {
       setActiveRole('marketing');
+      return;
+    }
+    if (!devToolsEnabled && adminTab === 'devtools') {
+      setAdminTab('home');
       return;
     }
     if (currentUser && currentUser.role === 'CUSTOMER') {
@@ -8176,14 +8246,17 @@ export default function App() {
   };
 
   const handleResetDb = () => {
-    triggerConfirmModal(
-      t('Reset Database', 'डेटाबेस रीसेट करें', 'ডাটাবেস রিসেট করুন'),
-      t('Are you sure you want to reset all demo data and restore defaults? This will clear all orders.', 'क्या आप सभी डेमो डेटा को रीसेट करना चाहते हैं और डिफ़ॉल्ट बहाल करना चाहते हैं? इससे सभी ऑर्डर साफ़ हो जाएंगे।', 'আপনি কি নিশ্চিত যে আপনি সমস্ত ডেমো ডাটা রিসেট করতে চান? এর ফলে সমস্ত অর্ডার মুছে যাবে।'),
-      () => performReset(),
-      true,
-      t('Yes, Reset', 'हाँ, रीसेट करें', 'হ্যাঁ, রিসেট করুন'),
-      t('Cancel', 'रद्द करें', 'বাতিল করুন')
-    );
+    setConfirmTypedText('');
+    setConfirmModal({
+      isOpen: true,
+      title: t('Reset Database', 'डेटाबेस रीसेट करें', 'ডাটাবেস রিসেট করুন'),
+      message: t('Are you sure you want to reset all demo data and restore defaults? This will clear all orders.', 'क्या आप सभी डेमो डेटा को रीसेट करना चाहते हैं और डिफ़ॉल्ट बहाल करना चाहते हैं? इससे सभी ऑर्डर साफ़ हो जाएंगे।', 'আপনি কি নিশ্চিত যে আপনি সমস্ত ডেমো ডাটা রিসেট করতে চান? এর ফলে সমস্ত অর্ডার মুছে যাবে।'),
+      danger: true,
+      requireTypedConfirmation: 'RESET',
+      yesLabel: t('Yes, Reset', 'हाँ, रीसेट करें', 'হ্যাঁ, রিসেট করুন'),
+      noLabel: t('Cancel', 'रद्द करें', 'বাতিল করুন'),
+      onConfirm: () => performReset()
+    });
   };
 
   // CSV Exporter for billing sync
@@ -15890,11 +15963,6 @@ export default function App() {
               <h1>Operator Admin Dashboard</h1>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Beniffy Operations</p>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-danger" onClick={handleResetDb} style={{ fontSize: '0.8rem' }}>
-                <RotateCcw size={14} /> Reset Database
-              </button>
-            </div>
           </div>
 
           {/* Shared Region Filter */}
@@ -16002,6 +16070,15 @@ export default function App() {
               <button className={`admin-nav-item ${adminTab === 'outbox' ? 'active' : ''}`} onClick={() => goToAdminTab('outbox', fetchAdminOutbox)} data-testid="admin-nav-outbox">
                 <Mail size={16} /> {t('Message outbox', 'संदेश आउटबॉक्स', 'বার্তা আউটবক্স')}
               </button>
+              {devToolsEnabled && (
+                <button
+                  className={`admin-nav-item ${adminTab === 'devtools' ? 'active' : ''}`}
+                  onClick={() => goToAdminTab('devtools')}
+                  data-testid="admin-nav-devtools"
+                >
+                  <Wrench size={16} /> {t('Dev Tools', 'डेव टूल्स', 'ডেভ টুলস')}
+                </button>
+              )}
               
               <button className={`admin-nav-item ${adminTab === 'feedback' ? 'active' : ''}`} onClick={() => goToAdminTab('feedback')}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -16209,11 +16286,7 @@ export default function App() {
                             {t('Setup complete!', 'सेटअप पूरा हुआ!', 'সেটআপ সম্পন্ন হয়েছে!')}
                           </h3>
                           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0' }}>
-                            {adminSetupSummary?.text ? (
-                              <span>{adminSetupSummary.text}. {t('All setup steps are completed.', 'सभी सेटअप चरण पूरे हो गए हैं।', 'সমস্ত সেটআপ ধাপ সম্পন্ন হয়েছে।')}</span>
-                            ) : (
-                              <span>{t('Region created, stockist added. All initial setup steps are completed.', 'क्षेत्र बनाया गया, स्टॉकिस्ट जोड़ा गया। सभी प्रारंभिक सेटअप चरण पूरे हो गए हैं।', 'অঞ্চল তৈরি করা হয়েছে, স্টকিস্ট যুক্ত করা হয়েছে। সমস্ত প্রাথমিক সেটআপ ধাপ সম্পন্ন হয়েছে।')}</span>
-                            )}
+                            <span>{renderSetupSummaryText(adminSetupSummary)}. {t('All setup steps are completed.', 'सभी सेटअप चरण पूरे हो गए हैं।', 'সমস্ত সেটআপ ধাপ সম্পন্ন হয়েছে।')}</span>
                           </p>
                         </div>
                       </div>
@@ -17187,6 +17260,47 @@ export default function App() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {adminTab === 'devtools' && devToolsEnabled && (
+                <div data-testid="admin-devtools-section">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                    <div>
+                      <h2 style={{ fontSize: '1.4rem', margin: '0 0 0.25rem 0' }}>
+                        {t('Dev Tools', 'डेव टूल्स', 'ডেভ টুলস')}
+                      </h2>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {t('Developer and testing tools. Gated behind dev mode.', 'डेवलपर और परीक्षण उपकरण। केवल डेव मोड में उपलब्ध।', 'ডেভেলপার এবং টেস্টিং টুলস। শুধুমাত্র ডেভ মোডে উপলব্ধ।')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+                    <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-main)' }}>
+                          {t('Database Reset', 'डेटाबेस रीसेट', 'ডাটাবেস রিসেট')}
+                        </h4>
+                        <span className="badge badge-warning" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>
+                          {dbResetStatus?.enabled ? 'dev only' : 'disabled'}
+                        </span>
+                      </div>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0, lineHeight: 1.4 }}>
+                        {t('Reset all demo data and restore defaults. This will clear all orders and customer carts. Requires typing RESET to confirm.', 'सभी डेमो डेटा रीसेट करें और डिफ़ॉल्ट बहाल करें। इससे सभी ऑर्डर और ग्राहक कार्ट साफ़ हो जाएंगे। पुष्टि करने के लिए RESET टाइप करना आवश्यक है।', 'সমস্ত ডেমো ডাটা রিসেট করুন এবং ডিফল্ট পুনরুদ্ধার করুন। এটি সমস্ত অর্ডার এবং গ্রাহক কার্ট মুছে ফেলবে। নিশ্চিত করতে RESET টাইপ করা আবশ্যক।')}
+                      </p>
+                      <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'flex-start' }}>
+                        <button
+                          className="btn btn-danger"
+                          onClick={handleResetDb}
+                          data-testid="reset-db-btn"
+                          style={{ fontSize: '0.85rem' }}
+                        >
+                          <RotateCcw size={14} /> {t('Reset Database', 'डेटाबेस रीसेट करें', 'ডাটাবেস রিসেট করুন')}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -18298,6 +18412,15 @@ export default function App() {
                       >
                         {t('Integrations', 'इंटीग्रेशन', 'ইন্টিগ্রেশন')}
                       </button>
+                      {devToolsEnabled && (
+                        <button
+                          className={`btn ${adminTab === 'devtools' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+                          onClick={() => goToAdminTab('devtools')}
+                        >
+                          {t('Dev Tools', 'डेव टूल्स', 'ডেভ টুলস')}
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -18358,6 +18481,20 @@ export default function App() {
                             </div>
                           );
                         })}
+                      </div>
+
+                      <div className="glass-card" style={{ padding: '1.25rem', marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-testid="integration-db-reset">
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-main)' }}>
+                            {t('Database Reset Status', 'डेटाबेस रीसेट स्थिति', 'ডাটাবেস রিসেট স্থিতি')}
+                          </h4>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                            {dbResetStatus?.status_text || (devToolsEnabled ? 'Database reset: enabled (dev only)' : 'Database reset: disabled')}
+                          </div>
+                        </div>
+                        <span className={`badge ${dbResetStatus?.enabled ? 'badge-warning' : 'badge-secondary'}`} style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>
+                          {dbResetStatus?.enabled ? 'dev only' : 'disabled'}
+                        </span>
                       </div>
                     </div>
                   ) : (
@@ -19933,7 +20070,10 @@ export default function App() {
         <ModalLayer>
           <div 
             className="modal-overlay"
-            onClick={() => setConfirmModal(null)}
+            onClick={() => {
+              setConfirmModal(null);
+              setConfirmTypedText('');
+            }}
           >
             <div 
               className="modal-content" 
@@ -19953,12 +20093,33 @@ export default function App() {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.4' }}>
               {confirmModal.message}
             </p>
+            {confirmModal.requireTypedConfirmation && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.25rem' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {t('Type RESET to confirm:', 'पुष्टि करने के लिए RESET लिखें:', 'নিশ্চিত করতে RESET লিখুন:')}
+                </label>
+                <input
+                  type="text"
+                  className="text-input"
+                  data-testid="confirm-typed-input"
+                  value={confirmTypedText}
+                  onChange={(e) => setConfirmTypedText(e.target.value)}
+                  placeholder="RESET"
+                  autoFocus
+                  style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                />
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               {!confirmModal.infoOnly && (
               <button
                 className="btn btn-secondary"
                 style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
-                onClick={() => setConfirmModal(null)}
+                data-testid="confirm-modal-no"
+                onClick={() => {
+                  setConfirmModal(null);
+                  setConfirmTypedText('');
+                }}
               >
                 {confirmModal.noLabel || t('No', 'नहीं', 'না')}
               </button>
@@ -19966,9 +20127,12 @@ export default function App() {
               <button 
                 className={confirmModal.danger ? 'btn btn-danger' : 'btn btn-accent'} 
                 style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                data-testid="confirm-modal-yes"
+                disabled={Boolean(confirmModal.requireTypedConfirmation && confirmTypedText.trim() !== confirmModal.requireTypedConfirmation)}
                 onClick={() => {
                   confirmModal.onConfirm?.();
                   setConfirmModal(null);
+                  setConfirmTypedText('');
                 }}
               >
                 {confirmModal.yesLabel || t('Yes', 'हाँ', 'হ্যাঁ')}

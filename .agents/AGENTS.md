@@ -52,7 +52,7 @@ These rules are law. They were each earned by a real failure in this project. Vi
 - Points: non-transferable, non-cashable. Redeemable against the operator's own services AND, by owner decision, as a coupon discount on a single-shop prepaid order at checkout (BF-CPN). Never convertible to cash, never transferable, never loaded with paid money. Legal review pending before go-live.
 
 ## 7. REPORT FORMAT — exactly this, every round
-1) synced-from hash  2) each item: DONE/NOT DONE (+ file:line for DONE)  3) raw gate outputs  4) suite count  5) `git diff --stat` paste  6) commit hash + "pushed to master, servers restarted, DB reset"
+1) synced-from hash  2) each item: DONE/NOT DONE (+ file:line for DONE)  3) raw gate outputs  4) suite count  5) `git diff --stat` paste  6) commit hash + "pushed to master, servers restarted, in-memory DB reset (dev-db.json untouched)"
 
 ## 8. STANDING BUSINESS RULES (current, do not re-decide)
 - Cancel window: 1 minute. Cancel allowed only while timer alive AND status ∈ {CONFIRMING, PENDING, ACCEPTED, PREPARING}. Ready-for-Pickup kills cancel even with time left.

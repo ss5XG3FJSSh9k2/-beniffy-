@@ -102,7 +102,9 @@ async function run() {
     await goToDashBtn.click();
     await page.waitForTimeout(800);
 
-    // Assert Admin Dashboard is visible and B2B storefront is NOT
+    // Assert Admin Dashboard is visible (.admin-container) and B2B storefront is NOT
+    const adminContainer = page.locator('.admin-container');
+    await adminContainer.waitFor({ state: 'visible', timeout: 8000 });
     const adminDashboardHeader = page.locator('.admin-header, h1:has-text("Operator Admin Dashboard"), h2:has-text("Analytics Dashboard")').first();
     await adminDashboardHeader.waitFor({ state: 'visible', timeout: 8000 });
 
@@ -180,7 +182,9 @@ async function run() {
 
     await page2.waitForTimeout(600);
 
-    // Verify confirmation and admin dashboard visibility
+    // Verify confirmation and admin dashboard visibility (.admin-container)
+    const portalAdminContainer = page2.locator('.admin-container');
+    await portalAdminContainer.waitFor({ state: 'visible', timeout: 5000 });
     const portalAdminHeader = page2.locator('.admin-header, h1:has-text("Operator Admin Dashboard")').first();
     await portalAdminHeader.waitFor({ state: 'visible', timeout: 5000 });
 

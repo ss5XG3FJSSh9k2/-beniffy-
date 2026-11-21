@@ -117,6 +117,14 @@ function getMissingWhatsappKeys() {
   return missing;
 }
 
+function isDbResetAllowed() {
+  return process.env.NODE_ENV !== 'production' && process.env.ALLOW_DB_RESET === 'true';
+}
+
+function getDbResetStatusText() {
+  return isDbResetAllowed() ? 'Database reset: enabled (dev only)' : 'Database reset: disabled';
+}
+
 function getIntegrationsStatus() {
   const paymentsMode = getPaymentsMode();
   const smsMode = getSmsMode();
@@ -164,5 +172,7 @@ module.exports = {
   getMissingEmailKeys,
   getWhatsappMode,
   getMissingWhatsappKeys,
-  getIntegrationsStatus
+  getIntegrationsStatus,
+  isDbResetAllowed,
+  getDbResetStatusText
 };

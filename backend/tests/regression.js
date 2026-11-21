@@ -2,6 +2,7 @@ const TEST_PORT = process.env.TEST_PORT || '3002';
 process.env.PORT = TEST_PORT;
 process.env.POSTGRES_MODE = 'mem';
 process.env.SEED_MODE = 'test';
+process.env.ALLOW_DB_RESET = 'true';
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
@@ -5697,7 +5698,7 @@ async function main() {
   const brOverride = await post('http://localhost:3001/api/admin/override-table', { table: 'users', id: 'u-cust1', patch: { role: 'ADMIN' } });
   assert(brOverride.status === 404, 'override-table is unavailable outside test mode');
   const brResetDb = await post('http://localhost:3001/api/admin/reset-db', {});
-  assert(brResetDb.status === 404, 'reset-db is unavailable outside test mode');
+  assert([403, 404].includes(brResetDb.status), 'reset-db is unavailable outside test mode (returns 403 or 404)');
   const brClearRl = await post('http://localhost:3001/api/admin/clear-rate-limits', {});
   assert(brClearRl.status === 401, 'clear-rate-limits needs an admin login outside test mode');
   process.env.SEED_MODE = 'test';
@@ -7779,6 +7780,7 @@ async function main() {
   // ==========================================
   console.log('\n--- Ticket 65: Seed Data Realism & Invariants ---');
   // Reset database to ensure we test freshly seeded state
+  loginAs('u-admin', 'ADMIN');
   await post('http://localhost:3001/api/admin/reset-db');
 
   const t65SeedRunnerMod = require('../lib/seed-runner.js');
@@ -9082,14 +9084,19 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: POST /api/admin/setup-complete with customer token returns 401`);
 
-  // Test: POST /api/admin/setup-complete with admin token returns 200 with summary
+  // Test: POST /api/admin/setup-complete with admin token returns 200 with numeric counts and no prose string
   loginAs('u-admin', 'ADMIN');
   const admAuthSetupRes = await post('http://localhost:3001/api/admin/setup-complete', { admin_id: 'u-admin' });
   assert(admAuthSetupRes.status === 200 && admAuthSetupRes.body.success === true, 'POST /api/admin/setup-complete with admin token returns 200 and success: true');
-  assert(admAuthSetupRes.body.summary && typeof admAuthSetupRes.body.summary.text === 'string', 'POST /api/admin/setup-complete response includes summary text');
-  assert(typeof admAuthSetupRes.body.summary.regions_count === 'number', 'summary includes regions_count');
+  assert(admAuthSetupRes.body.summary && typeof admAuthSetupRes.body.summary === 'object', 'POST /api/admin/setup-complete response includes summary object');
+  assert(typeof admAuthSetupRes.body.summary.regions === 'number', 'summary includes numeric regions count');
+  assert(typeof admAuthSetupRes.body.summary.stockists === 'number', 'summary includes numeric stockists count');
+  assert(typeof admAuthSetupRes.body.summary.wholesalers === 'number', 'summary includes numeric wholesalers count');
+  assert(typeof admAuthSetupRes.body.summary.customers === 'number', 'summary includes numeric customers count');
+  assert(admAuthSetupRes.body.summary.text === undefined, 'summary contains counts only and NO prose string');
+  assert(!Object.values(admAuthSetupRes.body.summary).some(v => typeof v === 'string'), 'summary contains no prose strings');
   testCount++; passedCount++;
-  console.log(`[PASS] Test #${testCount}: POST /api/admin/setup-complete with admin token returns 200 with dynamic summary`);
+  console.log(`[PASS] Test #${testCount}: POST /api/admin/setup-complete returns numeric counts only and no prose string`);
 
   // Test: POST /api/setup/complete alias returns 200
   const aliasSetupRes = await post('http://localhost:3001/api/setup/complete', { admin_id: 'u-admin' });
@@ -9102,6 +9109,116 @@ async function main() {
   assert(!setupAppJsxContent.includes('setSetupSuccessAdmin(data);\n        setNeedsSetup(false);'), 'handleCreateAdminSetup does not immediately dismiss setup screen on success');
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: App.jsx handleCreateAdminSetup retains setup confirmation screen until user proceeds`);
+
+  // ==========================================
+  // ROUND BF-RESET: DATABASE RESET GATING & AUDIT LOGGING
+  // ==========================================
+  console.log('\n--- Round BF-RESET: Database Reset Gating & Audit Logging ---');
+
+  // 1. Unauthenticated reset-db attempt returns 403 and logs refusal
+  clearLogin();
+  const unauthResetRes = await post('http://localhost:3001/api/admin/reset-db', {});
+  assert(unauthResetRes.status === 403, 'POST /api/admin/reset-db without auth returns 403');
+  assert(unauthResetRes.body.error === 'Forbidden', 'Returns error: Forbidden');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: POST /api/admin/reset-db without auth returns 403 Forbidden`);
+
+  // Verify unauthenticated refusal logged in audit log
+  let auditLog = await dbModule.getTable('admin_audit_log');
+  const unauthRefusal = auditLog.slice().reverse().find(a => a.action === 'RESET_DB_REFUSED');
+  assert(unauthRefusal, 'Audit log records RESET_DB_REFUSED for unauthenticated attempt');
+  assert(unauthRefusal.entity_type === 'system' && unauthRefusal.entity_id === 'database', 'Audit entry targets system/database');
+  assert(unauthRefusal.after?.result === 'REFUSED', 'Audit entry records result REFUSED');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Unauthenticated reset attempt logged to admin_audit_log as RESET_DB_REFUSED`);
+
+  // 2. Non-admin roles (CUSTOMER, STOCKIST, PARTNER) return 403 and log refusal
+  const custRes = await post('http://localhost:3001/api/admin/reset-db', {}, {
+    headers: { Authorization: `Bearer ${custToken}` }
+  });
+  assert(custRes.status === 403, 'POST /api/admin/reset-db with customer token returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Customer reset attempt rejected with 403 Forbidden`);
+
+  const stkToken = sessionHelper.signSession('u-stk1', 'STOCKIST');
+  const stkRes = await post('http://localhost:3001/api/admin/reset-db', {}, {
+    headers: { Authorization: `Bearer ${stkToken}` }
+  });
+  assert(stkRes.status === 403, 'POST /api/admin/reset-db with stockist token returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Stockist reset attempt rejected with 403 Forbidden`);
+
+  const bfPartnerToken = sessionHelper.signSession('u-partner1', 'PARTNER');
+  const partnerRes = await post('http://localhost:3001/api/admin/reset-db', {}, {
+    headers: { Authorization: `Bearer ${bfPartnerToken}` }
+  });
+  assert(partnerRes.status === 403, 'POST /api/admin/reset-db with partner token returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Partner reset attempt rejected with 403 Forbidden`);
+
+  // 3. Admin caller when ALLOW_DB_RESET !== 'true' returns 403
+  loginAs('u-admin', 'ADMIN');
+  const prevAllowReset = process.env.ALLOW_DB_RESET;
+  delete process.env.ALLOW_DB_RESET;
+  const noEnvResetRes = await post('http://localhost:3001/api/admin/reset-db', {});
+  assert(noEnvResetRes.status === 403, 'POST /api/admin/reset-db without ALLOW_DB_RESET=true returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin reset without ALLOW_DB_RESET=true returns 403`);
+
+  // Verify refusal when ALLOW_DB_RESET missing
+  auditLog = await dbModule.getTable('admin_audit_log');
+  const noEnvRefusal = auditLog.slice().reverse().find(a => a.action === 'RESET_DB_REFUSED' && a.reason.includes('ALLOW_DB_RESET'));
+  assert(noEnvRefusal, 'Audit log records refusal due to missing ALLOW_DB_RESET');
+  assert(noEnvRefusal.after?.role === 'ADMIN', 'Audit log records caller role as ADMIN');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Missing ALLOW_DB_RESET logged to admin_audit_log`);
+
+  // 4. Admin caller when NODE_ENV is production returns 403
+  process.env.ALLOW_DB_RESET = 'true';
+  const prevNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+  const prodResetRes = await post('http://localhost:3001/api/admin/reset-db', {}, {
+    headers: { 'x-forwarded-proto': 'https' }
+  });
+  assert(prodResetRes.status === 403, 'POST /api/admin/reset-db in production returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin reset in production mode returns 403`);
+
+  // Restore NODE_ENV
+  process.env.NODE_ENV = prevNodeEnv || 'test';
+
+  // 5. Integrations endpoint reports database_reset status correctly
+  const intStatusRes = await get('http://localhost:3001/api/admin/integrations');
+  assert(intStatusRes.status === 200, 'GET /api/admin/integrations returns 200');
+  assert(intStatusRes.body.database_reset, 'Integrations response includes database_reset object');
+  assert(intStatusRes.body.database_reset.enabled === true, 'database_reset.enabled is true when ALLOW_DB_RESET=true in dev');
+  assert(intStatusRes.body.database_reset.status_text === 'Database reset: enabled (dev only)', 'database_reset status text matches');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/admin/integrations reports database_reset: enabled (dev only)`);
+
+  delete process.env.ALLOW_DB_RESET;
+  const intStatusDisabledRes = await get('http://localhost:3001/api/admin/integrations');
+  assert(intStatusDisabledRes.body.database_reset.enabled === false, 'database_reset.enabled is false when ALLOW_DB_RESET not set');
+  assert(intStatusDisabledRes.body.database_reset.status_text === 'Database reset: disabled', 'database_reset reports "Database reset: disabled"');
+  process.env.ALLOW_DB_RESET = 'true';
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/admin/integrations reports database_reset: disabled when env unset`);
+
+  // 6. Admin caller when ALLOW_DB_RESET=true and dev mode returns 200 and logs allowed
+  const allowedResetRes = await post('http://localhost:3001/api/admin/reset-db', {});
+  assert(allowedResetRes.status === 200, 'POST /api/admin/reset-db returns 200 when all conditions satisfied');
+  assert(allowedResetRes.body.success === true, 'Response contains success: true');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Authorized admin reset returns 200 with success: true`);
+
+  auditLog = await dbModule.getTable('admin_audit_log');
+  const allowedEntry = auditLog.slice().reverse().find(a => a.action === 'RESET_DB_ALLOWED');
+  assert(allowedEntry, 'Audit log records RESET_DB_ALLOWED');
+  assert(allowedEntry.entity_type === 'system' && allowedEntry.entity_id === 'database', 'Audit entry targets system/database');
+  assert(allowedEntry.after?.result === 'ALLOWED', 'Audit entry records result ALLOWED');
+  assert(allowedEntry.after?.role === 'ADMIN', 'Audit entry records admin role');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Allowed database reset recorded in admin_audit_log`);
 
     clearLogin();
 

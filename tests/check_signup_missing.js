@@ -30,7 +30,12 @@ async function launchBrowser() {
 }
 
 async function resetDb() {
-  const res = await fetch(`${API}/admin/reset-db`, { method: 'POST' });
+  const sessionHelper = require('../backend/lib/session.js');
+  const token = sessionHelper.signSession('u-admin', 'ADMIN');
+  const res = await fetch(`${API}/admin/reset-db`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
   if (res.status !== 200) throw new Error(`reset-db returned ${res.status}: not an in-memory test server, refusing to continue`);
 }
 

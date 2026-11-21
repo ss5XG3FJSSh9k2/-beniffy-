@@ -7,6 +7,7 @@ const mode = process.argv[2] || 'dev';
 if (mode === 'dev:seed') {
   process.env.SEED_MODE = 'test';
   process.env.TEST_SUITE = 'true';
+  process.env.ALLOW_DB_RESET = 'true';
 } else {
   process.env.SEED_MODE = 'production';
   process.env.DEV_LAUNCHER = 'true';
