@@ -18489,7 +18489,7 @@ export default function App() {
                             {t('Database Reset Status', 'डेटाबेस रीसेट स्थिति', 'ডাটাবেস রিসেট স্থিতি')}
                           </h4>
                           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                            {dbResetStatus?.status_text || (devToolsEnabled ? 'Database reset: enabled (dev only)' : 'Database reset: disabled')}
+                            {dbResetStatus?.status_text || 'Database reset: disabled'}
                           </div>
                         </div>
                         <span className={`badge ${dbResetStatus?.enabled ? 'badge-warning' : 'badge-secondary'}`} style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>

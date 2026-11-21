@@ -239,7 +239,12 @@ const { isLocalDev } = require('./lib/env');
 
 // General API Rate Limiting Middleware (Item 14) - 100 req/min per IP
 app.use('/api/', async (req, res, next) => {
-  if (isLocalDev() || req.path.includes('/api/setup') || req.path.includes('/api/admin/setup-complete') || req.path.startsWith('/setup/') || req.path === '/setup' || req.path.startsWith('/admin/reset-db') || req.path.startsWith('/admin/clear-rate-limits')) return next();
+  const isResetDb = req.path === '/admin/reset-db' || req.path.startsWith('/admin/reset-db');
+  if (isResetDb) {
+    if (require('./lib/env').isTestEnv()) return next();
+  } else if (isLocalDev() || req.path.includes('/api/setup') || req.path.includes('/api/admin/setup-complete') || req.path.startsWith('/setup/') || req.path === '/setup' || req.path.startsWith('/admin/clear-rate-limits')) {
+    return next();
+  }
 
   if (req.path.includes('/auth/send-otp') || req.path.endsWith('/send-otp') || req.path.includes('login-otp-request')) {
     try {
@@ -11847,8 +11852,13 @@ app.post('/api/admin/reset-db', async (req, res) => {
   const isDevMode = process.env.NODE_ENV !== 'production' && req.headers['x-node-env'] !== 'production';
   const isAllowReset = process.env.ALLOW_DB_RESET === 'true';
   const isAdmin = actingRole === 'ADMIN';
+  const envMod = require('./lib/env');
+  const isTestEnv = envMod.isTestEnv();
+  const isDevLauncher = process.env.DEV_LAUNCHER === 'true';
+  const hasRealDb = Boolean(process.env.DATABASE_URL);
+  const isInMemoryTestDb = isTestEnv && !isDevLauncher && !hasRealDb;
 
-  if (!isAdmin || !isDevMode || !isAllowReset) {
+  if (!isAdmin || !isDevMode || !isAllowReset || !isInMemoryTestDb) {
     let reason = '';
     if (!actingUserId) {
       reason = 'Unauthenticated caller';
@@ -11858,6 +11868,8 @@ app.post('/api/admin/reset-db', async (req, res) => {
       reason = 'Server is in production mode';
     } else if (!isAllowReset) {
       reason = 'ALLOW_DB_RESET is not enabled';
+    } else if (!isInMemoryTestDb) {
+      reason = 'Not running on the in-memory test database';
     }
 
     await appendAudit(

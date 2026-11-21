@@ -9220,6 +9220,81 @@ async function main() {
   testCount++; passedCount++;
   console.log(`[PASS] Test #${testCount}: Allowed database reset recorded in admin_audit_log`);
 
+  // 7. 403 when isTestEnv() is false even with ADMIN + ALLOW_DB_RESET=true
+  process.env.ALLOW_DB_RESET = 'true';
+  const savedTestNodeEnv7 = process.env.NODE_ENV;
+  const savedTestSeedMode7 = process.env.SEED_MODE;
+  process.env.NODE_ENV = 'development';
+  delete process.env.SEED_MODE;
+
+  const notTestEnvRes = await post('http://localhost:3001/api/admin/reset-db', {});
+  assert(notTestEnvRes.status === 403, 'POST /api/admin/reset-db returns 403 when isTestEnv() is false');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin reset returns 403 when isTestEnv() is false`);
+
+  auditLog = await dbModule.getTable('admin_audit_log');
+  const notTestEnvRefusal = auditLog.slice().reverse().find(a => a.action === 'RESET_DB_REFUSED' && a.reason === 'Not running on the in-memory test database');
+  assert(notTestEnvRefusal, 'Refusal audit logged with reason "Not running on the in-memory test database"');
+  assert(notTestEnvRefusal.after?.role === 'ADMIN', 'Audit log records caller role as ADMIN');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: isTestEnv() false refusal audit logged with reason "Not running on the in-memory test database"`);
+
+  // Integrations endpoint when isTestEnv() is false reports disabled
+  const intStatusNotTestRes = await get('http://localhost:3001/api/admin/integrations');
+  assert(intStatusNotTestRes.body.database_reset.enabled === false, 'database_reset.enabled is false when isTestEnv() is false');
+  assert(intStatusNotTestRes.body.database_reset.status_text === 'Database reset: disabled', 'database_reset reports disabled when isTestEnv() is false');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Integrations reports Database reset: disabled when isTestEnv() is false`);
+
+  // Restore env
+  process.env.NODE_ENV = savedTestNodeEnv7;
+  if (savedTestSeedMode7 !== undefined) process.env.SEED_MODE = savedTestSeedMode7;
+
+  // 8. 403 when DEV_LAUNCHER=true
+  process.env.DEV_LAUNCHER = 'true';
+  const devLauncherRes = await post('http://localhost:3001/api/admin/reset-db', {});
+  assert(devLauncherRes.status === 403, 'POST /api/admin/reset-db returns 403 when DEV_LAUNCHER=true');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Admin reset returns 403 when DEV_LAUNCHER=true`);
+
+  auditLog = await dbModule.getTable('admin_audit_log');
+  const devLauncherRefusal = auditLog.slice().reverse().find(a => a.action === 'RESET_DB_REFUSED' && a.reason === 'Not running on the in-memory test database');
+  assert(devLauncherRefusal, 'DEV_LAUNCHER=true refusal audit logged with reason "Not running on the in-memory test database"');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: DEV_LAUNCHER=true refusal audit logged with reason "Not running on the in-memory test database"`);
+
+  // Integrations endpoint when DEV_LAUNCHER=true reports disabled
+  const intStatusDevLauncherRes = await get('http://localhost:3001/api/admin/integrations');
+  assert(intStatusDevLauncherRes.body.database_reset.enabled === false, 'database_reset.enabled is false when DEV_LAUNCHER=true');
+  assert(intStatusDevLauncherRes.body.database_reset.status_text === 'Database reset: disabled', 'database_reset reports disabled when DEV_LAUNCHER=true');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Integrations reports Database reset: disabled when DEV_LAUNCHER=true`);
+
+  delete process.env.DEV_LAUNCHER;
+
+  // 9. Rate limiting on reset-db: with test-env exemption turned off, send 100 requests to /api/admin/reset-db; request 101 returns 429
+  await post('http://localhost:3001/api/admin/clear-rate-limits', {});
+
+  const savedTestNodeEnv9 = process.env.NODE_ENV;
+  const savedTestSeedMode9 = process.env.SEED_MODE;
+  process.env.NODE_ENV = 'development';
+  delete process.env.SEED_MODE;
+
+  for (let i = 0; i < 100; i++) {
+    const r = await post('http://localhost:3001/api/admin/reset-db', {});
+    assert(r.status === 403, `Request ${i + 1} before rate limit is refused with 403`);
+  }
+  const req101 = await post('http://localhost:3001/api/admin/reset-db', {});
+  assert(req101.status === 429, 'Request 101 to /api/admin/reset-db returns 429');
+  assert(req101.body.error && req101.body.error.includes('Too many requests'), '429 error body received');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: Request 101 to /api/admin/reset-db trips rate limit and returns 429`);
+
+  // Restore env and clean up rate limits
+  process.env.NODE_ENV = savedTestNodeEnv9;
+  if (savedTestSeedMode9 !== undefined) process.env.SEED_MODE = savedTestSeedMode9;
+  await post('http://localhost:3001/api/admin/clear-rate-limits', {});
+
     clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);

@@ -118,7 +118,14 @@ function getMissingWhatsappKeys() {
 }
 
 function isDbResetAllowed() {
-  return process.env.NODE_ENV !== 'production' && process.env.ALLOW_DB_RESET === 'true';
+  const isDevMode = process.env.NODE_ENV !== 'production';
+  const isAllowReset = process.env.ALLOW_DB_RESET === 'true';
+  const isTestEnv = envMod.isTestEnv();
+  const isDevLauncher = process.env.DEV_LAUNCHER === 'true';
+  const hasRealDb = Boolean(process.env.DATABASE_URL);
+  const isInMemoryTestDb = isTestEnv && !isDevLauncher && !hasRealDb;
+
+  return isDevMode && isAllowReset && isInMemoryTestDb;
 }
 
 function getDbResetStatusText() {
