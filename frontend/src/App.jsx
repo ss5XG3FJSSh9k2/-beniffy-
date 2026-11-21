@@ -2156,7 +2156,9 @@ export default function App() {
         setSetupError(data.error || 'Failed to create administrator account.');
       } else {
         setSetupSuccessAdmin(data);
-        setNeedsSetup(false);
+        if (data.token && (data.user || data.id)) {
+          persistSession(data.user || data, data.token);
+        }
         checkSetupStatus();
       }
     } catch (err) {
@@ -2416,11 +2418,18 @@ export default function App() {
         setAdminTab('bills');
       } else if (path === '/admin/fraud' || path === '/admin/fraud-reports') {
         setAdminTab('fraud_reports');
+      } else if (path === '/admin/dashboard' || path === '/admin') {
+        setActiveRole('admin');
+        setAdminTab('analytics');
       }
     }
   }, []);
 
   const [gettingStartedOpen, setGettingStartedOpen] = useState(true);
+  const [adminSetupConfirmed, setAdminSetupConfirmed] = useState(false);
+  const [adminSetupDismissed, setAdminSetupDismissed] = useState(false);
+  const [isCompletingSetup, setIsCompletingSetup] = useState(false);
+  const [setupCompleteError, setSetupCompleteError] = useState('');
 
   const [cartExpanded, setCartExpanded] = useState(false);
   const [blacklistedUsers, setBlacklistedUsers] = useState([]);
@@ -4381,6 +4390,36 @@ export default function App() {
       t('Yes, delete', 'हाँ, हटाएं', 'হ্যাঁ, মুছে ফেলুন'),
       t('Cancel', 'रद्द करें', 'বাতিল করুন')
     );
+  };
+
+  const handleCompleteAdminSetup = async () => {
+    setIsCompletingSetup(true);
+    setSetupCompleteError('');
+    try {
+      const authToken = (typeof localStorage !== 'undefined' ? localStorage.getItem('token') : '') || '';
+      const res = await fetch(`${API_BASE}/admin/setup-complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+        },
+        body: JSON.stringify({ admin_id: currentUser?.id, phone: currentUser?.phone })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setAdminSetupConfirmed(true);
+        showToast(t('Setup completed successfully!', 'सेटअप सफलतापूर्वक पूरा हुआ!', 'সেটআপ সফলভাবে সম্পন্ন হয়েছে!'), 'success');
+      } else {
+        const errMsg = data.error || data.message || 'Failed to complete setup';
+        setSetupCompleteError(errMsg);
+        showToast(errMsg, 'error');
+      }
+    } catch (err) {
+      setSetupCompleteError('Network error during setup');
+      showToast(t('Network error during setup', 'सेटअप के दौरान नेटवर्क त्रुटि', 'সেটআপের সময় নেটওয়ার্ক ত্রুটি'), 'error');
+    } finally {
+      setIsCompletingSetup(false);
+    }
   };
 
   const fetchAnalytics = async () => {
@@ -16155,8 +16194,45 @@ export default function App() {
                 const step4Done = adminCustomers.length > 0;
 
                 if (!dbState) return null;
+                if (adminSetupDismissed) return null;
+
+                if (adminSetupConfirmed) {
+                  return (
+                    <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.25rem', border: '1px solid var(--border-color)', background: 'var(--success-glow)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--success-glow)', color: 'var(--success-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-main)', fontWeight: 'bold' }}>
+                            {t('Setup complete!', 'सेटअप पूरा हुआ!', 'সেটআপ সম্পন্ন হয়েছে!')}
+                          </h3>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0' }}>
+                            {t('Region created, stockist added. All initial setup steps are completed.', 'क्षेत्र बनाया गया, स्टॉकिस्ट जोड़ा गया। सभी प्रारंभिक सेटअप चरण पूरे हो गए हैं।', 'অঞ্চল তৈরি করা হয়েছে, স্টকিস্ট যুক্ত করা হয়েছে। সমস্ত প্রাথমিক সেটআপ ধাপ সম্পন্ন হয়েছে।')}
+                          </p>
+                        </div>
+                      </div>
+                      <div style={{ marginTop: '0.85rem' }}>
+                        <button
+                          className="btn btn-primary"
+                          style={{ fontSize: '0.85rem', fontWeight: 'bold', padding: '0.5rem 1.25rem' }}
+                          onClick={() => {
+                            setAdminSetupDismissed(true);
+                            setActiveRole('admin');
+                            setAdminTab('analytics');
+                            if (typeof window !== 'undefined' && window.history && window.history.pushState) {
+                              window.history.pushState(null, '', '/admin/dashboard');
+                            }
+                          }}
+                        >
+                          {t('Go to dashboard', 'डैशबोर्ड पर जाएं', 'ড্যাশবোর্ডে যান')} →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 const allComplete = step1Done && step2Done && step3Done && step4Done;
-                if (allComplete) return null;
 
                 return (
                   <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.25rem', border: '1px solid var(--border-color)', background: 'var(--primary-glow)' }}>
@@ -16270,6 +16346,23 @@ export default function App() {
                           {step4Done ? 'Done' : (step3Done ? 'Pending' : 'Locked')}
                         </span>
                       </div>
+                      {allComplete && (
+                        <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
+                          {setupCompleteError && (
+                            <div style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', padding: '0.5rem', borderRadius: '6px', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
+                              {setupCompleteError}
+                            </div>
+                          )}
+                          <button
+                            className="btn btn-primary"
+                            style={{ width: '100%', padding: '0.65rem', fontWeight: 'bold', fontSize: '0.85rem' }}
+                            disabled={isCompletingSetup}
+                            onClick={handleCompleteAdminSetup}
+                          >
+                            {isCompletingSetup ? t('Completing...', 'पूरा किया जा रहा है...', 'সম্পন্ন করা হচ্ছে...') : t('Complete Setup', 'सेटअप पूरा करें', 'সেটআপ সম্পন্ন করুন')}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -19670,15 +19763,19 @@ export default function App() {
               </div>
               <div>
                 <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>
-                  {t('Administrator Account Created!', 'प्रशासक खाता बनाया गया!', 'অ্যাডমিনিস্ট্রেটর অ্যাকাউন্ট তৈরি করা হয়েছে!')}
+                  {t('Setup Complete!', 'सेटअप पूरा हुआ!', 'সেটআপ সম্পন্ন হয়েছে!')}
                 </h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                  {t(
-                    `Administrator account created for phone ${setupSuccessAdmin.phone}. You can now log in.`,
-                    `फ़ोन ${setupSuccessAdmin.phone} के लिए प्रशासक खाता बनाया गया। अब आप ओटीपी 123456 के साथ लॉग इन कर सकते हैं।`,
-                    `ফোন ${setupSuccessAdmin.phone} এর জন্য অ্যাডমিনিস্ট্রেটর অ্যাকাউন্ট তৈরি করা হয়েছে। আপনি এখন ওটিপি 123456 দিয়ে লগ ইন করতে পারেন।`
-                  )}
-                </p>
+                <div style={{ marginTop: '0.75rem', padding: '0.75rem', borderRadius: '8px', background: 'var(--surface-overlay)', border: '1px solid var(--border-color)', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                  <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                    {t('Summary of setup:', 'सेटअप का सारांश:', 'সেটআপের বিবরণ:')}
+                  </div>
+                  <div style={{ color: 'var(--text-muted)' }}>
+                    • {t(`Administrator account created (${setupSuccessAdmin.phone})`, `प्रशासक खाता बनाया गया (${setupSuccessAdmin.phone})`, `অ্যাডমিনিস্ট্রেটর অ্যাকাউন্ট তৈরি করা হয়েছে (${setupSuccessAdmin.phone})`)}
+                  </div>
+                  <div style={{ color: 'var(--text-muted)' }}>
+                    • {t('Initial platform settings and commission structure initialized', 'प्रारंभिक प्लेटफ़ॉर्म सेटिंग्स और कमीशन संरचना आरंभ की गई', 'প্রাথমিক প্ল্যাটফর্ম সেটিংস এবং কমিশন কাঠামো শুরু করা হয়েছে')}
+                  </div>
+                </div>
               </div>
               <button
                 className="btn btn-accent"
@@ -19686,12 +19783,21 @@ export default function App() {
                 onClick={() => {
                   setNeedsSetup(false);
                   setActiveRole('admin');
-                  setLoginPhone(setupSuccessAdmin.phone);
+                  setAdminTab('analytics');
+                  if (setupSuccessAdmin.user && setupSuccessAdmin.token) {
+                    persistSession(setupSuccessAdmin.user, setupSuccessAdmin.token);
+                  } else {
+                    setLoginPhone(setupSuccessAdmin.phone);
+                  }
                   setShowCustomerSignup(false);
                   setShowStockistSignup(false);
+                  if (typeof window !== 'undefined' && window.history && window.history.pushState) {
+                    window.history.pushState(null, '', '/admin/dashboard');
+                  }
+                  showToast(t('Welcome to Admin Dashboard', 'एडमिन डैशबोर्ड में आपका स्वागत है', 'অ্যাডমিন ড্যাশবোর্ডে স্বাগতম'), 'success');
                 }}
               >
-                {t('Proceed to Admin Login', 'प्रशासक लॉगिन पर आगे बढ़ें', 'অ্যাডমিন লগইনে এগিয়ে যান')} →
+                {t('Go to dashboard', 'डैशबोर्ड पर जाएं', 'ড্যাশবোর্ডে যান')} →
               </button>
             </div>
           ) : (

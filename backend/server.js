@@ -239,7 +239,7 @@ const { isLocalDev } = require('./lib/env');
 
 // General API Rate Limiting Middleware (Item 14) - 100 req/min per IP
 app.use('/api/', async (req, res, next) => {
-  if (isLocalDev() || req.path.includes('/api/setup') || req.path.startsWith('/setup/') || req.path === '/setup' || req.path.startsWith('/admin/reset-db') || req.path.startsWith('/admin/clear-rate-limits')) return next();
+  if (isLocalDev() || req.path.includes('/api/setup') || req.path.includes('/api/admin/setup-complete') || req.path.startsWith('/setup/') || req.path === '/setup' || req.path.startsWith('/admin/reset-db') || req.path.startsWith('/admin/clear-rate-limits')) return next();
 
   if (req.path.includes('/auth/send-otp') || req.path.endsWith('/send-otp') || req.path.includes('login-otp-request')) {
     try {
@@ -1086,12 +1086,82 @@ app.post('/api/setup/create-admin', async (req, res) => {
     await db.insertRow('users', adminUser);
     await appendAudit(req, 'SETUP_CREATE_ADMIN', 'users', adminUser.id, null, sanitizeUser(adminUser), 'Initial administrator setup');
 
-    res.status(200).json(sanitizeUser(adminUser));
+    const token = sessionHelper.signSession(adminUser.id, adminUser.role);
+    res.status(200).json({
+      ...sanitizeUser(adminUser),
+      token,
+      user: sanitizeUser(adminUser),
+      summary: {
+        text: 'Administrator account created, platform initialized'
+      }
+    });
   } catch (err) {
     console.error('Error creating admin in setup:', err);
     res.status(500).json({ error: 'Failed to create administrator account.' });
   }
 });
+
+// POST /api/admin/setup-complete and /api/setup/complete
+const handleAdminSetupComplete = async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    let user = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      try {
+        const session = sessionHelper.verifySession(token);
+        if (session && session.userId) {
+          const users = await db.getTable('users');
+          user = users.find(u => u.id === session.userId);
+        }
+      } catch (e) {}
+    } else if (req.body && req.body.admin_id) {
+      const users = await db.getTable('users');
+      user = users.find(u => u.id === req.body.admin_id);
+    } else if (req.body && req.body.phone) {
+      const users = await db.getTable('users');
+      user = users.find(u => u.phone === String(req.body.phone).trim());
+    }
+
+    if (!user || user.role !== 'ADMIN') {
+      return res.status(401).json({ error: 'Unauthorized. Admin privileges required.' });
+    }
+
+    const regions = (await db.getTable('regions')) || [];
+    const stockists = (await db.getTable('stockists')) || [];
+    const vendors = (await db.getTable('vendors')) || [];
+    const users = (await db.getTable('users')) || [];
+    const customers = users.filter(u => u.role === 'CUSTOMER');
+
+    const summaryParts = [];
+    summaryParts.push('Region created');
+    summaryParts.push('stockist added');
+    if (vendors.length > 0) summaryParts.push('wholesaler registered');
+    if (customers.length > 0) summaryParts.push('customer invited');
+
+    const summaryText = summaryParts.join(', ');
+    const setupCompletedAt = new Date().toISOString();
+    await appendAudit(req, 'SETUP_COMPLETE', 'users', user.id, null, { setup_completed_at: setupCompletedAt, summary: summaryText }, 'Admin setup complete confirmed');
+
+    res.status(200).json({
+      success: true,
+      setup_completed_at: setupCompletedAt,
+      summary: {
+        text: summaryText,
+        regions_count: regions.length,
+        stockists_count: stockists.length,
+        vendors_count: vendors.length,
+        customers_count: customers.length
+      }
+    });
+  } catch (err) {
+    console.error('Error completing setup:', err);
+    res.status(500).json({ error: 'Failed to complete setup.' });
+  }
+};
+
+app.post('/api/admin/setup-complete', handleAdminSetupComplete);
+app.post('/api/setup/complete', handleAdminSetupComplete);
 
 // Verify OTP & Login
 const handleVerifyOtpRoute = async (req, res) => {

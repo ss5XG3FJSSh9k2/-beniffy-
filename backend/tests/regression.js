@@ -9063,6 +9063,45 @@ async function main() {
     delete process.env.WHATSAPP_PHONE_NUMBER_ID;
   }
 
+  console.log('\n--- Round BF-SETUP: Admin Setup Confirmation & Landing ---');
+  clearLogin();
+
+  // Test: POST /api/admin/setup-complete without auth returns 401
+  const noAuthSetupRes = await post('http://localhost:3001/api/admin/setup-complete', {});
+  assert(noAuthSetupRes.status === 401, 'POST /api/admin/setup-complete without auth returns 401');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: POST /api/admin/setup-complete without auth returns 401`);
+
+  // Test: POST /api/admin/setup-complete with customer token returns 401
+  const custSetupLogin = await post('http://localhost:3001/api/auth/verify-otp', { phone: '9876543210', otp: '123456', expected_role: 'CUSTOMER' });
+  const custToken = custSetupLogin.body.token;
+  const custAuthSetupRes = await post('http://localhost:3001/api/admin/setup-complete', {}, {
+    headers: { Authorization: `Bearer ${custToken}` }
+  });
+  assert(custAuthSetupRes.status === 401, 'POST /api/admin/setup-complete with customer token returns 401');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: POST /api/admin/setup-complete with customer token returns 401`);
+
+  // Test: POST /api/admin/setup-complete with admin token returns 200 with summary
+  loginAs('u-admin', 'ADMIN');
+  const admAuthSetupRes = await post('http://localhost:3001/api/admin/setup-complete', { admin_id: 'u-admin' });
+  assert(admAuthSetupRes.status === 200 && admAuthSetupRes.body.success === true, 'POST /api/admin/setup-complete with admin token returns 200 and success: true');
+  assert(admAuthSetupRes.body.summary && typeof admAuthSetupRes.body.summary.text === 'string', 'POST /api/admin/setup-complete response includes summary text');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: POST /api/admin/setup-complete with admin token returns 200 with summary`);
+
+  // Test: POST /api/setup/complete alias returns 200
+  const aliasSetupRes = await post('http://localhost:3001/api/setup/complete', { admin_id: 'u-admin' });
+  assert(aliasSetupRes.status === 200 && aliasSetupRes.body.success === true, 'POST /api/setup/complete alias returns 200');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: POST /api/setup/complete alias returns 200 with success: true`);
+
+  // Test: App.jsx handleCreateAdminSetup does not prematurely set needsSetup(false)
+  const setupAppJsxContent = fs.readFileSync(path.join(__dirname, '../../frontend/src/App.jsx'), 'utf8');
+  assert(!setupAppJsxContent.includes('setSetupSuccessAdmin(data);\n        setNeedsSetup(false);'), 'handleCreateAdminSetup does not immediately dismiss setup screen on success');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: App.jsx handleCreateAdminSetup retains setup confirmation screen until user proceeds`);
+
     clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);
