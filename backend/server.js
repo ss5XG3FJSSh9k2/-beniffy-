@@ -1134,10 +1134,21 @@ const handleAdminSetupComplete = async (req, res) => {
     const customers = users.filter(u => u.role === 'CUSTOMER');
 
     const summaryParts = [];
-    summaryParts.push('Region created');
-    summaryParts.push('stockist added');
-    if (vendors.length > 0) summaryParts.push('wholesaler registered');
-    if (customers.length > 0) summaryParts.push('customer invited');
+    if (regions.length > 0) {
+      summaryParts.push(regions.length === 1 ? 'Region created' : `${regions.length} regions created`);
+    }
+    if (stockists.length > 0) {
+      summaryParts.push(stockists.length === 1 ? 'stockist added' : `${stockists.length} stockists added`);
+    }
+    if (vendors.length > 0) {
+      summaryParts.push(vendors.length === 1 ? 'wholesaler registered' : `${vendors.length} wholesalers registered`);
+    }
+    if (customers.length > 0) {
+      summaryParts.push(customers.length === 1 ? 'customer invited' : `${customers.length} customers invited`);
+    }
+    if (summaryParts.length === 0) {
+      summaryParts.push('Administrator account created, platform initialized');
+    }
 
     const summaryText = summaryParts.join(', ');
     const setupCompletedAt = new Date().toISOString();

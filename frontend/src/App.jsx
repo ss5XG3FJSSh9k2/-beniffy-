@@ -2418,9 +2418,6 @@ export default function App() {
         setAdminTab('bills');
       } else if (path === '/admin/fraud' || path === '/admin/fraud-reports') {
         setAdminTab('fraud_reports');
-      } else if (path === '/admin/dashboard' || path === '/admin') {
-        setActiveRole('admin');
-        setAdminTab('analytics');
       }
     }
   }, []);
@@ -2428,6 +2425,7 @@ export default function App() {
   const [gettingStartedOpen, setGettingStartedOpen] = useState(true);
   const [adminSetupConfirmed, setAdminSetupConfirmed] = useState(false);
   const [adminSetupDismissed, setAdminSetupDismissed] = useState(false);
+  const [adminSetupSummary, setAdminSetupSummary] = useState(null);
   const [isCompletingSetup, setIsCompletingSetup] = useState(false);
   const [setupCompleteError, setSetupCompleteError] = useState('');
 
@@ -4408,6 +4406,9 @@ export default function App() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setAdminSetupConfirmed(true);
+        if (data.summary) {
+          setAdminSetupSummary(data.summary);
+        }
         showToast(t('Setup completed successfully!', 'सेटअप सफलतापूर्वक पूरा हुआ!', 'সেটআপ সফলভাবে সম্পন্ন হয়েছে!'), 'success');
       } else {
         const errMsg = data.error || data.message || 'Failed to complete setup';
@@ -16208,7 +16209,11 @@ export default function App() {
                             {t('Setup complete!', 'सेटअप पूरा हुआ!', 'সেটআপ সম্পন্ন হয়েছে!')}
                           </h3>
                           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0' }}>
-                            {t('Region created, stockist added. All initial setup steps are completed.', 'क्षेत्र बनाया गया, स्टॉकिस्ट जोड़ा गया। सभी प्रारंभिक सेटअप चरण पूरे हो गए हैं।', 'অঞ্চল তৈরি করা হয়েছে, স্টকিস্ট যুক্ত করা হয়েছে। সমস্ত প্রাথমিক সেটআপ ধাপ সম্পন্ন হয়েছে।')}
+                            {adminSetupSummary?.text ? (
+                              <span>{adminSetupSummary.text}. {t('All setup steps are completed.', 'सभी सेटअप चरण पूरे हो गए हैं।', 'সমস্ত সেটআপ ধাপ সম্পন্ন হয়েছে।')}</span>
+                            ) : (
+                              <span>{t('Region created, stockist added. All initial setup steps are completed.', 'क्षेत्र बनाया गया, स्टॉकिस्ट जोड़ा गया। सभी प्रारंभिक सेटअप चरण पूरे हो गए हैं।', 'অঞ্চল তৈরি করা হয়েছে, স্টকিস্ট যুক্ত করা হয়েছে। সমস্ত প্রাথমিক সেটআপ ধাপ সম্পন্ন হয়েছে।')}</span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -16220,9 +16225,6 @@ export default function App() {
                             setAdminSetupDismissed(true);
                             setActiveRole('admin');
                             setAdminTab('analytics');
-                            if (typeof window !== 'undefined' && window.history && window.history.pushState) {
-                              window.history.pushState(null, '', '/admin/dashboard');
-                            }
                           }}
                         >
                           {t('Go to dashboard', 'डैशबोर्ड पर जाएं', 'ড্যাশবোর্ডে যান')} →
@@ -19791,9 +19793,6 @@ export default function App() {
                   }
                   setShowCustomerSignup(false);
                   setShowStockistSignup(false);
-                  if (typeof window !== 'undefined' && window.history && window.history.pushState) {
-                    window.history.pushState(null, '', '/admin/dashboard');
-                  }
                   showToast(t('Welcome to Admin Dashboard', 'एडमिन डैशबोर्ड में आपका स्वागत है', 'অ্যাডমিন ড্যাশবোর্ডে স্বাগতম'), 'success');
                 }}
               >

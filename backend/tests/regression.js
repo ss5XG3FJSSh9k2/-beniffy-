@@ -9087,8 +9087,9 @@ async function main() {
   const admAuthSetupRes = await post('http://localhost:3001/api/admin/setup-complete', { admin_id: 'u-admin' });
   assert(admAuthSetupRes.status === 200 && admAuthSetupRes.body.success === true, 'POST /api/admin/setup-complete with admin token returns 200 and success: true');
   assert(admAuthSetupRes.body.summary && typeof admAuthSetupRes.body.summary.text === 'string', 'POST /api/admin/setup-complete response includes summary text');
+  assert(typeof admAuthSetupRes.body.summary.regions_count === 'number', 'summary includes regions_count');
   testCount++; passedCount++;
-  console.log(`[PASS] Test #${testCount}: POST /api/admin/setup-complete with admin token returns 200 with summary`);
+  console.log(`[PASS] Test #${testCount}: POST /api/admin/setup-complete with admin token returns 200 with dynamic summary`);
 
   // Test: POST /api/setup/complete alias returns 200
   const aliasSetupRes = await post('http://localhost:3001/api/setup/complete', { admin_id: 'u-admin' });
