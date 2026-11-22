@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
-const ARTIFACTS_DIR = 'C:/Users/thari/.gemini/antigravity-ide/brain/50e546d2-67ba-4a26-bfc9-09d168e65e7a';
+const ARTIFACTS_DIR = process.env.ARTIFACTS_DIR || path.resolve(__dirname, 'screenshots');
 
 async function launchBrowser() {
   const options = { headless: true };
@@ -198,8 +198,17 @@ async function runToastChecks() {
     if (!stillVisible || !isPaused) allPassed = false;
 
     // Move mouse away
-    console.log('    - Moving mouse away (0, 0)...');
-    await page.mouse.move(0, 0);
+    console.log('    - Moving mouse away (200, 200)...');
+    await page.mouse.move(200, 200);
+    await page.waitForTimeout(500);
+    const debug = await page.evaluate(() => {
+      const bar = document.querySelector('.toast-countdown-bar');
+      return {
+        barPlayState: bar ? window.getComputedStyle(bar).animationPlayState : null,
+        toastExists: !!document.querySelector('.toast-msg')
+      };
+    });
+    console.log('    - Debug after mouse move:', debug);
 
     // Toast should dismiss within remaining time (~5s)
     await toast.waitFor({ state: 'detached', timeout: 6000 });
@@ -224,6 +233,7 @@ async function runToastChecks() {
       localStorage.clear();
       const themes = { marketing: t, customer: t, stockist: t, partner: t, admin: t };
       localStorage.setItem('fastnet.themes.v1', JSON.stringify(themes));
+      localStorage.setItem('beniffy_cookie_consent', 'accepted');
     }, theme);
     await page.goto('http://localhost:5173/?role=stockist');
     await page.waitForTimeout(500);
@@ -523,6 +533,13 @@ async function runToastChecks() {
     console.log('  Testing: Admin App -> toast sits bottom-centre of the page...');
     await page.goto('http://localhost:5173/?role=admin');
     await page.waitForTimeout(500);
+
+    const cookieBanner = page.locator('.cookie-banner');
+    if ((await cookieBanner.count()) > 0) {
+      await cookieBanner.locator('.cookie-btn-accept').click();
+      await cookieBanner.waitFor({ state: 'detached', timeout: 3000 }).catch(() => {});
+      await page.waitForTimeout(400);
+    }
 
     await page.evaluate(() => window.__fastnet_show_toast('Admin action executed successfully.', 'success'));
     const adminToast = page.locator('.toast-msg');

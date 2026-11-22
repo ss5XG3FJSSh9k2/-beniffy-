@@ -57,6 +57,7 @@
   --card-strong-text: #FDF0D5;
   --card-strong-muted: rgba(253, 240, 213, 0.8);
   --i: 0;
+  --cookie-banner-offset: 0px;
   --x0: 0px;
   --x1: 0px;
   --y0: 0px;
@@ -117,6 +118,7 @@
   --card-strong-text: #FDF0D5;
   --card-strong-muted: rgba(253, 240, 213, 0.8);
   --i: 0;
+  --cookie-banner-offset: 0px;
   --x0: 0px;
   --x1: 0px;
   --y0: 0px;
@@ -962,7 +964,7 @@ select option:disabled {
   position: fixed;
   left: 50%;
   right: auto;
-  bottom: 28px;
+  bottom: calc(28px + var(--cookie-banner-offset, 0px));
   transform: translateX(-50%);
   min-width: 320px;
   max-width: min(560px, calc(100vw - 40px));
@@ -979,6 +981,7 @@ select option:disabled {
   align-items: center;
   gap: 0.5rem;
   animation: slideUp 0.3s forwards;
+  transition: bottom 0.25s ease;
   z-index: var(--z-toast);
   overflow: hidden;
 }
@@ -1020,13 +1023,14 @@ select option:disabled {
   position: absolute;
   left: 50%;
   right: auto;
-  bottom: 84px;
+  bottom: calc(84px + var(--cookie-banner-offset, 0px));
   transform: translateX(-50%);
   width: max-content;
   max-width: calc(100% - 2rem);
   white-space: normal;
   overflow-wrap: break-word;
   animation: slideUpPhone 0.3s forwards;
+  transition: bottom 0.25s ease;
 }
 
 .phone-mockup .toast-msg:has(.toast-action-btn),

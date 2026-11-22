@@ -2089,6 +2089,61 @@ export default function App() {
   const [showRefundPolicyModal, setShowRefundPolicyModal] = useState(false);
   const [showCookiesPolicyModal, setShowCookiesPolicyModal] = useState(false);
   const [cookieConsent, setCookieConsent] = useState(() => typeof localStorage !== 'undefined' ? (localStorage.getItem('beniffy_cookie_consent') || localStorage.getItem('fastnet_cookie_consent')) : null);
+  const cookieBannerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (cookieConsent) {
+      if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--cookie-banner-offset', '0px');
+      }
+      return;
+    }
+
+    const bannerEl = cookieBannerRef.current;
+    if (!bannerEl) {
+      if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--cookie-banner-offset', '0px');
+      }
+      return;
+    }
+
+    const updateOffset = () => {
+      const el = cookieBannerRef.current;
+      if (!el) {
+        if (typeof document !== 'undefined') {
+          document.documentElement.style.setProperty('--cookie-banner-offset', '0px');
+        }
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      const bottomOffset = parseFloat(style.bottom) || 16;
+      const bannerHeight = rect.height || el.offsetHeight || 0;
+      const offset = Math.round(bannerHeight + bottomOffset + 12);
+      document.documentElement.style.setProperty('--cookie-banner-offset', `${offset}px`);
+    };
+
+    updateOffset();
+
+    let ro = null;
+    if (typeof window !== 'undefined' && typeof window.ResizeObserver !== 'undefined') {
+      ro = new window.ResizeObserver(() => {
+        updateOffset();
+      });
+      ro.observe(bannerEl);
+    }
+    window.addEventListener('resize', updateOffset);
+
+    return () => {
+      if (ro) {
+        ro.disconnect();
+      }
+      window.removeEventListener('resize', updateOffset);
+      if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--cookie-banner-offset', '0px');
+      }
+    };
+  }, [cookieConsent]);
 
   // Setup state (Round BF5d)
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -22284,20 +22339,24 @@ export default function App() {
 
       {/* Cookie Consent Banner (Part 2 Item 9) */}
       {!cookieConsent && (
-        <div className="cookie-banner" role="region" aria-label="Cookie Consent">
+        <div ref={cookieBannerRef} className="cookie-banner" role="region" aria-label={t('Cookie Consent', 'कुकी सहमति', 'কুকি সম্মতি')}>
           <p className="cookie-banner-text">
-            {t('We use cookies to improve your experience on our platform.', 'We use cookies to improve your experience on our platform.', 'We use cookies to improve your experience on our platform.')}
+            {t(
+              'We use cookies to improve your experience on our platform.',
+              'हम अपने प्लेटफ़ॉर्म पर आपके अनुभव को बेहतर बनाने के लिए कुकीज़ का उपयोग करते हैं।',
+              'আমাদের প্ল্যাটফর্মে আপনার অভিজ্ঞতা উন্নত করতে আমরা কুকিজ ব্যবহার করি।'
+            )}
             {' '}
             <button style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0 }} onClick={() => setShowCookiesPolicyModal(true)}>
-              {t('Cookies Policy', 'Cookies Policy', 'Cookies Policy')}
+              {t('Cookies Policy', 'कुकीज़ नीति', 'কুকিজ নীতি')}
             </button>
           </p>
           <div className="cookie-banner-actions">
-            <button className="cookie-btn-accept" onClick={() => { localStorage.setItem('fastnet_cookie_consent', 'accepted'); setCookieConsent('accepted'); }}>
-              {t('Accept', 'Accept', 'Accept')}
+            <button className="cookie-btn-accept" onClick={() => { localStorage.setItem('beniffy_cookie_consent', 'accepted'); setCookieConsent('accepted'); }}>
+              {t('Accept', 'स्वीकार करें', 'গ্রহণ করুন')}
             </button>
-            <button className="cookie-btn-decline" onClick={() => { localStorage.setItem('fastnet_cookie_consent', 'declined'); setCookieConsent('declined'); }}>
-              {t('Decline', 'Decline', 'Decline')}
+            <button className="cookie-btn-decline" onClick={() => { localStorage.setItem('beniffy_cookie_consent', 'declined'); setCookieConsent('declined'); }}>
+              {t('Decline', 'अस्वीकार करें', 'প্রত্যাখ্যান করুন')}
             </button>
           </div>
         </div>
