@@ -1,5 +1,5 @@
 const {
-  fs, path, http, dbModule, getCurrentToken, post, get, assert
+  fs, path, http, dbModule, getCurrentToken, post, get, assert, readBackendSource
 } = require('../lib/harness.js');
 
 module.exports = async function section(ctx) {
@@ -119,7 +119,7 @@ module.exports = async function section(ctx) {
   assert(dupeError !== null && dupeError.message.includes('Duplicate route registrations detected'), 'assertNoDuplicateRoutes throws on duplicate routes');
 
   // Test: server.js no longer contains blacklisted_until field writes
-  const serverCodeBf19 = fs.readFileSync(path.join(__dirname, '../../server.js'), 'utf8');
+  const serverCodeBf19 = readBackendSource();
   assert(!serverCodeBf19.includes('blacklisted_until'), 'server.js contains zero references to blacklisted_until');
 
   // Round BF20: OTP Rate Limiter Verification & Multi-Role Testing

@@ -1,5 +1,5 @@
 const {
-  fs, path, dbModule, loginAs, clearLogin, post, patch, get, del, assert
+  fs, path, dbModule, loginAs, clearLogin, post, patch, get, del, assert, readBackendSource
 } = require('../lib/harness.js');
 
 module.exports = async function section(ctx) {
@@ -183,7 +183,7 @@ module.exports = async function section(ctx) {
   } else {
     assert(false, `Region create for audit check failed (${brRegion.status})`);
   }
-  const brServerSrc = fs.readFileSync(path.join(__dirname, '../../server.js'), 'utf8');
+  const brServerSrc = readBackendSource();
   assert(!brServerSrc.includes('New redemption ready for you: `'), 'Partner email subject includes the package name');
   await post('http://localhost:3001/api/admin/reset-db');
 

@@ -1,5 +1,5 @@
 const {
-  fs, path, dbModule, post, patch, get, del, assert
+  fs, path, dbModule, post, patch, get, del, assert, readBackendSource
 } = require('../lib/harness.js');
 
 module.exports = async function section(ctx) {
@@ -208,7 +208,7 @@ module.exports = async function section(ctx) {
 
   const indexCss = fs.readFileSync(path.join(__dirname, '../../../frontend/src/index.css'), 'utf8');
   const plAppJsx = fs.readFileSync(path.join(__dirname, '../../../frontend/src/App.jsx'), 'utf8');
-  const serverJs = fs.readFileSync(path.join(__dirname, '../../server.js'), 'utf8');
+  const serverJs = readBackendSource();
 
   // Test #527: Grep test: index.css contains .modal-overlay and .modal-content with position: fixed
   assert(indexCss.includes('.modal-overlay') && indexCss.includes('.modal-content') && indexCss.includes('position: fixed'), 'index.css contains .modal-overlay and .modal-content with position: fixed');

@@ -1,5 +1,5 @@
 const {
-  fs, path, dbModule, loginAs, clearLogin, post, patch, get, state, assert
+  dbModule, loginAs, clearLogin, post, patch, get, state, assert, readBackendSource
 } = require('../lib/harness.js');
 
 module.exports = async function section(ctx) {
@@ -279,7 +279,7 @@ module.exports = async function section(ctx) {
   console.log(`[PASS] Test #${state.testCount}: Public products query does not leak cost_price or margin`);
 
   // 6. Security & Integrity: No seed-data ID fallbacks in backend/server.js
-  const serverFileContentForFallbacks = fs.readFileSync(path.join(__dirname, '../../server.js'), 'utf8');
+  const serverFileContentForFallbacks = readBackendSource();
   const seedFallbackRegex = /\|\|\s*['"](?:r1|s1|u-cust1|u-admin)['"]/g;
   const seedMatches = serverFileContentForFallbacks.match(seedFallbackRegex);
   assert(!seedMatches || seedMatches.length === 0, `backend/server.js must not contain seed-data ID fallbacks (|| 'r1', || 's1', || 'u-cust1', || 'u-admin'). Found: ${seedMatches ? seedMatches.join(', ') : 'none'}`);

@@ -221,6 +221,28 @@ function getCounts() {
   return { testCount: state.testCount, passedCount: state.passedCount };
 }
 
+function readBackendSource() {
+  const backendRoot = path.resolve(__dirname, '../..');
+  const files = [path.join(backendRoot, 'server.js')];
+  const walkDir = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      if (entry.name === 'node_modules') continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walkDir(full);
+      } else if (entry.isFile() && entry.name.endsWith('.js')) {
+        files.push(full);
+      }
+    }
+  };
+  for (const sub of ['routes', 'middleware', 'services']) {
+    walkDir(path.join(backendRoot, sub));
+  }
+  return files.filter(f => fs.existsSync(f)).map(f => fs.readFileSync(f, 'utf8')).join('\n');
+}
+
 module.exports = {
   TEST_PORT,
   fs,
@@ -240,5 +262,6 @@ module.exports = {
   del,
   state,
   assert,
-  getCounts
+  getCounts,
+  readBackendSource
 };

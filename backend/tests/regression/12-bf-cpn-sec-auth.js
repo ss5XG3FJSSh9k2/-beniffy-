@@ -1,5 +1,5 @@
 const {
-  fs, path, http, dbModule, loginAs, clearLogin, post, patch, get, assert
+  fs, path, http, dbModule, loginAs, clearLogin, post, patch, get, assert, readBackendSource
 } = require('../lib/harness.js');
 
 module.exports = async function section(ctx) {
@@ -194,7 +194,7 @@ module.exports = async function section(ctx) {
   envMod.isDemoOtpMode = origIsDemo;
   
   // (f) server.js contains no "'123456'" literal and no "test_captcha_token".
-  const serverCode = fs.readFileSync(require('path').join(__dirname, '../../server.js'), 'utf8');
+  const serverCode = readBackendSource();
   assert(!serverCode.includes("'123456'"), 'server.js contains no \'123456\' literal');
   assert(!serverCode.includes("test_captcha_token"), 'server.js contains no test_captcha_token');
   
@@ -487,7 +487,7 @@ module.exports = async function section(ctx) {
   const resG = await get('http://localhost:3001' + plainPath + '?token=' + ctx.adminToken);
   assert(resG.status === 401, '(g) Query token is ignored and returns 401');
 
-  const bfKycServerJs = fs.readFileSync(path.join(__dirname, '../../server.js'), 'utf8');
+  const bfKycServerJs = readBackendSource();
   assert(!bfKycServerJs.includes("|| 'secret'") && !bfKycServerJs.includes('req.query.token'), '(h) server.js contains no secret literal or req.query.token');
   const bfKycAppJsx = fs.readFileSync(path.join(__dirname, '../../../frontend/src/App.jsx'), 'utf8');
   assert(!bfKycAppJsx.includes('?token='), '(h) App.jsx contains no token URL param');
