@@ -29,6 +29,7 @@ These rules are law. They were each earned by a real failure in this project. Vi
 ## 4. THE GATE BATTERY — run before every commit, paste raw outputs
 - `npx eslint src/App.jsx` → 0 errors (kills phantom identifiers; a function called but never defined shipped four dead buttons once)
 - `node frontend/scripts/check-hook-deps.js` → all hook dependencies declared before use (kills TDZ runtime crashes)
+- `node frontend/scripts/check-i18n.js` → 0 violations (all `t()` calls have distinct translations outside the allowlist)
 - `node tests/smoke.test.js` → browser smoke test passes for Customer, Stockist, Admin, Partner. Open the app and each role’s home screen; the console shows no uncaught errors. A green build and regression suite are not enough.
 - `node backend/tests/regression.js` → all pass; the count only ever grows. Every bug fixed adds a test.
 - `npx vite build` → clean

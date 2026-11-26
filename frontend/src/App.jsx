@@ -22413,20 +22413,24 @@ export default function App() {
           {supportEmail && <p style={{ margin: 0 }}>Email: {supportEmail}</p>}
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }}>
             <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowPrivacyPolicyModal(true)}>
-              {t('Privacy Policy', 'Privacy Policy', 'Privacy Policy')}
+              {t('Privacy Policy', 'गोपनीयता नीति', 'গোপনীয়তা নীতি')}
             </button>
             <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowTermsModal(true)}>
-              {t('Terms & Conditions', 'Terms & Conditions', 'Terms & Conditions')}
+              {t('Terms & Conditions', 'नियम एवं शर्तें', 'শর্তাবলী')}
             </button>
             <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowRefundPolicyModal(true)}>
-              {t('Refund Policy', 'Refund Policy', 'Refund Policy')}
+              {t('Refund Policy', 'रिफंड नीति', 'রিফান্ড নীতি')}
             </button>
             <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setShowCookiesPolicyModal(true)}>
-              {t('Cookies Policy', 'Cookies Policy', 'Cookies Policy')}
+              {t('Cookies Policy', 'कुकीज़ नीति', 'কুকিজ নীতি')}
             </button>
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-            {t('Your data is encrypted. Points redeemable for WiFi and broadband services.', 'Your data is encrypted. Points redeemable for WiFi and broadband services.', 'Your data is encrypted. Points redeemable for WiFi and broadband services.')}
+            {t(
+              'Your data is encrypted. Points redeemable for WiFi and broadband services.',
+              'आपका डेटा एन्क्रिप्टेड है। पॉइंट्स वाई-फ़ाई और ब्रॉडबैंड सेवाओं के लिए रिडीम किए जा सकते हैं।',
+              'আপনার ডেটা এনক্রিপ্ট করা আছে। পয়েন্টগুলি ওয়াই-ফাই এবং ব্রডব্যান্ড পরিষেবার জন্য রিডিম করা যাবে।'
+            )}
           </p>
         </div>
       </footer>
@@ -22438,7 +22442,7 @@ export default function App() {
           <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 id="privacy-modal-title">{t('Privacy Policy', 'Privacy Policy', 'Privacy Policy')}</h3>
+              <h3 id="privacy-modal-title">{t('Privacy Policy', 'गोपनीयता नीति', 'গোপনীয়তা নীতি')}</h3>
               <button
                 type="button"
                 aria-label="Close"
@@ -22462,10 +22466,19 @@ export default function App() {
               </button>
             </div>
             <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
-              <p><strong>{t('Data Collected:', 'Data Collected:', 'Data Collected:')}</strong> {t('Phone number, name, delivery address, order history, points ledger.', 'Phone number, name, delivery address, order history, points ledger.', 'Phone number, name, delivery address, order history, points ledger.')}</p>
-              <p><strong>{t('Usage:', 'Usage:', 'Usage:')}</strong> {t('Order processing, telecom service activation, customer support, platform analytics.', 'Order processing, telecom service activation, customer support, platform analytics.', 'Order processing, telecom service activation, customer support, platform analytics.')}</p>
-              <p><strong>{t('Data Retention:', 'Data Retention:', 'Data Retention:')}</strong> {t('Orders retained for 7 years for GST & tax compliance. Points stored until redemption.', 'Orders retained for 7 years for GST & tax compliance. Points stored until redemption.', 'Orders retained for 7 years for GST & tax compliance. Points stored until redemption.')}</p>
-              <p><strong>{t('User Rights:', 'User Rights:', 'User Rights:')}</strong> {t('Right to access, correct, and request deletion of personal data via privacy@beniffy.com.', 'Right to access, correct, and request deletion of personal data via privacy@beniffy.com.', 'Right to access, correct, and request deletion of personal data via privacy@beniffy.com.')}</p>
+              {lang !== 'en' && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: '0.75rem' }}>
+                  {t(
+                    'In case of any difference, the English version of this policy applies.',
+                    'किसी भी अंतर की स्थिति में, इस नीति का अंग्रेजी संस्करण लागू होता है।',
+                    'কোনো পার্থক্যের ক্ষেত্রে, এই নীতির ইংরেজি সংস্করণ প্রযোজ্য হবে।'
+                  )}
+                </p>
+              )}
+              <p><strong>{t('Data Collected:', 'एकत्रित डेटा:', 'সংগৃহীত ডেটা:')}</strong> {t('Phone number, name, delivery address, order history, points ledger.', 'फ़ोन नंबर, नाम, डिलीवरी पता, ऑर्डर इतिहास, पॉइंट्स लेज़र।', 'ফোন নম্বর, নাম, ডেলিভারি ঠিকানা, অর্ডারের ইতিহাস, পয়েন্টস লেজার।')}</p>
+              <p><strong>{t('Usage:', 'उपयोग:', 'ব্যবহার:')}</strong> {t('Order processing, telecom service activation, customer support, platform analytics.', 'ऑर्डर प्रोसेसिंग, टेलीकॉम सेवा सक्रियण, ग्राहक सहायता, प्लेटफ़ॉर्म एनालिटिक्स।', 'অর্ডার প্রক্রিয়াকরণ, টেলিকম পরিষেবা সক্রিয়করণ, গ্রাহক সহায়তা, প্ল্যাটফর্ম বিশ্লেষণ।')}</p>
+              <p><strong>{t('Data Retention:', 'डेटा प्रतिधारण:', 'ডেটা সংরক্ষণ:')}</strong> {t('Orders retained for 7 years for GST & tax compliance. Points stored until redemption.', 'GST और कर अनुपालन के लिए ऑर्डर 7 वर्षों तक सुरक्षित रखे जाते हैं। पॉइंट्स रिडेम्पशन तक संग्रहीत रहते हैं।', 'GST এবং কর সম্মতির জন্য অর্ডার ৭ বছর ধরে সংরক্ষণ করা হয়। পয়েন্টগুলি রিডেম্পশন পর্যন্ত সংরক্ষিত থাকে।')}</p>
+              <p><strong>{t('User Rights:', 'उपयोगकर्ता अधिकार:', 'ব্যবহারকারীর অধিকার:')}</strong> {t('Right to access, correct, and request deletion of personal data via privacy@beniffy.com.', 'privacy@beniffy.com के माध्यम से व्यक्तिगत डेटा तक पहुँचने, उसे सुधारने और हटाने का अनुरोध करने का अधिकार।', 'privacy@beniffy.com-এর মাধ্যমে ব্যক্তিগত ডেটা অ্যাক্সেস, সংশোধন এবং মুছে ফেলার অনুরোধ করার অধিকার।')}</p>
             </div>
             <div style={{ textAlign: 'right', marginTop: '1.5rem' }}>
               <button className="btn btn-primary" onClick={() => setShowPrivacyPolicyModal(false)}>Close</button>
@@ -22483,7 +22496,7 @@ export default function App() {
           <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 id="terms-modal-title">{t('Terms & Conditions', 'Terms & Conditions', 'Terms & Conditions')}</h3>
+              <h3 id="terms-modal-title">{t('Terms & Conditions', 'नियम एवं शर्तें', 'শর্তাবলী')}</h3>
               <button
                 type="button"
                 aria-label="Close"
@@ -22507,9 +22520,18 @@ export default function App() {
               </button>
             </div>
             <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
-              <p><strong>{t('Eligibility:', 'Eligibility:', 'Eligibility:')}</strong> {t('18+ years, resident of India.', '18+ years, resident of India.', '18+ years, resident of India.')}</p>
-              <p><strong>{t('User Responsibilities:', 'User Responsibilities:', 'User Responsibilities:')}</strong> {t('Provide accurate profile info, maintain account security, no fraudulent activities.', 'Provide accurate profile info, maintain account security, no fraudulent activities.', 'Provide accurate profile info, maintain account security, no fraudulent activities.')}</p>
-              <p><strong>{t('Points & Loyalty:', 'Points & Loyalty:', 'Points & Loyalty:')}</strong> {t('Points earned only on DELIVERED orders. Non-transferable, non-cashable, redeemable only against platform ISP services.', 'Points earned only on DELIVERED orders. Non-transferable, non-cashable, redeemable only against platform ISP services.', 'Points earned only on DELIVERED orders. Non-transferable, non-cashable, redeemable only against platform ISP services.')}</p>
+              {lang !== 'en' && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: '0.75rem' }}>
+                  {t(
+                    'In case of any difference, the English version of this policy applies.',
+                    'किसी भी अंतर की स्थिति में, इस नीति का अंग्रेजी संस्करण लागू होता है।',
+                    'কোনো পার্থক্যের ক্ষেত্রে, এই নীতির ইংরেজি সংস্করণ প্রযোজ্য হবে।'
+                  )}
+                </p>
+              )}
+              <p><strong>{t('Eligibility:', 'पात्रता:', 'যোগ্যতা:')}</strong> {t('18+ years, resident of India.', '18+ वर्ष, भारत के निवासी।', '১৮+ বছর, ভারতের বাসিন্দা।')}</p>
+              <p><strong>{t('User Responsibilities:', 'उपयोगकर्ता की जिम्मेदारियाँ:', 'ব্যবহারকারীর দায়িত্ব:')}</strong> {t('Provide accurate profile info, maintain account security, no fraudulent activities.', 'सटीक प्रोफ़ाइल जानकारी प्रदान करें, खाता सुरक्षा बनाए रखें, कोई धोखाधड़ी गतिविधि न करें।', 'সঠিক প্রোফাইল তথ্য প্রদান করুন, অ্যাকাউন্টের নিরাপত্তা বজায় রাখুন, কোনো প্রতারণামূলক কার্যকলাপ করবেন না।')}</p>
+              <p><strong>{t('Points & Loyalty:', 'पॉइंट्स और लॉयल्टी:', 'পয়েন্টস ও লয়্যালটি:')}</strong> {t('Points earned only on DELIVERED orders. Non-transferable, non-cashable, redeemable only against platform ISP services.', 'पॉइंट्स केवल डिलीवर किए गए ऑर्डर पर अर्जित होते हैं। अहस्तांतरणीय, गैर-नकदीकरणीय, केवल प्लेटफ़ॉर्म इंटरनेट सेवाओं के विरुद्ध रिडीम करने योग्य।', 'পয়েন্ট কেবল ডেলিভারি হওয়া অর্ডারে অর্জিত হয়। অ-হস্তান্তরযোগ্য, নগদযোগ্য নয়, কেবল প্ল্যাটফর্ম ইন্টারনেট পরিষেবার বিপরীতে রিডিমযোগ্য।')}</p>
             </div>
             <div style={{ textAlign: 'right', marginTop: '1.5rem' }}>
               <button className="btn btn-primary" onClick={() => setShowTermsModal(false)}>Close</button>
@@ -22527,7 +22549,7 @@ export default function App() {
           <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 id="refund-modal-title">{t('Refund Policy', 'Refund Policy', 'Refund Policy')}</h3>
+              <h3 id="refund-modal-title">{t('Refund Policy', 'रिफंड नीति', 'রিফান্ড নীতি')}</h3>
               <button
                 type="button"
                 aria-label="Close"
@@ -22551,10 +22573,19 @@ export default function App() {
               </button>
             </div>
             <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
-              <p><strong>{t('Cancellation Window:', 'Cancellation Window:', 'Cancellation Window:')}</strong> {t('Orders can be cancelled within 1 minute of placement for a refund (minus platform commission fee).', 'ऑर्डर देने के 1 मिनट के भीतर रद्द किए जा सकते हैं, जिसमें से प्लेटफ़ॉर्म कमीशन शुल्क काटा जाएगा।', 'অর্ডার করার ১ মিনিটের মধ্যে বাতিল করা যেতে পারে (প্ল্যাটফর্ম কমিশন ফি কেটে নেওয়া হবে)।')}</p>
-              <p><strong>{t('Non-Show / Delivery Issues:', 'Non-Show / Delivery Issues:', 'Non-Show / Delivery Issues:')}</strong> {t('If stockist or delivery fails, refund processed within 24 hours to original payment method.', 'If stockist or delivery fails, refund processed within 24 hours to original payment method.', 'If stockist or delivery fails, refund processed within 24 hours to original payment method.')}</p>
+              {lang !== 'en' && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: '0.75rem' }}>
+                  {t(
+                    'In case of any difference, the English version of this policy applies.',
+                    'किसी भी अंतर की स्थिति में, इस नीति का अंग्रेजी संस्करण लागू होता है।',
+                    'কোনো পার্থক্যের ক্ষেত্রে, এই নীতির ইংরেজি সংস্করণ প্রযোজ্য হবে।'
+                  )}
+                </p>
+              )}
+              <p><strong>{t('Cancellation Window:', 'रद्दीकरण समय-सीमा:', 'বাতিল করার সময়সীমা:')}</strong> {t('Orders can be cancelled within 1 minute of placement for a refund (minus platform commission fee).', 'ऑर्डर देने के 1 मिनट के भीतर रद्द किए जा सकते हैं, जिसमें से प्लेटफ़ॉर्म कमीशन शुल्क काटा जाएगा।', 'অর্ডার করার ১ মিনিটের মধ্যে বাতিল করা যেতে পারে (প্ল্যাটফর্ম কমিশন ফি কেটে নেওয়া হবে)।')}</p>
+              <p><strong>{t('No-show / Delivery Issues:', 'नो-शो / डिलीवरी समस्याएँ:', 'নো-শো / ডেলিভারি সমস্যা:')}</strong> {t('If stockist or delivery fails, refund processed within 24 hours to original payment method.', 'यदि स्टॉकिस्ट या डिलीवरी विफल होती है, तो मूल भुगतान विधि में 24 घंटे के भीतर रिफंड संसाधित किया जाता है।', 'যদি স্টকিস্ট বা ডেলিভারি ব্যর্থ হয়, তবে মূল পেমেন্ট পদ্ধতিতে ২৪ ঘণ্টার মধ্যে রিফান্ড প্রক্রিয়া করা হয়।')}</p>
               <p>
-                <strong>{t('Support Contact:', 'Support Contact:', 'Support Contact:')}</strong>{' '}
+                <strong>{t('Support Contact:', 'सहायता संपर्क:', 'সহায়তা যোগাযোগ:')}</strong>{' '}
                 {supportEmail
                   ? t(`Email ${supportEmail} for refund assistance.`, `रिफंड सहायता के लिए ${supportEmail} पर ईमेल करें।`, `রিফান্ড সহায়তার জন্য ${supportEmail}-এ ইমেল করুন।`)
                   : (supportPhone
@@ -22578,7 +22609,7 @@ export default function App() {
           <div className="modal-content" style={{ maxWidth: '650px', maxHeight: `calc(80vh / var(--ui-scale))`, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <PanelErrorBoundary t={t}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 id="cookies-modal-title">{t('Cookies Policy', 'Cookies Policy', 'Cookies Policy')}</h3>
+              <h3 id="cookies-modal-title">{t('Cookies Policy', 'कुकीज़ नीति', 'কুকিজ নীতি')}</h3>
               <button
                 type="button"
                 aria-label="Close"
@@ -22602,8 +22633,17 @@ export default function App() {
               </button>
             </div>
             <div style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
-              <p><strong>{t('What Cookies Are Used:', 'What Cookies Are Used:', 'What Cookies Are Used:')}</strong> {t('Session security cookies (httpOnly, Secure), analytics preferences, and regional settings.', 'Session security cookies (httpOnly, Secure), analytics preferences, and regional settings.', 'Session security cookies (httpOnly, Secure), analytics preferences, and regional settings.')}</p>
-              <p><strong>{t('Control:', 'Control:', 'Control:')}</strong> {t('You can manage or decline non-essential cookies via browser settings or the consent banner.', 'You can manage or decline non-essential cookies via browser settings or the consent banner.', 'You can manage or decline non-essential cookies via browser settings or the consent banner.')}</p>
+              {lang !== 'en' && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: '0.75rem' }}>
+                  {t(
+                    'In case of any difference, the English version of this policy applies.',
+                    'किसी भी अंतर की स्थिति में, इस नीति का अंग्रेजी संस्करण लागू होता है।',
+                    'কোনো পার্থক্যের ক্ষেত্রে, এই নীতির ইংরেজি সংস্করণ প্রযোজ্য হবে।'
+                  )}
+                </p>
+              )}
+              <p><strong>{t('What Cookies Are Used:', 'कौन सी कुकीज़ उपयोग की जाती हैं:', 'কোন কুকিজ ব্যবহার করা হয়:')}</strong> {t('Session security cookies (httpOnly, Secure), analytics preferences, and regional settings.', 'सत्र सुरक्षा कुकीज़ (httpOnly, Secure), एनालिटिक्स प्राथमिकताएँ, और क्षेत्रीय सेटिंग्स।', 'সেশন নিরাপত্তা কুকিজ (httpOnly, Secure), অ্যানালিটিক্স পছন্দ এবং আঞ্চলিক সেটিংস।')}</p>
+              <p><strong>{t('Control:', 'नियंत्रण:', 'নিয়ন্ত্রণ:')}</strong> {t('You can manage or decline non-essential cookies via browser settings or the consent banner.', 'आप ब्राउज़र सेटिंग्स या सहमति बैनर के माध्यम से गैर-आवश्यक कुकीज़ को प्रबंधित या अस्वीकार कर सकते हैं।', 'আপনি ব্রাউজার সেটিংস বা সম্মতি ব্যানারের মাধ্যমে অপ্রয়োজনীয় কুকিজ পরিচালনা বা প্রত্যাখ্যান করতে পারেন।')}</p>
             </div>
             <div style={{ textAlign: 'right', marginTop: '1.5rem' }}>
               <button className="btn btn-primary" onClick={() => setShowCookiesPolicyModal(false)}>Close</button>
