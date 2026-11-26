@@ -24,9 +24,7 @@ export default [
         clearInterval: 'readonly',
         setImmediate: 'readonly',
         TextDecoder: 'readonly',
-        AbortController: 'readonly',
-        // Pre-existing undefined call in DELETE /api/products/:id (server.js:1571), untouched per move-only rule
-        writeAdminAudit: 'readonly'
+        AbortController: 'readonly'
       }
     },
     rules: {

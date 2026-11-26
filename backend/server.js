@@ -1563,8 +1563,7 @@ app.delete('/api/products/:id', requireAuth, async (req, res) => {
   let isAdmin = user.role === 'ADMIN';
 
   if (user.role === 'STOCKIST') {
-    const stockists = await db.getTable('stockists');
-    const myShop = stockists.find(s => (s.phone === user.phone || s.user_id === user.id));
+    const myShop = await getCallerStockist(req);
     if (myShop && myShop.id === product.stockist_id) {
       isOwner = true;
     }
@@ -1587,12 +1586,9 @@ app.delete('/api/products/:id', requireAuth, async (req, res) => {
     await db.updateRow('stockist_inventory', inv.id, { is_available: false });
   }
 
-  await writeAdminAudit(user.id, 'DELETE_PRODUCT', {
-    product_id: product.id,
-    product_name: product.name,
-    shop_id: product.stockist_id,
-    stock_qty: stockQty
-  });
+  await appendAudit(req, 'DELETE_PRODUCT', 'product', product.id,
+    { name: product.name, shop_id: product.stockist_id, stock_qty: stockQty },
+    null, '');
 
   return res.status(200).json({ message: 'Product deleted successfully' });
 });
