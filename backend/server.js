@@ -122,98 +122,25 @@ app.use(express.json({
 }));
 app.set('trust proxy', parseInt(process.env.TRUST_PROXY_HOPS || '0', 10));
 
-// Security Headers & HTTPS Redirect Middleware (Item 20)
-app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';");
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  if (process.env.NODE_ENV === 'production' && req.header('x-forwarded-proto') !== 'https') {
-    return res.redirect(301, `https://${req.header('host')}${req.url}`);
-  }
-  next();
-});
+const securityHeaders = require('./middleware/security-headers');
+const apiRateLimit = require('./middleware/api-rate-limit');
+const authContext = require('./middleware/auth-context');
+const adminGate = require('./middleware/admin-gate');
+const errorHandler = require('./middleware/error-handler');
+const { isLocalDev } = require('./lib/env');
 
-// HTML escaping helper (used only when rendering outside React, e.g. emails)
+// Security Headers & HTTPS Redirect Middleware (Item 20)
+app.use(securityHeaders);
 
 // Rate limiting state (Items 11, 13, 14)
 
-// Rate limits and CAPTCHA are relaxed for local development only (see lib/env.js).
-const { isLocalDev } = require('./lib/env');
-
 // General API Rate Limiting Middleware (Item 14) - 100 req/min per IP
-app.use('/api/', async (req, res, next) => {
-  const isResetDb = req.path === '/admin/reset-db' || req.path.startsWith('/admin/reset-db');
-  if (isResetDb) {
-    if (require('./lib/env').isTestEnv()) return next();
-  } else if (isLocalDev() || req.path.includes('/api/setup') || req.path.includes('/api/admin/setup-complete') || req.path.startsWith('/setup/') || req.path === '/setup' || req.path.startsWith('/admin/clear-rate-limits')) {
-    return next();
-  }
-
-  if (req.path.includes('/auth/send-otp') || req.path.endsWith('/send-otp') || req.path.includes('login-otp-request')) {
-    try {
-      const users = await db.getTable('users');
-      if (Array.isArray(users) && users.length === 0) return next();
-    } catch (e) {}
-  }
-
-  const key = req.ip || 'ip-client';
-  const now = Date.now();
-  const record = apiRateLimitMap.get(key) || { count: 0, resetAt: now + 60000 };
-  if (now > record.resetAt) {
-    record.count = 1;
-    record.resetAt = now + 60000;
-  } else {
-    record.count += 1;
-  }
-  apiRateLimitMap.set(key, record);
-  if (record.count > 100) {
-    return res.status(429).json({ error: 'Too many requests. Please try again later.' });
-  }
-  next();
-});
-
-// Login Rate Limit Middleware (Item 11) - 5 attempts / 15 mins by phone
-
-// DND Check Helper (Part 3 Item 6)
-
+app.use('/api/', apiRateLimit);
 
 // Server-Side Auth Verification Middleware (Item 6, Issue 1 KYC Gate)
-app.use(async (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1];
-  if (token) {
-    try {
-      let decoded = null;
-      try {
-        decoded = jwt.verify(token, sessionHelper.getSecret());
-      } catch (e) {
-        decoded = sessionHelper.verifySession(token);
-      }
-      if (decoded) {
-        req.user = {
-          userId: decoded.sub || decoded.userId || decoded.user_id || decoded.id,
-          role: decoded.role
-        };
-        const userId = req.user.userId;
-        const users = await db.getTable('users');
-        const user = users.find(u => u.id === userId);
-        if (user && user.role === 'STOCKIST' && user.kyc_status !== 'APPROVED') {
-          const rawPath = req.path || req.originalUrl?.split('?')[0] || req.url?.split('?')[0];
-          if (!rawPath.startsWith('/api/auth') && !rawPath.startsWith('/api/stockist/auth') && !rawPath.startsWith('/api/health') && !rawPath.startsWith('/api/admin')) {
-            const gate = stockistKycGate(user);
-            return res.status(gate.code).json(gate.body);
-          }
-        }
-      }
-    } catch (err) {
-      // Invalid token, req.user remains undefined
-    }
-  }
-  next();
-});
+app.use(authContext);
 
-// HTTP Request Logging Middleware (Part 3.3)
+// HTTP Request Logging Middleware (Part 3.3) — kept in server.js for regression test #536
 app.use((req, res, next) => {
   const start = Date.now();
   const rawPath = req.path || req.originalUrl?.split('?')[0] || req.url?.split('?')[0];
@@ -1767,45 +1694,7 @@ app.get('/api/products/:id/bill-history', requireAuth, async (req, res) => {
 });
 
 // --- ADMIN GATE ---
-app.use('/api/admin', (req, res, next) => {
-  const p = req.path;
-  const isDevAllowed = process.env.SEED_MODE === 'test' || process.env.NODE_ENV !== 'production';
-
-  // reset-db is handled by its dedicated controller with strict auth and dev-mode checks.
-  if (p === '/reset-db') {
-    return next();
-  }
-
-  // override-table exists only in explicit test mode.
-  if (p === '/override-table') {
-    if (!require('./lib/env').isTestEnv()) return res.status(404).json({ error: 'Not found' });
-    return next();
-  }
-
-  // Developer and Inspector endpoints gated in production
-  if (p === '/insert-table' || p === '/inspector' || p.startsWith('/inspector/') || p.startsWith('/db-inspector')) {
-    if (!isDevAllowed) return res.status(403).json({ error: 'Forbidden', message: 'Endpoint disabled in production' });
-    if (require('./lib/env').isTestEnv()) return next();
-  }
-
-  if (p === '/clear-rate-limits' && require('./lib/env').isTestEnv()) {
-    return next();
-  }
-
-  // Apply authentication
-  requireAuth(req, res, (err) => {
-    if (err) return next(err);
-
-    // Partner admins may work the partner-leads queue. Everything else under
-    // /api/admin (KYC documents, platform analytics, vendors, user accounts)
-    // is admin-only.
-    if (p.startsWith('/partner-leads')) {
-      return requireRole('ADMIN', 'PARTNER_ADMIN')(req, res, next);
-    }
-
-    return requireRole('ADMIN')(req, res, next);
-  });
-});
+app.use('/api/admin', adminGate);
 
 // GET /api/admin/bill-photos
 app.get('/api/admin/bill-photos', async (req, res) => {
@@ -11031,11 +10920,7 @@ app.get('/api/admin/analytics', async (req, res) => {
 
 
 
-app.use((err, req, res, next) => {
-  console.error('[Unhandled]', req.method, req.originalUrl, err);
-  if (res.headersSent) return next(err);
-  res.status(500).json({ error: 'internal_error', message: 'Something went wrong. Please try again.' });
-});
+app.use(errorHandler);
 
 process.on('unhandledRejection', (reason, p) => {
   console.error('[unhandledRejection]', reason);
