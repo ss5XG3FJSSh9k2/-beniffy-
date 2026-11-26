@@ -25,54 +25,6 @@ const { validatePayoutFields } = require('./lib/payout');
 const { withLock } = require('./lib/mutex.js');
 
 // BF-SEC-3 Helpers
-function assertSelfOrAdmin(req, res, userId) {
-  if (!req.user || !req.user.userId) {
-    res.status(401).json({ error: 'Authentication required' });
-    return false;
-  }
-  if (req.user.role === 'ADMIN' || req.user.userId === userId) {
-    return true;
-  }
-  res.status(403).json({ error: 'Forbidden' });
-  return false;
-}
-
-async function getCallerStockist(req) {
-  if (!req.user || !req.user.userId) return null;
-  const stockists = await db.getTable('stockists');
-  return stockists.find(s => s.user_id === req.user.userId) || null;
-}
-
-async function assertOwnsStockist(req, res, stockistId) {
-  if (!req.user || !req.user.userId) {
-    res.status(401).json({ error: 'Authentication required' });
-    return false;
-  }
-  if (req.user.role === 'ADMIN') return true;
-  const callerStockist = await getCallerStockist(req);
-  if (callerStockist && (callerStockist.id === stockistId || callerStockist.user_id === stockistId)) return true;
-  res.status(403).json({ error: 'Forbidden' });
-  return false;
-}
-
-async function assertOrderAccess(req, res, order) {
-  if (!req.user || !req.user.userId) {
-    res.status(401).json({ error: 'Authentication required' });
-    return false;
-  }
-  if (req.user.role === 'ADMIN') return true;
-  if (req.user.role === 'CUSTOMER' && req.user.userId === order.customer_id) return true;
-  if (req.user.role === 'STOCKIST') {
-    if (order.payment_method === 'ONLINE' && order.payment_status !== 'PAID_ONLINE') {
-      res.status(403).json({ error: 'Order not sent to shop' });
-      return false;
-    }
-    const callerStockist = await getCallerStockist(req);
-    if (callerStockist && callerStockist.id === order.stockist_id) return true;
-  }
-  res.status(403).json({ error: 'Forbidden' });
-  return false;
-}
 
 const cfg = require('./config');
 const jwt = require('jsonwebtoken');
@@ -80,7 +32,6 @@ const jwt = require('jsonwebtoken');
 
 const fs = require('fs');
 const path = require('path');
-const multer = require('multer');
 const r2 = require('./lib/r2');
 const { evaluateRegistrationFlags } = require('./lib/kyc-flags');
 const { issueOtp, verifyOtp } = require('./lib/otp');
@@ -91,6 +42,70 @@ const outbox = require('./lib/outbox');
 const whatsapp = require('./lib/whatsapp');
 
 const app = express();
+
+const {
+  sanitizeUser, generateId, getISTDateString,
+  getSetupProgressCounts, ALLOWED_SERVICE_TYPES, getPartnerSession
+} = require('./lib/misc');
+const {
+  escapeHtml, unescapeHtml, sanitizePlainText, normalizePhone,
+  checkTermsAgreed, checkPhone, validateUserInput, checkEmail,
+  maskIdNumber, validateSupportPhone, validateSupportWhatsapp, validateSupportEmail
+} = require('./lib/validation');
+const {
+  apiRateLimitMap, loginRateLimitMap, otpRateLimitMap, otpHourlyLimitMap,
+  checkLoginRateLimit, checkOtpRateLimit, clearOtpRateLimit,
+  loginPasswordFailedAttempts, otpRequestAttempts, resetTokens,
+  phoneChangeMarkers, sendCurrentRateLimits, sendNewRateLimits,
+  getPhoneChangeMarker, checkSendRateLimit
+} = require('./lib/rate-limits');
+const {
+  assertSelfOrAdmin, getCallerStockist, assertOwnsStockist, assertOrderAccess, stockistKycGate
+} = require('./lib/access');
+const {
+  appendPaymentEvent, createNotification, capturePayoutEvent, appendAudit
+} = require('./lib/audit');
+const {
+  uploadBillMiddleware, hasValidKycSignature,
+  signBillUrl, signBillRow, hasValidBillSignature
+} = require('./lib/bills');
+const {
+  getCustomerVisibleProducts, calculateIsShopOpen, findStockistOwner,
+  getCustomerVisibility, isCustomerVisible, setMainWholesaler,
+  getRegionDeliveryFee, resolveStockistRate, publicStockist, getAvailablePartnersForRegion
+} = require('./services/stockists');
+const {
+  getCommissionConfig, calculatePartnerPayout, calculateSettlement,
+  reverseOrderPoints, processOrderCancellation, enrichOrder, runFraudDetection,
+  ORDER_STATUS_RANK, FINAL_ORDER_STATUSES, READY_ORDER_STATUSES,
+  ORDER_FULFILLMENT_TYPES, ORDER_PAYMENT_METHODS, validatePickupSlot,
+  _processReferralBonusOnDelivery, _sendOrderConfirmedSms, _sendOrderReadySms,
+  _creditPointsOnDelivery, getRedemptionDescription
+} = require('./services/orders');
+const {
+  assertNoDuplicateRoutes: checkDuplicateRoutes,
+  reportMalformedPhones, assertProductionConfig
+} = require('./lib/startup-checks');
+const assertNoDuplicateRoutes = (appToTest) => checkDuplicateRoutes(appToTest, app);
+
+// Boot-Time Missing-Config Warnings (Part 3.1) — kept in server.js for regression test #539/#540
+function checkConfigWarnings() {
+  if (!process.env.DATABASE_URL) {
+    console.log('[Config] WARNING: DATABASE_URL missing. Set DATABASE_URL for production or fallback to mem in dev.');
+  }
+  if (!process.env.JWT_SECRET) {
+    console.log('[Config] WARNING: JWT_SECRET missing. Set JWT_SECRET for production.');
+  }
+  if (!process.env.EMAIL_MOCK && !process.env.SENDGRID_API_KEY) {
+    console.log('[Config] WARNING: Email delivery disabled. Set EMAIL_MOCK=true for dev, or SENDGRID_API_KEY for production.');
+  }
+  if (!process.env.SMS_MOCK && !process.env.MSG91_AUTH_KEY) {
+    console.log('[Config] WARNING: SMS delivery disabled. Set SMS_MOCK=true for dev, or MSG91_AUTH_KEY for production.');
+  }
+  if (!process.env.R2_MOCK && !process.env.R2_ACCESS_KEY_ID) {
+    console.log('[Config] WARNING: R2 storage disabled. Set R2_MOCK=true for dev, or R2_ACCESS_KEY_ID for production.');
+  }
+}
 if (process.env.NODE_ENV === 'production') {
   const allowed = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim());
   app.use(cors({ origin: (origin, cb) => {
@@ -121,118 +136,8 @@ app.use((req, res, next) => {
 });
 
 // HTML escaping helper (used only when rendering outside React, e.g. emails)
-function escapeHtml(str) {
-  if (str === undefined || str === null) return '';
-  const s = typeof str === 'string' ? str : String(str);
-  return s.replace(/[&<>"']/g, (m) => {
-    switch (m) {
-      case '&': return '&amp;';
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '"': return '&quot;';
-      case "'": return '&#39;';
-      default: return m;
-    }
-  });
-}
-
-function unescapeHtml(str) {
-  if (typeof str !== 'string') return str;
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0*39;/g, "'")
-    .replace(/&#x27;/gi, "'");
-}
-
-function sanitizePlainText(val, maxLength = 255) {
-  if (val === undefined || val === null) return '';
-  const str = typeof val === 'string' ? val : String(val);
-  const cleaned = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
-  return maxLength ? cleaned.slice(0, maxLength) : cleaned;
-}
-
-function normalizePhone(phone) {
-  if (!phone) return phone;
-  let cleanPhone = String(phone).replace(/\D/g, '');
-  if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
-    cleanPhone = cleanPhone.slice(2);
-  }
-  return cleanPhone;
-}
-
-function checkTermsAgreed(req, res, isTest) {
-  if (!req.body.termsAgreed && !isTest) {
-    res.status(400).json({ error: 'You must agree to Terms and Privacy Policy' });
-    return false;
-  }
-  return true;
-}
-
-function checkPhone(phone, res) {
-  const cleanPhone = normalizePhone(phone);
-  if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
-    if (res) {
-      res.status(400).json({ error: 'invalid_phone', message: 'Enter a valid 10-digit mobile number.' });
-    }
-    return null;
-  }
-  return cleanPhone;
-}
-
-// Input validation helper (Item 16)
-function validateUserInput({ phone, email, name }) {
-  if (phone !== undefined) {
-    const cleanPhone = normalizePhone(phone);
-    if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
-      return 'invalid_phone';
-    }
-  }
-  if (email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return 'Invalid email format';
-    }
-  }
-  if (name) {
-    if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 50) {
-      return 'Name must be 2-50 letters';
-    }
-  }
-  return null;
-}
-
-async function checkEmail(email, res, expectNew = true) {
-  if (!email || typeof email !== 'string' || !email.trim()) {
-    res.status(400).json({ error: 'Email is required' });
-    return null;
-  }
-  const clean = email.trim().toLowerCase();
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(clean)) {
-    res.status(400).json({ error: 'Invalid email format' });
-    return null;
-  }
-  if (expectNew) {
-    const users = await db.getTable('users');
-    const partners = await db.getTable('partners');
-    const uDup = users.some(u => u.kyc_status !== 'RELEASED' && u.email && u.email.trim().toLowerCase() === clean);
-    const pDup = partners.some(p => p.contact_email && p.contact_email.trim().toLowerCase() === clean);
-    if (uDup || pDup) {
-      res.status(400).json({ error: 'This email is already registered.' });
-      return null;
-    }
-  }
-  return clean;
-}
 
 // Rate limiting state (Items 11, 13, 14)
-const apiRateLimitMap = new Map();
-const loginRateLimitMap = new Map();
-const otpRateLimitMap = new Map();
-const otpHourlyLimitMap = new Map();
 
 // Rate limits and CAPTCHA are relaxed for local development only (see lib/env.js).
 const { isLocalDev } = require('./lib/env');
@@ -270,118 +175,9 @@ app.use('/api/', async (req, res, next) => {
 });
 
 // Login Rate Limit Middleware (Item 11) - 5 attempts / 15 mins by phone
-async function checkLoginRateLimit(phone) {
-  if (process.env.SKIP_RATE_LIMIT === 'true' || !phone) return true;
-  try {
-    const users = await db.getTable('users');
-    if (Array.isArray(users) && users.length === 0) return true;
-  } catch (e) {}
-  const now = Date.now();
-  const record = loginRateLimitMap.get(phone) || { count: 0, resetAt: now + 15 * 60 * 1000 };
-  if (now > record.resetAt) {
-    record.count = 1;
-    record.resetAt = now + 15 * 60 * 1000;
-  } else {
-    record.count += 1;
-  }
-  loginRateLimitMap.set(phone, record);
-  return record.count <= 5;
-}
-
-// OTP Rate Limit Middleware (Item 13, BF20) - 5 requests / 15 mins by phone, 20 / hour absolute cap
-async function checkOtpRateLimit(phone) {
-  if (process.env.SKIP_RATE_LIMIT === 'true' || !phone) return { allowed: true };
-  try {
-    const users = await db.getTable('users');
-    if (Array.isArray(users) && users.length === 0) return { allowed: true };
-  } catch (e) {}
-
-  const now = Date.now();
-  const hourlyWindow = cfg.OTP_RATE_LIMIT_HOURLY_WINDOW_MS || 60 * 60 * 1000;
-  const hourlyMax = cfg.OTP_RATE_LIMIT_HOURLY_MAX || 20;
-  const shortWindow = cfg.OTP_RATE_LIMIT_SHORT_WINDOW_MS || 15 * 60 * 1000;
-  const shortMax = cfg.OTP_RATE_LIMIT_SHORT_MAX || 5;
-
-  // 1. Absolute hourly cap (20 per hour) - not cleared on successful verification
-  const hourlyRecord = otpHourlyLimitMap.get(phone) || { count: 0, resetAt: now + hourlyWindow };
-  if (now > hourlyRecord.resetAt) {
-    hourlyRecord.count = 1;
-    hourlyRecord.resetAt = now + hourlyWindow;
-  } else {
-    hourlyRecord.count += 1;
-  }
-  otpHourlyLimitMap.set(phone, hourlyRecord);
-
-  if (hourlyRecord.count > hourlyMax) {
-    const remainingMs = Math.max(0, hourlyRecord.resetAt - now);
-    const remainingMinutes = Math.max(1, Math.ceil(remainingMs / 60000));
-    return {
-      allowed: false,
-      reason: 'hourly',
-      retry_after: hourlyRecord.resetAt,
-      error: `Too many OTP requests. Try again in ${remainingMinutes} minute${remainingMinutes === 1 ? '' : 's'}.`
-    };
-  }
-
-  // 2. Short window (5 per 15 mins) - cleared on successful verification
-  const shortRecord = otpRateLimitMap.get(phone) || { count: 0, resetAt: now + shortWindow };
-  if (now > shortRecord.resetAt) {
-    shortRecord.count = 1;
-    shortRecord.resetAt = now + shortWindow;
-  } else {
-    shortRecord.count += 1;
-  }
-  otpRateLimitMap.set(phone, shortRecord);
-
-  if (shortRecord.count > shortMax) {
-    const remainingMs = Math.max(0, shortRecord.resetAt - now);
-    const remainingMinutes = Math.max(1, Math.ceil(remainingMs / 60000));
-    return {
-      allowed: false,
-      reason: 'short',
-      retry_after: shortRecord.resetAt,
-      error: 'Too many OTP requests. Try again in 15 minutes.'
-    };
-  }
-
-  return { allowed: true };
-}
-
-function clearOtpRateLimit(phone) {
-  if (!phone) return;
-  otpRateLimitMap.delete(phone);
-  loginRateLimitMap.delete(phone);
-  otpRequestAttempts.delete(phone);
-}
 
 // DND Check Helper (Part 3 Item 6)
-async function isDNDRegistered(phone) {
-  if (!phone) return false;
-  // DND Registry check simulation/mock
-  const dndList = ['9000000000', '9111111111'];
-  const cleanPhone = String(phone).replace(/\D/g, '');
-  return dndList.includes(cleanPhone);
-}
 
-function stockistKycGate(user) {
-  if (!user || user.kyc_status === 'RELEASED') return { blocked: true, code: 404, body: { error: 'No account found' } };
-  if (user.kyc_status === 'APPROVED') return { blocked: false };
-
-  const messages = {
-    PENDING:     'Your KYC is pending admin approval. Please check back later.',
-    REJECTED:    'Your KYC application was rejected. Contact support to reapply.',
-    BLACKLISTED: 'This account is blocked. Contact support.'
-  };
-  return {
-    blocked: true,
-    code: 403,
-    body: {
-      error: 'KYC_NOT_APPROVED',
-      kyc_status: user.kyc_status || 'PENDING',
-      message: messages[user.kyc_status] || messages.PENDING
-    }
-  };
-}
 
 // Server-Side Auth Verification Middleware (Item 6, Issue 1 KYC Gate)
 app.use(async (req, res, next) => {
@@ -541,59 +337,7 @@ app.get('/api/admin/integrations', requireAuth, async (req, res) => {
 });
 
 // Boot-Time Missing-Config Warnings (Part 3.1)
-function checkConfigWarnings() {
-  if (!process.env.DATABASE_URL) {
-    console.log('[Config] WARNING: DATABASE_URL missing. Set DATABASE_URL for production or fallback to mem in dev.');
-  }
-  if (!process.env.JWT_SECRET) {
-    console.log('[Config] WARNING: JWT_SECRET missing. Set JWT_SECRET for production.');
-  }
-  if (!process.env.EMAIL_MOCK && !process.env.SENDGRID_API_KEY) {
-    console.log('[Config] WARNING: Email delivery disabled. Set EMAIL_MOCK=true for dev, or SENDGRID_API_KEY for production.');
-  }
-  if (!process.env.SMS_MOCK && !process.env.MSG91_AUTH_KEY) {
-    console.log('[Config] WARNING: SMS delivery disabled. Set SMS_MOCK=true for dev, or MSG91_AUTH_KEY for production.');
-  }
-  if (!process.env.R2_MOCK && !process.env.R2_ACCESS_KEY_ID) {
-    console.log('[Config] WARNING: R2 storage disabled. Set R2_MOCK=true for dev, or R2_ACCESS_KEY_ID for production.');
-  }
-}
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024 }
-});
-
-const uploadBillMiddleware = (req, res, next) => {
-  upload.fields([
-    { name: 'bill_photo', maxCount: 1 },
-    { name: 'billFile', maxCount: 1 },
-    { name: 'imageFile', maxCount: 1 },
-    { name: 'image', maxCount: 1 },
-    { name: 'image_file', maxCount: 1 },
-    { name: 'documentPhoto', maxCount: 1 },
-    { name: 'document_photo', maxCount: 1 }
-  ])(req, res, (err) => {
-    if (err) {
-      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ error: 'file_too_large', message: 'File exceeds size limit.' });
-      }
-      console.error('File upload error:', err);
-      return res.status(400).json({ error: 'upload_error', message: 'Failed to upload file.' });
-    }
-    if (req.files) {
-      const bFile = (req.files['bill_photo'] && req.files['bill_photo'][0]) ||
-                    (req.files['billFile'] && req.files['billFile'][0]) ||
-                    (req.files['documentPhoto'] && req.files['documentPhoto'][0]) ||
-                    (req.files['document_photo'] && req.files['document_photo'][0]) ||
-                    (req.files['imageFile'] && req.files['imageFile'][0]) ||
-                    (req.files['image'] && req.files['image'][0]) ||
-                    (req.files['image_file'] && req.files['image_file'][0]);
-      if (bFile) req.file = bFile;
-    }
-    next();
-  });
-};
 
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
@@ -614,97 +358,17 @@ if (!smsHelper.isSmsConfigured()) {
 }
 
 // In-memory rate limiting and token stores
-const loginPasswordFailedAttempts = new Map();
-const otpRequestAttempts = new Map();
-const resetTokens = new Map();
 
 // Helper: sanitize user object (remove password_hash)
-function sanitizeUser(user) {
-  if (!user) return null;
-  const { password_hash, ...safeUser } = user;
-  return safeUser;
-}
 
 // In-memory OTP storage
 
 
 // Helper to generate IDs
-const generateId = () => Math.random().toString(36).substr(2, 9);
 
 // Helper for IST Day Boundary
-function getISTDateString(date = new Date()) {
-  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-  const istDate = new Date(date.getTime() + IST_OFFSET_MS);
-  return istDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
-}
 
 // Helper: append a payment ledger event (append-only audit)
-async function appendPaymentEvent(orderId, eventType, amount, metadata = {}) {
-  const ledger = await db.getTable('payment_ledger');
-  ledger.push({
-    id: 'pl-' + generateId(),
-    order_id: orderId,
-    event_type: eventType,
-    amount,
-    metadata,
-    created_at: new Date().toISOString()
-  });
-  await db.saveTable('payment_ledger', ledger);
-}
-
-// Helper: create a notification
-async function createNotification({ userId, type, title, body = '', link = null }) {
-  if (!userId) return null;
-  const notif = {
-    id: 'notif-' + generateId(),
-    user_id: userId,
-    type,
-    title,
-    body: body || '',
-    link: link || null,
-    created_at: new Date().toISOString(),
-    read_at: null
-  };
-  await db.insertRow('notifications', notif);
-  return notif;
-}
-
-// Helper: append an admin audit log entry
-
-async function capturePayoutEvent(req, entityType, entityId, before, finalEntity, userId) {
-  const fields = [];
-  if ((before.payout_upi_id || '') !== (finalEntity.payout_upi_id || '')) fields.push('UPI');
-  const ifscKey = entityType === 'partner' ? 'payout_bank_ifsc' : 'payout_ifsc';
-  if ((before[ifscKey] || '') !== (finalEntity[ifscKey] || '')) fields.push('IFSC');
-  if ((before.payout_bank_account || '') !== (finalEntity.payout_bank_account || '')) fields.push('Bank Account');
-  if ((before.payout_account_name || '') !== (finalEntity.payout_account_name || '')) fields.push('Account Name');
-
-  if (fields.length > 0) {
-    const mask = (acc) => acc && acc.length > 4 ? '...' + acc.slice(-4) : acc;
-    const beforeMasked = { ...before, payout_bank_account: mask(before.payout_bank_account) };
-    const finalMasked = { ...finalEntity, payout_bank_account: mask(finalEntity.payout_bank_account) };
-    await appendAudit(req, 'PAYOUT_DETAILS_CHANGED', entityType, entityId, beforeMasked, finalMasked, 'Fields changed: ' + fields.join(', '));
-  }
-}
-
-async function appendAudit(req, action, entity_type, entity_id, before = null, after = null, reason = '') {
-  const admin_user_id = (req && req.user && (req.user.userId || req.user.id)) || null;
-  const log = await db.getTable('admin_audit_log');
-  const entry = {
-    id: 'audit-' + generateId(),
-    admin_user_id,
-    action,
-    entity_type,
-    entity_id,
-    before: before !== undefined ? before : null,
-    after: after !== undefined ? after : null,
-    reason: reason || '',
-    created_at: new Date().toISOString()
-  };
-  log.push(entry);
-  await db.saveTable('admin_audit_log', log);
-  return entry;
-}
 
 // ----------------------------------------------------
 // AUTH & SETUP ENDPOINTS
@@ -1113,18 +777,6 @@ app.post('/api/setup/create-admin', async (req, res) => {
   }
 });
 
-async function getSetupProgressCounts() {
-  const regions = (await db.getTable('regions')) || [];
-  const stockists = (await db.getTable('stockists')) || [];
-  const vendors = (await db.getTable('vendors')) || [];
-  const users = (await db.getTable('users')) || [];
-  return {
-    regions: regions.filter(r => !r.deleted_at && r.is_active !== false).length,
-    wholesalers: vendors.filter(v => !v.deleted_at && v.is_active !== false).length,
-    stockists: stockists.filter(s => !s.deleted_at && s.is_active !== false).length,
-    customers: users.filter(u => u.role === 'CUSTOMER' && !u.deleted_at && u.is_active !== false && u.kyc_status !== 'RELEASED').length
-  };
-}
 
 // POST /api/admin/setup-complete and /api/setup/complete
 const handleAdminSetupComplete = async (req, res) => {
@@ -1402,20 +1054,6 @@ app.post('/api/customer/register-with-referral', async (req, res) => {
   return res.json(resObj);
 });
 
-function hasValidKycSignature(req) {
-  const { expires, sig } = req.query;
-  if (!expires || !sig) return false;
-  if (!/^\d+$/.test(expires)) return false;
-  if (!/^[a-f0-9]{64}$/.test(sig)) return false;
-  if (Date.now() > Number(expires)) return false;
-  const crypto = require('crypto');
-  const sessionHelper = require('./lib/session');
-  const expected = crypto.createHmac('sha256', sessionHelper.getSecret()).update(req.path + ':' + expires).digest('hex');
-  const expectedBuf = Buffer.from(expected, 'utf8');
-  const actualBuf = Buffer.from(sig, 'utf8');
-  if (expectedBuf.length !== actualBuf.length) return false;
-  return crypto.timingSafeEqual(expectedBuf, actualBuf);
-}
 
 // Serve KYC document photo
 app.get('/api/kyc/documents/:filename', async (req, res, next) => {
@@ -1635,79 +1273,6 @@ app.post('/api/auth/register-stockist', uploadBillMiddleware, async (req, res) =
 // PRODUCT & INVENTORY ENDPOINTS
 // ----------------------------------------------------
 
-function getCustomerVisibleProducts(stockist, products) {
-  if (!stockist || !Array.isArray(products)) return [];
-  const stockistId = typeof stockist === 'object' && stockist !== null ? stockist.id : stockist;
-  return products.filter(p =>
-    p.stockist_id === stockistId &&
-    !p.deleted_at &&
-    p.is_active !== false &&
-    p.is_sellable !== false
-  );
-}
-
-function signBillUrl(r2KeyOrUrl, ttlSeconds = 3600) {
-  if (!r2KeyOrUrl) return null;
-  let raw = String(r2KeyOrUrl).trim();
-  let billPath = raw;
-  if (!billPath.startsWith('/')) {
-    if (billPath.startsWith('http://') || billPath.startsWith('https://')) {
-      try {
-        const u = new URL(billPath);
-        billPath = u.pathname;
-      } catch (e) {}
-    }
-    if (!billPath.startsWith('/api/bills/')) {
-      if (billPath.startsWith('/bills/')) {
-        billPath = `/api${billPath}`;
-      } else {
-        billPath = `/api/bills/${billPath.replace(/^\/+/, '')}`;
-      }
-    }
-  } else if (!billPath.startsWith('/api/bills/')) {
-    if (billPath.startsWith('/bills/')) {
-      billPath = `/api${billPath}`;
-    } else {
-      billPath = `/api/bills${billPath}`;
-    }
-  }
-
-  const pathPart = billPath.split('?')[0];
-  const crypto = require('crypto');
-  const sessionHelper = require('./lib/session');
-  const expires = Date.now() + (ttlSeconds * 1000);
-  const sig = crypto.createHmac('sha256', sessionHelper.getSecret()).update(pathPart + ':' + expires).digest('hex');
-  return `${pathPart}?expires=${expires}&sig=${sig}`;
-}
-
-function signBillRow(b) {
-  if (!b) return b;
-  const signed = { ...b };
-  const keyToSign = b.r2_key || b.public_url;
-  signed.public_url = signBillUrl(keyToSign);
-  return signed;
-}
-
-function hasValidBillSignature(req) {
-  const { expires, sig } = req.query;
-  if (!expires && !sig) return { hasSig: false, valid: false };
-  if (!expires || !sig || !/^\d+$/.test(expires) || !/^[a-f0-9]{64}$/.test(sig)) {
-    return { hasSig: true, valid: false, error: 'invalid_signature', code: 401 };
-  }
-  if (Date.now() > Number(expires)) {
-    return { hasSig: true, valid: false, error: 'signature_expired', code: 403 };
-  }
-  const crypto = require('crypto');
-  const sessionHelper = require('./lib/session');
-  const pathPart = (req.path || req.originalUrl?.split('?')[0]);
-  const expected = crypto.createHmac('sha256', sessionHelper.getSecret()).update(pathPart + ':' + expires).digest('hex');
-  const expectedBuf = Buffer.from(expected, 'utf8');
-  const actualBuf = Buffer.from(sig, 'utf8');
-  if (expectedBuf.length !== actualBuf.length || !crypto.timingSafeEqual(expectedBuf, actualBuf)) {
-    return { hasSig: true, valid: false, error: 'invalid_signature', code: 401 };
-  }
-  return { hasSig: true, valid: true };
-}
 
 app.get('/api/products', async (req, res) => {
   const { regionId, stockistId } = req.query;
@@ -2656,107 +2221,6 @@ app.get('/api/products/search-alternatives', async (req, res) => {
 // If closing <= opening, the shop is treated as closing after midnight (overnight shop).
 // An overnight shop (e.g. 22:00 to 02:00) is open if currentTime >= opening OR currentTime < closing.
 // A daytime shop (e.g. 09:00 to 21:00) is open if currentTime >= opening AND currentTime < closing.
-function calculateIsShopOpen(stockist, currentTimeStr) {
-  if (stockist.manual_closed) {
-    if (!stockist.closed_until || new Date() < new Date(stockist.closed_until)) {
-      return false; // Manually closed and either indefinitely or until a future time
-    }
-  }
-
-  if (!stockist.opening_time || !stockist.closing_time) return true;
-  let closing = stockist.closing_time;
-  if (closing === '24:00') closing = '23:59';
-  const opening = stockist.opening_time;
-
-  let currentTime = currentTimeStr;
-  if (!currentTime) {
-    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(Date.now() + IST_OFFSET_MS);
-    currentTime = istNow.getUTCHours().toString().padStart(2, '0') + ':' + 
-                  istNow.getUTCMinutes().toString().padStart(2, '0');
-  }
-
-  if (closing <= opening) {
-    return currentTime >= opening || currentTime < closing;
-  }
-  return currentTime >= opening && currentTime < closing;
-}
-
-function findStockistOwner(stockist, users) {
-  if (!stockist || !Array.isArray(users)) return null;
-  if (stockist.user_id) {
-    return users.find(u => u.id === stockist.user_id && u.kyc_status !== 'RELEASED') || null;
-  }
-  const sPhone = (stockist.contact_phone || stockist.phone || '').trim();
-  if (!sPhone) return null;
-  return users.find(u => u.role === 'STOCKIST' && u.kyc_status !== 'RELEASED' && typeof u.phone === 'string' && u.phone.trim() !== '' && u.phone.trim() === sPhone) || null;
-}
-
-function getCustomerVisibility(stockist, users, products) {
-  if (!stockist || stockist.is_active === false) {
-    return { visible: false, reason: 'inactive' };
-  }
-  const owner = findStockistOwner(stockist, users);
-  if (!owner) {
-    return { visible: false, reason: 'KYC pending' };
-  }
-  if (owner.is_active === false) {
-    return { visible: false, reason: 'owner deactivated' };
-  }
-  if (owner.kyc_status !== 'APPROVED') {
-    return { visible: false, reason: 'KYC pending' };
-  }
-  if (products && Array.isArray(products)) {
-    const shopProducts = getCustomerVisibleProducts(stockist, products);
-    if (shopProducts.length === 0) {
-      return { visible: false, reason: 'no products' };
-    }
-  }
-  return { visible: true, reason: null };
-}
-
-const isCustomerVisible = (stockist, users, products) => {
-  return getCustomerVisibility(stockist, users, products).visible;
-};
-
-async function setMainWholesaler(stockistId, vendorId) {
-  const stockists = await db.getTable('stockists');
-  const stockist = stockists.find(s => s.id === stockistId);
-  if (!stockist) return null;
-
-  stockist.vendor_id = vendorId;
-  await db.saveTable('stockists', stockists);
-
-  if (vendorId) {
-    const stockistVendors = await db.getTable('stockist_vendors');
-    if (!stockistVendors.some(sv => sv.stockist_id === stockistId && sv.vendor_id === vendorId)) {
-      stockistVendors.push({
-        id: 'sv-' + generateId(),
-        stockist_id: stockistId,
-        vendor_id: vendorId,
-        approved_at: new Date().toISOString()
-      });
-      await db.saveTable('stockist_vendors', stockistVendors);
-    }
-  }
-
-  return stockist;
-}
-
-function getRegionDeliveryFee(regionRow) {
-  if (!regionRow || regionRow.delivery_fee === null || regionRow.delivery_fee === undefined) return null;
-  const val = parseFloat(regionRow.delivery_fee);
-  if (isNaN(val) || !isFinite(val) || val < 0) return null;
-  return val;
-}
-
-
-// PATCH /api/stockist/profile - Stockist self-editable settings (TESTER-47)
-async function resolveStockistRate(stockistId) {
-  const rates = await db.getTable('stockist_commission_rates');
-  const stkRates = rates.filter(r => r.stockist_id === stockistId);
-  return stkRates.length > 0 ? stkRates[stkRates.length - 1].rate_percent : 10.0;
-}
 
 app.patch('/api/stockist/profile', requireAuth, async (req, res) => {
   let stockistId;
@@ -2907,26 +2371,6 @@ app.patch('/api/stockist/profile', requireAuth, async (req, res) => {
   }
 });
 
-function publicStockist(s) {
-  if (!s) return null;
-  return {
-    id: s.id,
-    name: s.name,
-    region_id: s.region_id,
-    opening_time: s.opening_time !== undefined ? s.opening_time : '09:00',
-    closing_time: s.closing_time !== undefined ? s.closing_time : '21:00',
-    is_shop_open: s.is_shop_open !== undefined ? s.is_shop_open : calculateIsShopOpen(s),
-    manual_closed: Boolean(s.manual_closed),
-    closed_until: s.closed_until || null,
-    delivery_radius_km: s.delivery_radius_km !== undefined ? s.delivery_radius_km : 5,
-    min_order_value: s.min_order_value !== undefined ? s.min_order_value : 0,
-    prep_eta_minutes: s.prep_eta_minutes !== undefined ? s.prep_eta_minutes : 15,
-    product_count: s.product_count !== undefined ? s.product_count : 0,
-    rating: s.rating !== undefined ? s.rating : null,
-    ratings_count: s.ratings_count !== undefined ? s.ratings_count : 0,
-    reliabilityBadge: s.reliabilityBadge || 'Active Partner'
-  };
-}
 
 app.get('/api/stockists', async (req, res) => {
   const { regionId } = req.query;
@@ -3166,524 +2610,6 @@ app.post('/api/stockists/restock', requireAuth, async (req, res) => {
 
 // Helper: Settlement Engine
 // Helper: Get Commission Config (STORE first, GLOBAL fallback)
-async function getCommissionConfig(stockistId = null) {
-  const configs = await db.getTable('commission_config');
-  if (stockistId) {
-    const storeCfg = configs.find(c => c.scope === 'STORE' && c.stockist_id === stockistId);
-    if (storeCfg) return storeCfg;
-  }
-  const globalCfg = configs.find(c => c.scope === 'GLOBAL');
-  if (globalCfg) return globalCfg;
-
-  console.error('[CommissionConfig] Missing config row in database! Falling back to 50/40/12 defaults.');
-  return {
-    id: 'cc-fallback',
-    scope: 'GLOBAL',
-    stockist_id: null,
-    stockist_reinvest_pct: 50,
-    points_from_pot_pct: 40,
-    partner_redemption_cut_pct: 12
-  };
-}
-
-// Helper: Calculate Partner Payout
-async function calculatePartnerPayout(redemptionValue, stockistId = null) {
-  const cfg = await getCommissionConfig(stockistId);
-  const cutPct = parseFloat(cfg.partner_redemption_cut_pct);
-  const platformCut = Math.round(redemptionValue * cutPct) / 100;
-  const partnerPayout = Math.round((redemptionValue - platformCut) * 100) / 100;
-  return { platformCut, partnerPayout, cutPctUsed: cutPct };
-}
-
-// Helper: Settlement Engine (Profit-basis v2)
-async function calculateSettlement(subtotal, totalProfitMargin, stockistId, regionId) {
-  const cfg = await getCommissionConfig(stockistId);
-
-  // 2.1 Guard against negative or zero profit
-  if (!totalProfitMargin || totalProfitMargin <= 0) {
-    console.warn(`[Settlement] Non-positive profit margin (${totalProfitMargin}) for stockist ${stockistId}. Setting settlement outputs to 0.`);
-    return {
-      commission_model: 'profit_v2',
-      config_row_id: cfg ? cfg.id : null,
-      stockistReinvest: 0,
-      platformPot: 0,
-      platformCommission: 0,
-      pointsCredited: 0,
-      commissionRateUsed: null,
-      earnRateUsed: null
-    };
-  }
-
-  const reinvestPct = parseFloat(cfg.stockist_reinvest_pct) || 50;
-  const pointsPct = parseFloat(cfg.points_from_pot_pct) || 40;
-
-  const stockistReinvest = totalProfitMargin * (reinvestPct / 100);
-  const platformPot = totalProfitMargin - stockistReinvest;
-
-  const pointsCredited = Math.round(platformPot * (pointsPct / 100) * 100) / 100;
-  const platformCommission = Math.round((platformPot - pointsCredited) * 100) / 100;
-
-  return {
-    commission_model: 'profit_v2',
-    config_row_id: cfg.id,
-    stockistReinvest,
-    platformPot,
-    platformCommission,
-    pointsCredited,
-    commissionRateUsed: null,
-    earnRateUsed: null
-  };
-}
-
-// Helper: Reverse points if order is cancelled (only if points were already credited)
-async function reverseOrderPoints(orderId) {
-  const ledger = await db.getTable('points_ledger');
-  let changed = false;
-
-  const existingEarn = ledger.find(l => l.order_id === orderId && l.type === 'EARN');
-  if (existingEarn) {
-    const alreadyReversed = ledger.some(l => l.order_id === orderId && l.type === 'REVERSAL');
-    if (!alreadyReversed) {
-      await db.insertRow('points_ledger', {
-        id: 'l-' + generateId(),
-        tenant_id: existingEarn.tenant_id,
-        region_id: existingEarn.region_id,
-        customer_id: existingEarn.customer_id,
-        amount: -existingEarn.amount,
-        type: 'REVERSAL',
-        order_id: orderId,
-        description: `Reversal of points earned from Cancelled Order #${orderId.substring(2).toUpperCase()}`,
-        created_at: new Date().toISOString(),
-        billing_sync_status: 'PENDING'
-      });
-      changed = true;
-    }
-  }
-
-  const existingCoupon = ledger.find(l => l.order_id === orderId && l.type === 'REDEEM' && l.redemption_type === 'COUPON');
-  if (existingCoupon) {
-    const alreadyCouponReversed = ledger.some(l => l.order_id === orderId && l.type === 'COUPON_REVERSAL');
-    if (!alreadyCouponReversed) {
-      await db.insertRow('points_ledger', {
-        id: 'l-' + generateId(),
-        tenant_id: existingCoupon.tenant_id,
-        region_id: existingCoupon.region_id,
-        customer_id: existingCoupon.customer_id,
-        amount: Math.abs(existingCoupon.amount),
-        type: 'COUPON_REVERSAL',
-        order_id: orderId,
-        description: `Coupon points returned: cancelled order #${orderId.substring(2).toUpperCase()}`,
-        created_at: new Date().toISOString(),
-        billing_sync_status: 'PENDING'
-      });
-      changed = true;
-    }
-  }
-
-  // Points still held for bill verification are voided so they can never be
-  // released for a cancelled order.
-  const heldRows = ledger.filter(l => l.order_id === orderId && l.type === 'EARN_HELD' && l.billing_sync_status === 'HELD');
-  for (const heldRow of heldRows) {
-    const alreadySettled = ledger.some(l => l.reference_id === heldRow.id && (l.type === 'EARN' || l.type === 'EARN_VOID'));
-    if (!alreadySettled) {
-      await db.insertRow('points_ledger', {
-        id: 'l-' + generateId(),
-        tenant_id: heldRow.tenant_id,
-        region_id: heldRow.region_id,
-        customer_id: heldRow.customer_id,
-        amount: 0, // held points were never in the balance, so nothing to take back
-        type: 'EARN_VOID',
-        order_id: orderId,
-        description: `Held points (${heldRow.amount}) voided: cancelled order #${orderId.substring(2).toUpperCase()}`,
-        created_at: new Date().toISOString(),
-        billing_sync_status: 'VOIDED',
-        reference_id: heldRow.id
-      });
-    }
-    await db.updateRow('points_ledger', heldRow.id, { billing_sync_status: 'VOIDED' });
-  }
-
-  // db.saveTable('points_ledger') is strictly forbidden
-}
-
-// retainCommission: keep the platform fee out of the refund. Only a customer
-// no-show does that; free-window and shop/admin cancellations refund in full.
-async function processOrderCancellation(order, cancelledBy = 'system', { retainCommission = false } = {}) {
-  order.cancelled_from_status = order.status;
-  order.cancelled_by = cancelledBy;
-  order.cancelled_at = new Date().toISOString();
-  order.status = 'CANCELLED';
-
-  // Restore stock ONLY if it was actually decremented (order had been marked READY)
-  if (order.stock_decremented && !order.stock_restored) {
-    const orderItems = (await db.getTable('order_items')).filter(oi => oi.order_id === order.id);
-    if (orderItems.length > 0) {
-      const inventory = await db.getTable('stockist_inventory');
-      let changed = false;
-      orderItems.forEach(oi => {
-        const inv = inventory.find(i => i.stockist_id === order.stockist_id && i.product_id === oi.product_id);
-        if (inv) {
-          inv.stock_qty += parseInt(oi.quantity, 10);
-          inv.stock_quantity = inv.stock_qty;              // keep both fields in sync (creation uses both)
-          inv.is_available = inv.stock_qty > 0;
-          changed = true;
-        }
-      });
-      if (changed) await db.saveTable('stockist_inventory', inventory);
-    }
-    order.stock_restored = true;   // idempotency guard — never restore twice
-  }
-
-  // Remove any COD commission accrued for this order (it never completed)
-  const codLedger = await db.getTable('cod_commission_ledger');
-  const filtered = codLedger.filter(e => e.order_id !== order.id);
-  if (filtered.length !== codLedger.length) {
-    await db.saveTable('cod_commission_ledger', filtered);
-  }
-
-  await reverseOrderPoints(order.id);
-
-  // Mark split_payouts row and any payout-due entry CANCELLED (keep for history)
-  const splitPayouts = await db.getTable('split_payouts');
-  let spChanged = false;
-  for (const sp of splitPayouts) {
-    if (sp.order_id === order.id && sp.status !== 'CANCELLED') {
-      sp.status = 'CANCELLED';
-      spChanged = true;
-    }
-  }
-  if (spChanged) {
-    await db.saveTable('split_payouts', splitPayouts);
-  }
-
-  // Refund only when money was received:
-  // UNPAID -> payment_status 'CANCELLED_UNPAID', no refund.
-  // Only PAID, PAID_ONLINE, or HELD orders become REFUND_DUE, with refund_amount = amount received minus any commission the policy keeps.
-  // The actual gateway refund happens when the admin triggers it via POST /api/admin/orders/:id/refund (Rule 6).
-  if (order.payment_status === 'HELD' || order.payment_status === 'PAID' || order.payment_status === 'PAID_ONLINE') {
-    const payout = splitPayouts.find(sp => sp.order_id === order.id);
-    const platformCommission = retainCommission && payout ? parseFloat(payout.platform_amount) : 0;
-
-    let orderAmountPaid = order.amount_paid !== undefined && order.amount_paid !== null ? order.amount_paid : order.total_price;
-    const refundAmount = Math.round(Math.max(0, orderAmountPaid - platformCommission) * 100) / 100;
-
-    order.payment_status = 'REFUND_DUE';
-    order.refund_amount = refundAmount;
-    appendPaymentEvent(order.id, 'REFUND_DUE', refundAmount, {
-      reason: 'Order cancellation',
-      commission_retained: platformCommission
-    });
-    try {
-      const users = await db.getTable('users');
-      const customer = users.find(u => u.id === order.customer_id);
-      const phone = customer ? customer.phone : order.customer_phone;
-      if (phone) {
-        try {
-          await smsHelper.sendTemplateSms(phone, 'ORDER_CANCELLED', { orderId: order.id });
-        } catch (sErr) {}
-        try {
-          await whatsapp.sendWhatsAppUpdate({
-            phone,
-            templateKey: 'ORDER_CANCELLED',
-            params: { orderId: order.id },
-            user: customer
-          });
-        } catch (waErr) {
-          console.warn('[whatsapp:order_cancelled] Warning:', waErr.message);
-        }
-      }
-    } catch (notifErr) {}
-  } else if (order.payment_status !== 'REFUNDED') {
-    order.payment_status = 'CANCELLED_UNPAID';
-    order.refund_amount = 0;
-  }
-
-  // If cancelled by customer, update new_order notification item text and write order_cancelled notification
-  if (cancelledBy === 'customer') {
-    try {
-      const stockists = await db.getTable('stockists');
-      const stockistRow = stockists.find(s => s.id === order.stockist_id);
-      if (stockistRow && stockistRow.user_id) {
-        const notifs = await db.getTable('notifications');
-        const existing = notifs.find(n => n.link === `order:${order.id}` && n.type === 'new_order');
-        if (existing) {
-          existing.body = 'Cancelled by customer';
-          await db.updateRow('notifications', existing.id, { body: 'Cancelled by customer' });
-        }
-        await createNotification({
-          userId: stockistRow.user_id,
-          type: 'order_cancelled',
-          title: 'Order cancelled',
-          body: 'Cancelled by customer',
-          link: `order:${order.id}`
-        });
-      }
-    } catch (notifErr) {
-      console.error('[notification] Failed to process order cancellation notification:', notifErr);
-    }
-  }
-}
-
-// Helper: Enrich Order
-async function enrichOrder(o, req = null) {
-  if (!o) return null;
-  const orderItems = await db.getTable('order_items');
-  const users = await db.getTable('users');
-  const splitPayouts = await db.getTable('split_payouts');
-  const feedbacks = await db.getTable('feedback_reports');
-  const stockists = await db.getTable('stockists');
-
-  const items = orderItems.filter(oi => oi.order_id === o.id);
-  const customer = users.find(u => u.id === o.customer_id);
-  const payout = splitPayouts.find(sp => sp.order_id === o.id);
-  const stockistFeedback = feedbacks.find(fb => fb.order_id === o.id && fb.reporter_role === 'STOCKIST');
-  const stockist = stockists.find(s => s.id === o.stockist_id);
-
-  let platformCommission = o.platform_commission;
-  let stockistPayout = o.stockist_payout;
-
-  if (platformCommission === undefined) {
-    if (payout) {
-      platformCommission = parseFloat(payout.platform_amount);
-    } else {
-      const stockistCommissionRates = await db.getTable('stockist_commission_rates');
-      const scr = stockistCommissionRates.find(r => r.stockist_id === o.stockist_id);
-      const commissionRate = scr ? parseFloat(scr.rate_percent) : 10.00;
-      platformCommission = (o.subtotal * commissionRate) / 100;
-    }
-  }
-
-  if (stockistPayout === undefined) {
-    if (payout) {
-      stockistPayout = parseFloat(payout.stockist_amount);
-    } else {
-      stockistPayout = o.subtotal - platformCommission + (o.delivery_fee || 0);
-    }
-  }
-
-  const platformPayout = payout ? parseFloat(payout.platform_amount) : (platformCommission + (o.low_order_fee || 0));
-
-  let strippedPin = o.pickup_pin;
-  if (req && req.user && req.user.role !== 'ADMIN' && req.user.role !== 'CUSTOMER') {
-    strippedPin = undefined;
-  } else if (!req || !req.user) {
-    strippedPin = undefined;
-  }
-
-  const caller = req && req.user ? req.user : null;
-  const role = caller ? caller.role : null;
-  const callerUserId = caller ? (caller.userId || caller.id) : null;
-  const isAdmin = role === 'ADMIN';
-
-  const isOrderActive = !['DELIVERED', 'CANCELLED', 'NO_SHOW'].includes(o.status);
-  const isOwnCustomer = Boolean(role === 'CUSTOMER' && callerUserId && callerUserId === o.customer_id);
-  const isOwnActiveCustomer = isOwnCustomer && isOrderActive;
-
-  let isOwnStockist = false;
-  if (role === 'STOCKIST') {
-    const callerStockist = await getCallerStockist(req);
-    if (callerStockist && callerStockist.id === o.stockist_id) {
-      isOwnStockist = true;
-    }
-  }
-
-  // 4. Expose only contact_phone on customer's own active order (or admin/own stockist)
-  const canSeeShopPhone = isAdmin || isOwnStockist || isOwnActiveCustomer;
-  const shopContactPhone = canSeeShopPhone && stockist ? (stockist.contact_phone || stockist.phone || null) : undefined;
-
-  // 5. Expose payout_upi_id / stockist_upi_id on customer's own active order (or admin/own stockist)
-  const canSeeShopUpi = isAdmin || isOwnStockist || isOwnActiveCustomer;
-  const shopUpi = canSeeShopUpi && stockist ? (stockist.payout_upi_id || stockist.upi_id || null) : undefined;
-
-  // Customer phone: only admin, own customer, or own stockist
-  const canSeeCustomerPhone = isAdmin || isOwnCustomer || isOwnStockist || !caller;
-  const customerPhone = canSeeCustomerPhone ? (customer ? customer.phone : '') : undefined;
-
-  const enriched = {
-    ...o,
-    pickup_pin: strippedPin,
-    items,
-    pointsCredited: o.points_credited !== undefined ? o.points_credited : 0,
-    points_credited: o.points_credited !== undefined ? o.points_credited : 0,
-    earnRatePercent: o.earn_rate_used !== undefined ? o.earn_rate_used : 40,
-    earn_rate_used: o.earn_rate_used !== undefined ? o.earn_rate_used : 40,
-    customer_name: customer ? customer.name : 'Unknown Subscriber',
-    customer_phone: customerPhone,
-    stockist_reviewed: !!stockistFeedback,
-    payment_received_method: o.payment_received_method || null,
-    paid_at: o.paid_at || null,
-    amount_paid: o.amount_paid !== undefined && o.amount_paid !== null ? o.amount_paid : o.total_price,
-    points_status: (await db.getTable('points_ledger')).some(l => l.order_id === o.id && l.type === 'EARN_HELD' && l.billing_sync_status === 'HELD') ? 'HELD' : 'CREDITED'
-  };
-
-  if (shopUpi !== undefined) {
-    enriched.payout_upi_id = shopUpi;
-    enriched.stockist_upi_id = shopUpi;
-  } else {
-    delete enriched.payout_upi_id;
-    delete enriched.stockist_upi_id;
-  }
-
-  if (shopContactPhone !== undefined) {
-    enriched.contact_phone = shopContactPhone;
-  } else {
-    delete enriched.contact_phone;
-  }
-
-  // Remove any stray shop phone or user_id fields
-  delete enriched.phone;
-  delete enriched.released_phone;
-  delete enriched.user_id;
-
-  enriched.commission_model = o.commission_model || 'gross_v1';
-
-  // Commission data: only for admin, own stockist, or internal calls without caller
-  const canSeeCommission = isAdmin || isOwnStockist || !caller;
-  if (canSeeCommission) {
-    enriched.platform_commission = platformCommission;
-    enriched.stockist_payout = stockistPayout;
-    enriched.stockist_amount = stockistPayout;
-    enriched.platform_amount = platformPayout;
-    enriched.margin = o.margin !== undefined ? o.margin : (o.subtotal * 0.25);
-  } else {
-    delete enriched.platform_commission;
-    delete enriched.stockist_payout;
-    delete enriched.stockist_amount;
-    delete enriched.platform_amount;
-    delete enriched.margin;
-    delete enriched.commission_rate;
-  }
-
-  return enriched;
-}
-
-// Helper: Run fraud detection scoring after an order is created
-async function runFraudDetection(order, customer) {
-  const orders = await db.getTable('orders');
-  const allCustomerOrders = orders.filter(o => o.customer_id === customer.id);
-  const rulesFired = [];
-  const metricValues = {};
-
-  // Rule 1: Repeat-pair frequency vs. region average
-  const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const recentPairOrders = allCustomerOrders.filter(o => o.stockist_id === order.stockist_id && o.created_at >= last24h);
-  const allRegionPairs = orders.filter(o => o.region_id === customer.region_id && o.created_at >= last24h);
-  const uniquePairs = {};
-  allRegionPairs.forEach(o => {
-    const key = `${o.customer_id}:${o.stockist_id}`;
-    uniquePairs[key] = (uniquePairs[key] || 0) + 1;
-  });
-  const pairCounts = Object.values(uniquePairs);
-  const regionAvg = pairCounts.length > 0 ? pairCounts.reduce((s, v) => s + v, 0) / pairCounts.length : 1;
-  metricValues.pair_count = recentPairOrders.length;
-  metricValues.region_avg = Math.round(regionAvg * 100) / 100;
-  if (recentPairOrders.length >= cfg.REPEAT_PAIR_MULTIPLIER * Math.max(regionAvg, 1)) {
-    rulesFired.push('REPEAT_PAIR');
-  }
-
-  // Rule 2: Rapid cancel loops
-  const rapidWindow = new Date(Date.now() - cfg.RAPID_CANCEL_WINDOW_MINUTES * 60 * 1000).toISOString();
-  const recentCancels = allCustomerOrders.filter(o => o.status === 'CANCELLED' && o.created_at >= rapidWindow);
-  metricValues.recent_cancels = recentCancels.length;
-  if (recentCancels.length >= cfg.RAPID_CANCEL_THRESHOLD) {
-    rulesFired.push('RAPID_CANCEL_LOOP');
-  }
-
-  // Rule 3: Points velocity vs. region (90th-percentile approximation — high earner)
-  const last7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const pointsLedger = await db.getTable('points_ledger');
-  const customerPts7d = pointsLedger.filter(l => l.customer_id === customer.id && l.type === 'EARN' && l.created_at >= last7d)
-    .reduce((s, l) => s + l.amount, 0);
-  const regionCustomers = (await db.getTable('users')).filter(u => u.region_id === customer.region_id && u.role === 'CUSTOMER');
-  const allEarnings = regionCustomers.map(u =>
-    pointsLedger.filter(l => l.customer_id === u.id && l.type === 'EARN' && l.created_at >= last7d).reduce((s, l) => s + l.amount, 0)
-  ).sort((a, b) => a - b);
-  const p90 = allEarnings[Math.floor(allEarnings.length * 0.9)] || 0;
-  metricValues.points_7d = Math.round(customerPts7d * 100) / 100;
-  metricValues.region_p90_pts = Math.round(p90 * 100) / 100;
-  if (allEarnings.length >= 5 && customerPts7d > p90 * 2) {
-    rulesFired.push('POINTS_VELOCITY');
-  }
-
-  // Rule 4: New-account burst
-  const accountAgeMs = Date.now() - new Date(customer.created_at).getTime();
-  const accountAgeHours = accountAgeMs / (1000 * 60 * 60);
-  const recentOrderCount = allCustomerOrders.filter(o => o.created_at >= new Date(customer.created_at).toISOString()).length;
-  metricValues.account_age_hours = Math.round(accountAgeHours * 10) / 10;
-  metricValues.orders_since_signup = recentOrderCount;
-  if (accountAgeHours < cfg.ACCOUNT_BURST_HOURS && recentOrderCount >= cfg.ACCOUNT_BURST_ORDER_THRESHOLD) {
-    rulesFired.push('NEW_ACCOUNT_BURST');
-  }
-
-  // Rule 5: Self-dealing — address overlap between customer and stockist
-  const stockists = await db.getTable('stockists');
-  const users = await db.getTable('users');
-  const stockistUser = users.find(u => u.id === (stockists.find(s => s.id === order.stockist_id) || {}).user_id);
-  const custAddr = (customer.address || '').toLowerCase().trim();
-  const stkAddr = (stockistUser ? stockistUser.address || '' : '').toLowerCase().trim();
-  if (custAddr.length > 4 && stkAddr.length > 4 && (custAddr.includes(stkAddr) || stkAddr.includes(custAddr))) {
-    rulesFired.push('SELF_DEALING');
-    metricValues.customer_address = customer.address;
-    metricValues.stockist_address = stockistUser ? stockistUser.address : '';
-  }
-
-  if (rulesFired.length > 0) {
-    const anomalyLogs = await db.getTable('anomaly_logs');
-    anomalyLogs.push({
-      id: 'an-' + generateId(),
-      tenant_id: customer.tenant_id,
-      region_id: customer.region_id,
-      customer_id: customer.id,
-      customer_name: customer.name,
-      stockist_id: order.stockist_id,
-      stockist_name: order.stockist_name,
-      order_id: order.id,
-      rules_fired: rulesFired,
-      metric_values: metricValues,
-      reason: `Fraud rules fired: ${rulesFired.join(', ')}`,
-      status: 'PENDING',
-      dismissed: false,
-      dismiss_reason: null,
-      investigated: false,
-      created_at: new Date().toISOString()
-    });
-    await db.saveTable('anomaly_logs', anomalyLogs);
-  }
-}
-
-// Order status model. The UI uses RECEIVED/READY; older API paths use
-// ACCEPTED/PREPARING and READY_FOR_PICKUP/OUT_FOR_DELIVERY. Both spellings are
-// accepted and ranked together so that an order can only move forward.
-const ORDER_STATUS_RANK = {
-  CONFIRMING: 0, PENDING: 1, ACCEPTED: 2, RECEIVED: 2, PREPARING: 3,
-  READY: 4, READY_FOR_PICKUP: 4, OUT_FOR_DELIVERY: 4, SHIPPED: 4, DELIVERED: 5
-};
-const FINAL_ORDER_STATUSES = ['DELIVERED', 'CANCELLED'];
-const READY_ORDER_STATUSES = ['READY', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'SHIPPED']; // SHIPPED: legacy rows
-const ORDER_FULFILLMENT_TYPES = ['PICKUP', 'DELIVERY', 'HOME_DELIVERY'];
-const ORDER_PAYMENT_METHODS = ['UPI', 'COD', 'ONLINE', 'CARD', 'PAY_AT_HANDOVER'];
-
-// Returns an error message, or null when the slot is acceptable. Accepts the
-// named slots, a time range ("10:00–11:00", "10:00 AM - 11:00 AM") or the
-// checkout's slot start ("2026-08-07T17:00", shop-local time).
-function validatePickupSlot(slot) {
-  if (typeof slot !== 'string' || !slot.trim() || slot.length > 64) return 'Invalid pickup slot.';
-  const s = slot.trim();
-  const norm = x => x.replace(/[–—]/g, '-').replace(/\s+/g, '').toUpperCase();
-  if (cfg.SLOT_OPTIONS.some(o => norm(o) === norm(s))) return null;
-  if (/^\d{1,2}(:\d{2})?\s*(AM|PM)?\s*[-–—]\s*\d{1,2}(:\d{2})?\s*(AM|PM)?$/i.test(s)) return null;
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
-  if (m) {
-    const [y, mo, d, h, mi] = m.slice(1).map(Number);
-    const when = new Date(y, mo - 1, d, h, mi);
-    if (when.getMonth() !== mo - 1 || when.getDate() !== d || h > 23 || mi > 59) return 'Invalid pickup slot.';
-    // A day of slack either side covers client/server time-zone differences.
-    if (when.getTime() < Date.now() - 24 * 60 * 60 * 1000) return 'Pickup slot is in the past.';
-    if (when.getTime() > Date.now() + 8 * 24 * 60 * 60 * 1000) return 'Pickup slot is too far ahead.';
-    return null;
-  }
-  return 'Invalid pickup slot.';
-}
 
 // POST /api/orders & /api/orders/create — multi-store aware, slot-required, HELD payment, CONFIRMING state
 const handleCreateOrderRoute = async (req, res) => {
@@ -4884,196 +3810,6 @@ app.post('/api/orders/:id/verify-pickup', requireAuth, async (req, res) => {
 });
 
 // Internal: process referral bonus on first delivered order
-async function _processReferralBonusOnDelivery(order) {
-  try {
-    const customerId = order.customer_id;
-    if (!customerId) return;
-
-    await db.transaction(async (tx) => {
-      const users = await tx.getTable('users');
-      const customer = users.find(u => u.id === customerId);
-      if (!customer) return;
-
-      if (customer.referral_bonus_paid) return;
-      if (!customer.referred_by_user_id) return;
-
-      const referrer = users.find(u => u.id === customer.referred_by_user_id);
-      if (!referrer) return;
-
-      const allOrders = await tx.getTable('orders');
-      const deliveredOrders = allOrders.filter(o => o.customer_id === customerId && o.status === 'DELIVERED');
-      if (deliveredOrders.length !== 1) return; // Must be genuinely 1st DELIVERED order
-
-      const now = new Date().toISOString();
-
-      // 1. Credit 50 pts to referrer
-      await tx.insertRow('points_ledger', {
-        id: 'l-' + generateId(),
-        tenant_id: referrer.tenant_id || customer.tenant_id || 't1',
-        region_id: referrer.region_id || customer.region_id || null,
-        customer_id: referrer.id,
-        amount: 50,
-        type: 'REFERRAL_BONUS',
-        source: 'SYSTEM',
-        order_id: order.id,
-        description: `Referral bonus for inviting ${customer.name || customer.phone || 'customer'}`,
-        created_at: now,
-        billing_sync_status: 'PENDING'
-      });
-
-      // 2. Credit 50 pts to referee (this customer)
-      await tx.insertRow('points_ledger', {
-        id: 'l-' + generateId(),
-        tenant_id: customer.tenant_id || 't1',
-        region_id: customer.region_id || null,
-        customer_id: customer.id,
-        amount: 50,
-        type: 'REFERRAL_WELCOME',
-        source: 'SYSTEM',
-        order_id: order.id,
-        description: `Welcome bonus for joining via referral from ${referrer.name || referrer.phone || 'referrer'}`,
-        created_at: now,
-        billing_sync_status: 'PENDING'
-      });
-
-      // 3. Mark referral_bonus_paid = true on referee
-      await tx.updateRow('users', customer.id, { referral_bonus_paid: true });
-    });
-  } catch (err) {
-    console.error('Error processing referral bonus on delivery:', err);
-  }
-}
-
-async function _sendOrderConfirmedSms(order) {
-  try {
-    if (!smsHelper.isSmsConfigured()) return;
-    if (order.sms_confirmed_sent) return;
-
-    const users = await db.getTable('users');
-    const customer = users.find(u => u.id === order.customer_id);
-    const phone = customer ? customer.phone : order.customer_phone;
-    if (!phone) return;
-
-    const stockists = await db.getTable('stockists');
-    const stockist = stockists.find(s => s.id === order.stockist_id);
-    const stockistName = stockist ? stockist.name : 'Stockist';
-
-    const orderItems = (await db.getTable('order_items')).filter(oi => oi.order_id === order.id);
-    const itemCount = orderItems.reduce((sum, item) => sum + (item.quantity || 1), 0) || (order.items ? order.items.length : 1);
-    const total = order.total_amount || order.subtotal || 0;
-    const etaTime = order.pickup_slot || 'scheduled time';
-
-    await smsHelper.sendTemplateSms(phone, 'ORDER_PLACED', {
-      orderId: order.id,
-      shopName: stockistName,
-      amount: total
-    });
-    try {
-      await whatsapp.sendWhatsAppUpdate({
-        phone,
-        templateKey: 'ORDER_PLACED',
-        params: { orderId: order.id, shopName: stockistName, amount: total },
-        user: customer
-      });
-    } catch (waErr) {
-      console.warn('[whatsapp:order_placed] Warning:', waErr.message);
-    }
-
-    await db.updateRow('orders', order.id, { sms_confirmed_sent: true });
-    order.sms_confirmed_sent = true;
-  } catch (err) {
-    console.error('Error sending order confirmed SMS:', err);
-  }
-}
-
-async function _sendOrderReadySms(order) {
-  try {
-    if (!smsHelper.isSmsConfigured()) return;
-    if (order.sms_ready_sent) return;
-
-    const users = await db.getTable('users');
-    const customer = users.find(u => u.id === order.customer_id);
-    const phone = customer ? customer.phone : order.customer_phone;
-    if (!phone) return;
-
-    const stockists = await db.getTable('stockists');
-    const stockist = stockists.find(s => s.id === order.stockist_id);
-    const stockistName = stockist ? stockist.name : 'Stockist';
-    const pickupPin = order.pickup_pin || '----';
-
-    await smsHelper.sendTemplateSms(phone, 'READY_FOR_PICKUP', {
-      orderId: order.id,
-      shopName: stockistName,
-      pin: pickupPin
-    });
-    try {
-      await whatsapp.sendWhatsAppUpdate({
-        phone,
-        templateKey: 'READY_FOR_PICKUP',
-        params: { orderId: order.id, shopName: stockistName, pin: pickupPin },
-        user: customer
-      });
-    } catch (waErr) {
-      console.warn('[whatsapp:ready_for_pickup] Warning:', waErr.message);
-    }
-
-    await db.updateRow('orders', order.id, { sms_ready_sent: true });
-    order.sms_ready_sent = true;
-  } catch (err) {
-    console.error('Error sending order ready SMS:', err);
-  }
-}
-
-// Internal: credit points when order is delivered (idempotent)
-async function _creditPointsOnDelivery(order) {
-  const ledger = await db.getTable('points_ledger');
-  const alreadyEarned = ledger.some(l => l.order_id === order.id && (l.type === 'EARN' || l.type === 'EARN_HELD'));
-  if (alreadyEarned) return;
-
-  if (!order.points_credited || order.points_credited === 0) return;
-
-  const stockists = await db.getTable('stockists');
-  const stockist = stockists.find(s => s.id === order.stockist_id);
-
-  const orderItems = await db.getTable('order_items');
-  const items = orderItems.filter(oi => oi.order_id === order.id);
-  const products = await db.getTable('products');
-  const billPhotos = await db.getTable('product_bill_photos');
-
-  let hasUnverifiedBill = false; console.log('checking order', order.id);
-  for (const item of items) {
-    const product = products.find(p => p.id === item.product_id);
-    if (product && product.latest_bill_photo_id) {
-      const bill = billPhotos.find(b => b.id === product.latest_bill_photo_id);
-      if (!bill || bill.bill_status === 'PENDING' || bill.bill_status === 'REJECTED') {
-        hasUnverifiedBill = true;
-        console.log('hasUnverifiedBill is true because bill_status is', bill ? bill.bill_status : 'null (no bill)');
-        break;
-      }
-    } else {
-      hasUnverifiedBill = true;
-      console.log('hasUnverifiedBill is true because no latest_bill_photo_id for product', product ? product.id : 'null');
-      break;
-    }
-  }
-
-  const earnType = hasUnverifiedBill ? 'EARN_HELD' : 'EARN';
-  const syncStatus = hasUnverifiedBill ? 'HELD' : 'PENDING';
-
-  await db.insertRow('points_ledger', {
-    id: 'l-' + generateId(),
-    tenant_id: order.tenant_id,
-    region_id: order.region_id,
-    customer_id: order.customer_id,
-    amount: order.points_credited,
-    type: earnType,
-    order_id: order.id,
-    description: `Earned from Order #${order.id.substring(2).toUpperCase()} at ${stockist ? stockist.name : 'Store'}`,
-    created_at: new Date().toISOString(),
-    billing_sync_status: syncStatus,
-    reference_id: null
-  });
-}
 
 // Get orders
 
@@ -6044,20 +4780,6 @@ app.get('/api/ledger/history/:customerId', requireAuth, async (req, res) => {
   return res.json(customerLedger);
 });
 
-function getRedemptionDescription(type, pts) {
-  if (type === 'BROADBAND_DISCOUNT') return `Broadband Bill Discount - ₹${pts.toFixed(0)}`;
-  if (type === 'BROADBAND_DISCOUNT_50') return 'Broadband Bill Discount - ₹50';
-  if (type === 'BROADBAND_DISCOUNT_100') return 'Broadband Bill Discount - ₹100';
-  if (type === 'WIFI_TOPUP') return 'WiFi Speed Booster 48h (100 Mbps)';
-  if (type === 'DATA_TOPUP') return 'WiFi Data Top-up 10 GB';
-  if (type === 'CABLE_RECHARGE') {
-    if (pts === 100) return 'Cable TV Basic Pack - 1 Month Free';
-    if (pts === 250) return 'Cable TV HD Premium Pack - 1 Month';
-    if (pts === 120) return 'Cable TV Kids & Family Bundle';
-    return 'Cable TV Recharge Package';
-  }
-  return 'Redeemed points against Broadband Bill';
-}
 
 app.post('/api/ledger/redeem', requireAuth, async (req, res) => {
   const customerId = req.body.customerId || req.body.customer_user_id;
@@ -6659,17 +5381,6 @@ app.delete('/api/admin/commission-config/:id', async (req, res) => {
   return res.json({ success: true, message: 'Store override deleted' });
 });
 
-function maskIdNumber(idNum) {
-  if (!idNum) return 'XXXX-XXXX-XXXX';
-  const clean = String(idNum).replace(/\D/g, '');
-  if (clean.length === 12) {
-    return 'XXXX-XXXX-' + clean.slice(8);
-  }
-  if (String(idNum).length > 4) {
-    return 'X'.repeat(String(idNum).length - 4) + String(idNum).slice(-4);
-  }
-  return 'XXXX-XXXX-XXXX';
-}
 
 app.get('/api/admin/kyc-queue', async (req, res) => {
   const users = await db.getTable('users');
@@ -8119,26 +6830,6 @@ app.post('/api/admin/customers/:id', async (req, res) => {
   return res.json({ success: true, customer: sanitizeUser(user) });
 });
 
-const phoneChangeMarkers = new Map();
-const sendCurrentRateLimits = new Map();
-const sendNewRateLimits = new Map();
-
-function getPhoneChangeMarker(id) {
-  let m = phoneChangeMarkers.get(id);
-  if (!m) { m = {}; phoneChangeMarkers.set(id, m); }
-  return m;
-}
-
-function checkSendRateLimit(map, id, res) {
-  const lastSent = map.get(id);
-  if (lastSent && Date.now() - lastSent < 60000) {
-    const sec = Math.ceil((60000 - (Date.now() - lastSent)) / 1000);
-    res.status(429).json({ error: `Too many requests, try again in ${sec}s` });
-    return true;
-  }
-  map.set(id, Date.now());
-  return false;
-}
 
 app.post('/api/admin/customers/:id/phone-change/send-current', async (req, res) => {
   const { id } = req.params;
@@ -8894,29 +7585,7 @@ app.post('/api/test/clear-mock-outbox', async (req, res) => {
 // ROUND P1 — PARTNER MODEL & AUTH ENDPOINTS
 // ==========================================
 
-const ALLOWED_SERVICE_TYPES = ['CABLE', 'BROADBAND', 'DTH', 'OTT_BUNDLE'];
 
-async function getPartnerSession(req) {
-  const authHeader = req.headers.authorization || req.headers.Authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.substring(7);
-  try {
-    const { userId, role } = sessionHelper.verifySession(token);
-    if (role !== 'PARTNER_ADMIN') return null;
-    const users = await db.getTable('users');
-    const user = users.find(u => u.id === userId && u.is_active !== false);
-    if (!user) return null;
-    const partnerUsers = await db.getTable('partner_users');
-    const pu = partnerUsers.find(p => p.user_id === userId);
-    if (!pu) return null;
-    const partners = await db.getTable('partners');
-    const partner = partners.find(p => p.id === pu.partner_id);
-    if (!partner) return null;
-    return { user, partner, userId: user.id, partnerId: partner.id };
-  } catch (err) {
-    return null;
-  }
-}
 
 // 3.1 POST /api/partner/auth/set-password
 app.post('/api/partner/auth/set-password', async (req, res) => {
@@ -10138,44 +8807,6 @@ app.get('/api/customer/partner-bindings/:customer_user_id', requireAuth, async (
   return res.json(binding || null);
 });
 
-async function getAvailablePartnersForRegion(regionId) {
-  if (!regionId) return { cable: [], broadband: [] };
-
-  const partners = await db.getTable('partners');
-  const partnerRegions = await db.getTable('partner_regions');
-
-  const activePartnersMap = new Map(
-    partners.filter(p => p.is_active !== false).map(p => [p.id, p])
-  );
-
-  const cableSet = new Map();
-  const broadbandSet = new Map();
-
-  const matchingRegions = partnerRegions.filter(
-    pr => pr.region_id === regionId && pr.is_active !== false && activePartnersMap.has(pr.partner_id)
-  );
-
-  for (const pr of matchingRegions) {
-    const ptr = activePartnersMap.get(pr.partner_id);
-    if (!ptr) continue;
-    const sanitized = {
-      id: ptr.id,
-      display_name: ptr.display_name,
-      service_types: ptr.service_types || []
-    };
-
-    if (pr.service_type === 'CABLE' && !cableSet.has(ptr.id)) {
-      cableSet.set(ptr.id, sanitized);
-    } else if (pr.service_type === 'BROADBAND' && !broadbandSet.has(ptr.id)) {
-      broadbandSet.set(ptr.id, sanitized);
-    }
-  }
-
-  return {
-    cable: Array.from(cableSet.values()),
-    broadband: Array.from(broadbandSet.values())
-  };
-}
 
 app.get('/api/customer/available-partners', async (req, res) => {
   const { region_id } = req.query;
@@ -11960,39 +10591,6 @@ app.post('/api/admin/insert-table', async (req, res) => {
   return res.json({ success: true, row: newRow });
 });
 
-function validateSupportPhone(raw) {
-  if (!raw || typeof raw !== 'string') return { valid: false, message: 'Support phone is required.' };
-  const cleaned = raw.trim().replace(/[\s\-\(\)\.]/g, '');
-  if (/^(\+91)?1800\d{6,7}$/.test(cleaned)) {
-    return { valid: true, normalized: cleaned.replace(/^\+91/, '') };
-  }
-  let norm = cleaned.replace(/^\+91/, '').replace(/^0/, '');
-  if (norm.length === 12 && norm.startsWith('91')) norm = norm.slice(2);
-  if (/^[6-9]\d{9}$/.test(norm)) {
-    return { valid: true, normalized: norm };
-  }
-  return { valid: false, message: 'Support phone must be a 10-digit Indian number or a 1800 toll-free number.' };
-}
-
-function validateSupportWhatsapp(raw) {
-  if (!raw || typeof raw !== 'string' || !raw.trim()) return { valid: true, normalized: null };
-  const cleaned = raw.trim().replace(/[\s\-\(\)\.]/g, '');
-  let norm = cleaned.replace(/^\+91/, '').replace(/^0/, '');
-  if (norm.length === 12 && norm.startsWith('91')) norm = norm.slice(2);
-  if (/^[6-9]\d{9}$/.test(norm)) {
-    return { valid: true, normalized: norm };
-  }
-  return { valid: false, message: 'WhatsApp number must be a valid 10-digit Indian mobile number.' };
-}
-
-function validateSupportEmail(raw) {
-  if (!raw || typeof raw !== 'string' || !raw.trim()) return { valid: true, normalized: null };
-  const trimmed = raw.trim();
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-    return { valid: true, normalized: trimmed.toLowerCase() };
-  }
-  return { valid: false, message: 'Please enter a valid email address.' };
-}
 
 async function handleGetSupportSettings(req, res) {
   if (req.user?.role !== 'ADMIN') {
@@ -12436,60 +11034,6 @@ app.get('/api/admin/analytics', async (req, res) => {
 
 
 
-function assertNoDuplicateRoutes(appToTest) {
-  const targetApp = appToTest || app;
-  const router = targetApp._router || targetApp.router;
-  if (!router || !router.stack) return;
-  const seen = new Map();
-  const dupes = [];
-  router.stack.forEach(layer => {
-    if (!layer.route) return;
-    const routePath = layer.route.path;
-    const paths = Array.isArray(routePath) ? routePath : [routePath];
-    Object.keys(layer.route.methods).forEach(method => {
-      paths.forEach(p => {
-        const key = `${method.toUpperCase()} ${p}`;
-        if (seen.has(key)) dupes.push(key);
-        else seen.set(key, true);
-      });
-    });
-  });
-  if (dupes.length) {
-    throw new Error(`Duplicate route registrations detected:\n  ${dupes.join('\n  ')}`);
-  }
-}
-
-async function reportMalformedPhones() {
-  const users = await db.getTable('users');
-  const partnerLeads = await db.getTable('partner_leads');
-  
-  let adminCount = 0;
-  let customerCount = 0;
-  let stockistCount = 0;
-  let partnerLeadCount = 0;
-
-  for (const u of users) {
-    if (u.phone) {
-      const norm = normalizePhone(u.phone);
-      if (norm.length !== 10) {
-        if (u.role === 'ADMIN') adminCount++;
-        else if (u.role === 'CUSTOMER') customerCount++;
-        else if (u.role === 'STOCKIST') stockistCount++;
-      }
-    }
-  }
-
-  for (const l of partnerLeads) {
-    if (l.phone) {
-      const norm = normalizePhone(l.phone);
-      if (norm.length !== 10) {
-        partnerLeadCount++;
-      }
-    }
-  }
-
-  console.log(`[Diagnostic] Malformed phones found: Users(ADMIN: ${adminCount}, CUSTOMER: ${customerCount}, STOCKIST: ${stockistCount}), PartnerLeads(${partnerLeadCount})`);
-}
 
 app.use((err, req, res, next) => {
   console.error('[Unhandled]', req.method, req.originalUrl, err);
@@ -12526,23 +11070,6 @@ app.get('/api/config/calculator', async (req, res) => {
   }
 });
 
-function assertProductionConfig() {
-  if (process.env.NODE_ENV !== 'production') return;
-  const errors = [];
-  if (require('./lib/env').isTestEnv() || process.env.SEED_MODE === 'test') errors.push('SEED_MODE is test');
-  if (process.env.SMS_MOCK === 'true') errors.push('SMS_MOCK is true');
-  if (process.env.DEMO_OTP === 'true') errors.push('DEMO_OTP is true');
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) errors.push('JWT_SECRET missing or too short');
-  if (!process.env.DATABASE_URL) errors.push('DATABASE_URL missing');
-  if (!process.env.MSG91_AUTH_KEY) errors.push('MSG91_AUTH_KEY missing');
-  if (!process.env.CAPTCHA_SECRET) errors.push('CAPTCHA_SECRET missing');
-  if (!process.env.CORS_ORIGINS) errors.push('CORS_ORIGINS missing');
-  
-  if (errors.length > 0) {
-    errors.forEach(e => console.error(e));
-    process.exit(1);
-  }
-}
 
 // Start Server
 const PORT = process.env.PORT || 3001;
