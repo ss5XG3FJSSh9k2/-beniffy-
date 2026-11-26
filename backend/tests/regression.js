@@ -9295,6 +9295,68 @@ async function main() {
   if (savedTestSeedMode9 !== undefined) process.env.SEED_MODE = savedTestSeedMode9;
   await post('http://localhost:3001/api/admin/clear-rate-limits', {});
 
+  // --- Setup Progress Endpoint (GET /api/admin/setup-progress) ---
+  clearLogin();
+  const spNoAuthRes = await get('http://localhost:3001/api/admin/setup-progress');
+  assert(spNoAuthRes.status === 401, 'GET /api/admin/setup-progress without auth returns 401');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/admin/setup-progress without auth returns 401`);
+
+  const spCustRes = await get('http://localhost:3001/api/admin/setup-progress', {
+    headers: { Authorization: `Bearer ${custToken}` }
+  });
+  assert(spCustRes.status === 403, 'GET /api/admin/setup-progress with customer token returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/admin/setup-progress with customer token returns 403`);
+
+  const spStkRes = await get('http://localhost:3001/api/admin/setup-progress', {
+    headers: { Authorization: `Bearer ${stkToken}` }
+  });
+  assert(spStkRes.status === 403, 'GET /api/admin/setup-progress with stockist token returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/admin/setup-progress with stockist token returns 403`);
+
+  const spPartnerRes = await get('http://localhost:3001/api/admin/setup-progress', {
+    headers: { Authorization: `Bearer ${bfPartnerToken}` }
+  });
+  assert(spPartnerRes.status === 403, 'GET /api/admin/setup-progress with partner token returns 403');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/admin/setup-progress with partner token returns 403`);
+
+  loginAs('u-admin', 'ADMIN');
+  const spAdminRes = await get('http://localhost:3001/api/admin/setup-progress');
+  assert(spAdminRes.status === 200, 'GET /api/admin/setup-progress with admin token returns 200');
+  assert(
+    typeof spAdminRes.body.regions === 'number' &&
+    typeof spAdminRes.body.wholesalers === 'number' &&
+    typeof spAdminRes.body.stockists === 'number' &&
+    typeof spAdminRes.body.customers === 'number',
+    'GET /api/admin/setup-progress returns 4 numeric fields'
+  );
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: GET /api/admin/setup-progress returns 200 with 4 numeric fields`);
+
+  const spNewRegRes = await post('http://localhost:3001/api/admin/regions', {
+    name: 'Setup Progress Test Region',
+    code: 'sp-test-' + Date.now(),
+    delivery_fee: 15
+  });
+  assert(spNewRegRes.status === 200 && spNewRegRes.body.id, 'Created test region for setup-progress');
+  const spAfterRegRes = await get('http://localhost:3001/api/admin/setup-progress');
+  assert(spAfterRegRes.status === 200 && spAfterRegRes.body.regions === spAdminRes.body.regions + 1, 'regions count increases by 1 after creating a region');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: setup-progress regions count increased by 1 after creating a region`);
+
+  const spNewVenRes = await post('http://localhost:3001/api/admin/vendors', {
+    name: 'Setup Progress Test Wholesaler',
+    regionId: spNewRegRes.body.id
+  });
+  assert(spNewVenRes.status === 200 && spNewVenRes.body.success, 'Created test wholesaler for setup-progress');
+  const spAfterVenRes = await get('http://localhost:3001/api/admin/setup-progress');
+  assert(spAfterVenRes.status === 200 && spAfterVenRes.body.wholesalers === spAfterRegRes.body.wholesalers + 1, 'wholesalers count increases by 1 after creating a wholesaler');
+  testCount++; passedCount++;
+  console.log(`[PASS] Test #${testCount}: setup-progress wholesalers count increased by 1 after creating a wholesaler`);
+
     clearLogin();
 
   console.log(`\n=== REGRESSION SUITE COMPLETED: ${passedCount}/${testCount} tests passed ===`);

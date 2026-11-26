@@ -1113,6 +1113,19 @@ app.post('/api/setup/create-admin', async (req, res) => {
   }
 });
 
+async function getSetupProgressCounts() {
+  const regions = (await db.getTable('regions')) || [];
+  const stockists = (await db.getTable('stockists')) || [];
+  const vendors = (await db.getTable('vendors')) || [];
+  const users = (await db.getTable('users')) || [];
+  return {
+    regions: regions.filter(r => !r.deleted_at && r.is_active !== false).length,
+    wholesalers: vendors.filter(v => !v.deleted_at && v.is_active !== false).length,
+    stockists: stockists.filter(s => !s.deleted_at && s.is_active !== false).length,
+    customers: users.filter(u => u.role === 'CUSTOMER' && !u.deleted_at && u.is_active !== false && u.kyc_status !== 'RELEASED').length
+  };
+}
+
 // POST /api/admin/setup-complete and /api/setup/complete
 const handleAdminSetupComplete = async (req, res) => {
   try {
@@ -1139,19 +1152,8 @@ const handleAdminSetupComplete = async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized. Admin privileges required.' });
     }
 
-    const regions = (await db.getTable('regions')) || [];
-    const stockists = (await db.getTable('stockists')) || [];
-    const vendors = (await db.getTable('vendors')) || [];
-    const users = (await db.getTable('users')) || [];
-    const customers = users.filter(u => u.role === 'CUSTOMER');
-
     const setupCompletedAt = new Date().toISOString();
-    const summary = {
-      regions: regions.length,
-      stockists: stockists.length,
-      wholesalers: vendors.length,
-      customers: customers.length
-    };
+    const summary = await getSetupProgressCounts();
     await appendAudit(req, 'SETUP_COMPLETE', 'users', user.id, null, { setup_completed_at: setupCompletedAt, summary }, 'Admin setup complete confirmed');
 
     res.status(200).json({
@@ -1167,6 +1169,17 @@ const handleAdminSetupComplete = async (req, res) => {
 
 app.post('/api/admin/setup-complete', handleAdminSetupComplete);
 app.post('/api/setup/complete', handleAdminSetupComplete);
+
+// GET /api/admin/setup-progress (ADMIN only)
+app.get('/api/admin/setup-progress', requireAuth, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const counts = await getSetupProgressCounts();
+    res.status(200).json(counts);
+  } catch (err) {
+    console.error('Error fetching setup progress:', err);
+    res.status(500).json({ error: 'Failed to fetch setup progress.' });
+  }
+});
 
 // Verify OTP & Login
 const handleVerifyOtpRoute = async (req, res) => {

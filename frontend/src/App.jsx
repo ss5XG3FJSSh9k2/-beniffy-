@@ -2483,6 +2483,7 @@ export default function App() {
   const [gettingStartedOpen, setGettingStartedOpen] = useState(true);
   const [adminSetupConfirmed, setAdminSetupConfirmed] = useState(false);
   const [adminSetupDismissed, setAdminSetupDismissed] = useState(false);
+  const [setupProgress, setSetupProgress] = useState(null);
   const [adminSetupSummary, setAdminSetupSummary] = useState(null);
   const [isCompletingSetup, setIsCompletingSetup] = useState(false);
   const [setupCompleteError, setSetupCompleteError] = useState('');
@@ -3814,10 +3815,31 @@ export default function App() {
     try {
       const res = await adminFetch(`/admin/vendors${includeInactive ? '?include_inactive=true' : ''}`);
       if (res.ok) {
-        setVendors(await res.json().catch(() => ({})));
+        const data = await res.json().catch(() => ({}));
+        setVendors(prev => asList(res, data, Array.isArray(prev) ? prev : []));
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const fetchSetupProgress = async () => {
+    try {
+      const res = await adminFetch('/admin/setup-progress');
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        if (
+          data &&
+          typeof data.regions === 'number' &&
+          typeof data.wholesalers === 'number' &&
+          typeof data.stockists === 'number' &&
+          typeof data.customers === 'number'
+        ) {
+          setSetupProgress(data);
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching setup progress:', e);
     }
   };
 
@@ -3825,6 +3847,7 @@ export default function App() {
     // Only once an admin is signed in; before that the call just returns 401.
     if (activeRole === "admin" && currentUser?.role === 'ADMIN') {
       fetchAdminVendors(showInactiveVendorsRef.current);
+      fetchSetupProgress();
     }
   }, [showInactiveVendors, activeRole, currentUser?.role]);
 
@@ -4428,6 +4451,7 @@ export default function App() {
       showToast(editingRegion ? 'Region updated successfully' : 'Region created successfully', 'success');
       fetchAdminRegions();
       fetchDbState();
+      fetchSetupProgress();
     } catch (err) {
       setRegionModalError('Network error saving region');
     }
@@ -4448,6 +4472,7 @@ export default function App() {
           showToast('Region deleted successfully', 'success');
           fetchAdminRegions();
           fetchDbState();
+          fetchSetupProgress();
         } catch (err) {
           showToast('Error deleting region', 'error');
         }
@@ -6459,6 +6484,7 @@ export default function App() {
         if (res.ok) {
           showToast(`Customer ${cust.is_active ? 'deactivated' : 'reactivated'}`, 'success');
           fetchDbState();
+          fetchSetupProgress();
         } else {
           const d = await res.json().catch(() => ({}));
           showToast(d.error || 'Action failed', 'error');
@@ -6529,6 +6555,7 @@ export default function App() {
         setShowCreateStockistModal(false);
         setCreateStkName(''); setCreateStkPhone(''); setCreateStkVendor('');
         fetchDbState();
+        fetchSetupProgress();
       } else {
         const d = await res.json().catch(() => ({}));
         showToast(d.error || 'Failed to create stockist', 'error');
@@ -7344,6 +7371,7 @@ export default function App() {
         showToast('Approved stockist successfully!');
         fetchDbState();
         fetchAnalytics();
+        fetchSetupProgress();
       } else {
         showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
       }
@@ -7504,6 +7532,7 @@ export default function App() {
             setAdminNewVendor('');
             fetchAdminVendors(showInactiveVendorsRef.current);
             fetchDbState();
+            fetchSetupProgress();
           } else {
             showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
           }
@@ -7559,6 +7588,7 @@ export default function App() {
               }
               fetchAdminVendors(showInactiveVendorsRef.current);
               fetchDbState();
+              fetchSetupProgress();
             } else {
               showToast(data.message || data.error || `Request failed (${res.status})`, 'error');
             }
@@ -7593,6 +7623,7 @@ export default function App() {
               if (res.ok) {
                 showToast(t('Wholesaler deleted', 'थोक व्यापारी हटा दिया गया', 'পাইকারি বিক্রেতা মুছে ফেলা হয়েছে'));
                 fetchAdminVendors(showInactiveVendorsRef.current);
+                fetchSetupProgress();
               } else {
                 const data = await res.json().catch(() => ({}));
                 showToast(data.message || data.error || 'Delete failed', 'error');
@@ -7642,6 +7673,7 @@ export default function App() {
             showToast(t(`Wholesaler ${vendor.name} reactivated.`, `थोक व्यापारी ${vendor.name} पुनः सक्रिय हो गया।`, `পাইকারি বিক্রেতা ${vendor.name} পুনরায় সক্রিয় করা হয়েছে।`));
             fetchAdminVendors(showInactiveVendorsRef.current);
             fetchDbState();
+            fetchSetupProgress();
           } else {
             showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
           }
@@ -7689,6 +7721,7 @@ export default function App() {
           setEditingVendor(null);
           fetchAdminVendors(showInactiveVendorsRef.current);
           fetchDbState();
+          fetchSetupProgress();
         } else {
           showToast(data.message || data.error || `Request failed (${typeof res !== 'undefined' ? res.status : 500})`, 'error');
         }
@@ -16320,13 +16353,12 @@ export default function App() {
 
               {/* Round BF5d: Getting Started Guided Setup Checklist */}
               {(() => {
-                const step1Done = regions.length > 0;
-                const step2Done = vendors.length > 0;
-                const allStks = adminStockists;
-                const step3Done = allStks.length > 0;
-                const step4Done = adminCustomers.length > 0;
+                const step1Done = (setupProgress?.regions || 0) > 0;
+                const step2Done = (setupProgress?.wholesalers || 0) > 0;
+                const step3Done = (setupProgress?.stockists || 0) > 0;
+                const step4Done = (setupProgress?.customers || 0) > 0;
 
-                if (!dbState) return null;
+                if (!dbState || !setupProgress) return null;
                 if (adminSetupDismissed) return null;
 
                 if (adminSetupConfirmed) {
@@ -16389,12 +16421,16 @@ export default function App() {
                           {step1Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>1</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step1Done ? 'var(--success-text)' : 'var(--text-main)' }}>
-                              1. {t('Create your first service region', 'अपना पहला सेवा क्षेत्र बनाएं', 'আপনার প্রথম পরিষেবা অঞ্চল তৈরি করুন')}
+                              {t('Create your first service region', 'अपना पहला सेवा क्षेत्र बनाएं', 'আপনার প্রথম পরিষেবা অঞ্চল তৈরি করুন')}
                             </div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Advanced → Regions</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              {t('Advanced', 'उन्नत', 'উন্নত')} → {t('Regions', 'क्षेत्र', 'অঞ্চলসমূহ')}
+                            </div>
                           </div>
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: '600' }}>Go →</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: '600' }}>
+                          {t('Go', 'जाएं', 'যান')} →
+                        </span>
                       </div>
 
                       {/* Step 2 */}
@@ -16413,13 +16449,15 @@ export default function App() {
                           {step2Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>2</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step2Done ? 'var(--success-text)' : (step1Done ? 'var(--text-main)' : 'var(--text-muted)') }}>
-                              2. {t('Register a wholesaler for that region', 'उस क्षेत्र के लिए थोक विक्रेता पंजीकृत करें', 'সেই অঞ্চলের জন্য একজন পাইকারী বিক্রেতা রেজিস্টার করুন')}
+                              {t('Register a wholesaler for that region', 'उस क्षेत्र के लिए थोक विक्रेता पंजीकृत करें', 'সেই অঞ্চলের জন্য একজন পাইকারী বিক্রেতা রেজিস্টার করুন')}
                             </div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Advanced → Wholesalers</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              {t('Advanced', 'उन्नत', 'উন্নত')} → {t('Wholesalers', 'थोक विक्रेता', 'পাইকারী বিক্রেতা')}
+                            </div>
                           </div>
                         </div>
                         <span style={{ fontSize: '0.75rem', color: step1Done ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: step1Done ? '600' : 'normal' }}>
-                          {step1Done ? 'Go →' : 'Locked'}
+                          {step1Done ? (<>{t('Go', 'जाएं', 'যান')} →</>) : t('Locked', 'लॉक', 'লক করা')}
                         </span>
                       </div>
 
@@ -16439,13 +16477,15 @@ export default function App() {
                           {step3Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>3</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step3Done ? 'var(--success-text)' : (step2Done ? 'var(--text-main)' : 'var(--text-muted)') }}>
-                              3. {t('Wait for a shopkeeper to register, then approve them', 'दुकानदार के पंजीकरण की प्रतीक्षा करें, फिर उन्हें स्वीकृत करें', 'দোকানদারের নিবন্ধনের জন্য অপেক্ষা করুন, তারপর তাদের অনুমোদন করুন')}
+                              {t('Wait for a shopkeeper to register, then approve them', 'दुकानदार के पंजीकरण की प्रतीक्षा करें, फिर उन्हें स्वीकृत करें', 'দোকানদারের নিবন্ধনের জন্য অপেক্ষা করুন, তারপর তাদের অনুমোদন করুন')}
                             </div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Pending KYC</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              {t('Pending KYC', 'लंबित केवाईसी', 'মুলতুবি কেওয়াইসি')}
+                            </div>
                           </div>
                         </div>
                         <span style={{ fontSize: '0.75rem', color: step2Done ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: step2Done ? '600' : 'normal' }}>
-                          {step2Done ? 'Go →' : 'Locked'}
+                          {step2Done ? (<>{t('Go', 'जाएं', 'যান')} →</>) : t('Locked', 'लॉक', 'লক করা')}
                         </span>
                       </div>
 
@@ -16465,7 +16505,7 @@ export default function App() {
                           {step4Done ? <CheckCircle2 size={16} style={{ color: 'var(--success-text)' }} /> : <span style={{ fontSize: '0.8rem', fontWeight: 'bold', width: '16px', textAlign: 'center' }}>4</span>}
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: step4Done ? 'var(--success-text)' : (step3Done ? 'var(--text-main)' : 'var(--text-muted)') }}>
-                              4. {t('Invite customers to sign up', 'ग्राहकों को साइन अप करने के लिए आमंत्रित करें', 'গ্রাহকদের সাইন আপ করতে আমন্ত্রণ জানান')}
+                              {t('Invite customers to sign up', 'ग्राहकों को साइन अप करने के लिए आमंत्रित करें', 'গ্রাহকদের সাইন আপ করতে আমন্ত্রণ জানান')}
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                               {t('Customers can register via Customer App once a shopkeeper is active.', 'दुकानदार के सक्रिय होने पर ग्राहक ग्राहक ऐप के माध्यम से पंजीकरण कर सकते हैं।', 'একজন দোকানদার সক্রিয় হলে গ্রাহকরা কাস্টমার অ্যাপের মাধ্যমে নিবন্ধন করতে পারেন।')}
@@ -16473,7 +16513,7 @@ export default function App() {
                           </div>
                         </div>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {step4Done ? 'Done' : (step3Done ? 'Pending' : 'Locked')}
+                          {step4Done ? t('Done', 'पूर्ण', 'সম্পন্ন') : (step3Done ? t('Pending', 'लंबित', 'মুলতুবি') : t('Locked', 'लॉक', 'লক করা'))}
                         </span>
                       </div>
                       {allComplete && (
@@ -18866,6 +18906,8 @@ export default function App() {
                   )}
                 </div>
               )}
+                </div>
+              )}
 
               {adminTab === 'feedback' && (
                 <div>
@@ -19352,8 +19394,6 @@ export default function App() {
                   </div>
                     </div>
                   )}
-                </div>
-              )}
 
               {adminTab === 'vendors' && (
                 <div>
